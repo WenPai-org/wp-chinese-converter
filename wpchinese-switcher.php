@@ -285,7 +285,7 @@ var wpcs_target_lang=\"$wpcs_target_lang\";var wpcs_noconversion_url=\"$wpcs_noc
     ) {
         return;
     } else {
-        echo '<meta name="robots" content="noindex,follow" />';
+        echo '<meta name="robots" content="noindex,nofollow" />';
     }
 }
 
