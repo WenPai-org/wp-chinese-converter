@@ -285,7 +285,7 @@ var wpcs_target_lang=\"$wpcs_target_lang\";var wpcs_noconversion_url=\"$wpcs_noc
     ) {
         return;
     } else {
-        echo '<meta name="robots" content="noindex,follow" />';
+        echo '<meta name="robots" content="noindex,nofollow" />';
     }
 }
 
@@ -503,7 +503,8 @@ function zhconversion_safe($str, $variant = null) {
  * Return: array('网络', '网络');
  *
  */
-function zhconversion_all($str, $langs = array('zh-tw', 'zh-cn', 'zh-hk', 'zh-sg', 'zh-hans', 'zh-hant')) {
+// function zhconversion_all($str, $langs = array('zh-tw', 'zh-cn', 'zh-hk', 'zh-sg', 'zh-hans', 'zh-hant')) {
+function zhconversion_all($str, $langs = array('zh-tw', 'zh-cn')) {
     global $wpcs_langs;
     $return = array();
     foreach ($langs as $value) {
