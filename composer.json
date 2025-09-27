@@ -1,0 +1,16 @@
+{
+    "name": "root/wp-chinese-converter",
+    "autoload": {
+        "psr-4": {
+            "Root\\WpChineseConverter\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "tl"
+        }
+    ],
+    "require": {
+        "overtrue/php-opencc": "^1.0"
+    }
+}
