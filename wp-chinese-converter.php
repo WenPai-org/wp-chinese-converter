@@ -2,18 +2,18 @@
 /*
 * Plugin Name: WP Chinese Converter
 * Description: Adds the language conversion function between Chinese Simplified and Chinese Traditional to your WP Website.
-* Author: WenPai.org
-* Author URI: https://wenpai.org
+* Author: WPCC.NET
+* Author URI: https://wpcc.net
 * Text Domain: wp-chinese-converter
 * Domain Path: /languages
-* Version: 2.0.0
+* Version: 1.2.0
 * License: GPLv3 or later
 * License URI: http://www.gnu.org/licenses/gpl-3.0.html
 */
 
 /*
-Copyright 2012-2021 WenPai (http://wenpai.org)
-Developer: WenPai
+Copyright 2012-2025 WPCC.NET (https://wpcc.net)
+Developer: WPCC.NET
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -30,33 +30,36 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
- * WP WP Chinese Converter Plugin main file
+ * WP Chinese Converter Plugin main file
  *
  * 为Wordpress增加中文繁简转换功能. 转换过程在服务器端完成. 使用的繁简字符映射表来源于Mediawiki.
  * 本插件比较耗费资源. 因为对页面内容繁简转换时载入了一个几百KB的转换表(ZhConversion.php), 编译后占用内存超过1.5MB
  * 如果可能, 建议安装xcache/ eAccelerator之类PHP缓存扩展. 可以有效提高速度并降低CPU使用,在生产环境下测试效果非常显着.
  *
- * @package WPCS
+ * @package WPChineseConverter
  * @version see wpcc_VERSION constant below
  * @TODO 用OO方式重写全部代码, 计划1.2版本实现.
  * @link http://wordpress.org/plugins/wp-chinese-converter Plugin Page on wordpress.org, including guides and docs.
  *
  */
 
-define( 'wpcc_DEBUG', true );
+define( 'wpcc_DEBUG', false );
 $wpcc_debug_data = array();
 if ( defined( 'WP_PLUGIN_URL' ) ) {
 	define( 'wpcc_DIR_URL', WP_PLUGIN_URL . '/' . str_replace( basename( __FILE__ ), "", plugin_basename( __FILE__ ) ) );
 } else {
 	define( 'wpcc_DIR_URL', plugins_url( '', __FILE__ ) . '/' );
 }
-define( 'wpcc_VERSION', '1.0' );
+define( 'wpcc_VERSION', '1.2.0' );
 
 // 载入github库 https://github.com/overtrue/php-opencc
 require __DIR__ . '/vendor/autoload.php';
 
 use Overtrue\PHPOpenCC\OpenCC;
 use Overtrue\PHPOpenCC\Strategy;
+
+require_once dirname( __FILE__ ) . '/includes/core/class-converter-factory.php';
+require_once dirname( __FILE__ ) . '/includes/core/class-module-manager.php';
 
 add_action( 'wp_enqueue_scripts', 'wpcc_add_global_js' );
 function wpcc_add_global_js() {
@@ -88,7 +91,7 @@ if ( empty( $wpcc_options ) ) {
 		'wpcc_no_conversion_tag'       => '',
 		'wpcc_no_conversion_ja'        => 0,
 		'wpcc_no_conversion_qtag'      => 0,
-		'wpcc_engine'                  => 'mediawiki', // alternative: opencc
+		'wpcc_engine'                  => 'opencc', // alternative: mediawiki
 		'nctip'                        => '',
 	);
 }
@@ -121,6 +124,18 @@ function wpcc_init_languages() {
 			'zh-hk' => array( 'zhconversion_hk', 'hktip', __( '港澳繁體', 'wp-chinese-converter' ), 'zh-HK' ),
 		);
 	}
+}
+
+function wpcc_init_modules() {
+	$module_manager = WPCC_Module_Manager::get_instance();
+	
+	$module_manager->register_module( 'WPCC_Cache_Addon', dirname( __FILE__ ) . '/includes/modules/wpcc-cache-addon.php' );
+	$module_manager->register_module( 'WPCC_Network', dirname( __FILE__ ) . '/includes/modules/wpcc-network.php' );
+	$module_manager->register_module( 'WPCC_Rest_Api', dirname( __FILE__ ) . '/includes/modules/wpcc-rest-api.php' );
+	$module_manager->register_module( 'WPCC_Modern_Cache', dirname( __FILE__ ) . '/includes/modules/wpcc-modern-cache.php' );
+	$module_manager->register_module( 'WPCC_SEO_Enhancement', dirname( __FILE__ ) . '/includes/modules/wpcc-seo-enhancement.php' );
+	
+	$module_manager->auto_discover_modules();
 }
 
 //容错处理.
@@ -194,7 +209,8 @@ function wpcc_init() {
 	add_action( 'template_redirect', 'wpcc_template_redirect', - 100 );//本插件核心代码.
 	add_action( 'init', function() {
 		wpcc_init_languages();
-	}, 5 );
+		wpcc_init_modules();
+	}, 1 );
 }
 
 /**
@@ -368,7 +384,7 @@ function wpcc_template_redirect() {
 
 	set_wpcc_langs_urls();
 
-	if ( ! is_404() && $wpcc_redirect_to ) {
+	if ( ! is_404() && $wpcc_redirect_to && ! is_admin() ) {
 		setcookie( 'wpcc_is_redirect_' . COOKIEHASH, '1', 0, COOKIEPATH, COOKIE_DOMAIN );
 		wp_redirect( $wpcc_langs_urls[ $wpcc_redirect_to ], 302 );
 	}
@@ -476,31 +492,46 @@ class wpcc_Widget extends WP_Widget {
 function zhconversion( $str, $variant = null ) {
 	global $wpcc_options, $wpcc_langs;
 	wpcc_init_languages();
+	
 	if ( $str === null || $str === '' ) {
 		return $str;
 	}
+	
 	if ( $variant === null ) {
 		$variant = $GLOBALS['wpcc_target_lang'];
 	}
+	
 	if ( $variant == false ) {
 		return $str;
 	}
-	if ( !isset( $wpcc_langs[ $variant ] ) || !isset( $wpcc_langs[ $variant ][0] ) ) {
+	
+	if ( !isset( $wpcc_langs[ $variant ] ) ) {
 		return $str;
 	}
-
-	//if( !empty($wpcc_options['wpcc_no_conversion_tag']) || $wpcc_options['wpcc_no_conversion_ja'] == 1 )
-	//	return limit_zhconversion($str, $wpcc_langs[$variant][0]);
-	return $wpcc_langs[ $variant ][0]( $str );
+	
+	try {
+		$converter = WPCC_Converter_Factory::get_converter();
+		return $converter->convert( $str, $variant );
+	} catch ( Exception $e ) {
+		error_log( 'WPCC Conversion Error: ' . $e->getMessage() );
+		return $str;
+	}
 }
 
 
 function zhconversion2( $str, $variant = null ) { // do not convert content within <!--wpcc_NC_START--> and <!--wpcc_NC_END-->.
 	global $wpcc_options, $wpcc_langs;
+	
+	wpcc_init_languages();
+	
 	if ( $variant === null ) {
 		$variant = $GLOBALS['wpcc_target_lang'];
 	}
 	if ( $variant == false ) {
+		return $str;
+	}
+	
+	if ( !isset( $wpcc_langs[ $variant ] ) || !isset( $wpcc_langs[ $variant ][0] ) || !is_callable( $wpcc_langs[ $variant ][0] ) ) {
 		return $str;
 	}
 
@@ -662,57 +693,78 @@ function zhconversion_hant( $str ) {
 	if ( $str === null || $str === '' ) {
 		return $str;
 	}
-	global $zh2Hant;
-
-	return strtr( $str, $zh2Hant );
+	try {
+		$converter = WPCC_Converter_Factory::get_converter();
+		return $converter->convert( $str, 'zh-hant' );
+	} catch ( Exception $e ) {
+		error_log( 'WPCC zhconversion_hant Error: ' . $e->getMessage() );
+		return $str;
+	}
 }
 
 function zhconversion_hans( $str ) {
 	if ( $str === null || $str === '' ) {
 		return $str;
 	}
-	global $zh2Hans;
-
-	return strtr( $str, $zh2Hans );
+	try {
+		$converter = WPCC_Converter_Factory::get_converter();
+		return $converter->convert( $str, 'zh-hans' );
+	} catch ( Exception $e ) {
+		error_log( 'WPCC zhconversion_hans Error: ' . $e->getMessage() );
+		return $str;
+	}
 }
 
 function zhconversion_cn( $str ) {
 	if ( $str === null || $str === '' ) {
 		return $str;
 	}
-	global $zh2Hans, $zh2CN;
-
-	return strtr( strtr( $str, $zh2CN ), $zh2Hans );
+	try {
+		$converter = WPCC_Converter_Factory::get_converter();
+		return $converter->convert( $str, 'zh-cn' );
+	} catch ( Exception $e ) {
+		error_log( 'WPCC zhconversion_cn Error: ' . $e->getMessage() );
+		return $str;
+	}
 }
 
 function zhconversion_tw( $str ) {
 	if ( $str === null || $str === '' ) {
 		return $str;
 	}
-	return OpenCC::convert( $str, strategy::SIMPLIFIED_TO_TAIWAN_WITH_PHRASE );
-	// global $zh2Hant;
-
-	// return strtr(OpenCC::convert($str, strategy::S2TW), $zh2Hant);
+	try {
+		$converter = WPCC_Converter_Factory::get_converter();
+		return $converter->convert( $str, 'zh-tw' );
+	} catch ( Exception $e ) {
+		error_log( 'WPCC zhconversion_tw Error: ' . $e->getMessage() );
+		return $str;
+	}
 }
 
 function zhconversion_jp( $str ) {
 	if ( $str === null || $str === '' ) {
 		return $str;
 	}
-	return OpenCC::convert( $str, strategy::S2JP );
-
-	// global $zh2Hans;
-	// return strtr(OpenCC::convert($str, strategy::S2JP), $zh2Hans);
+	try {
+		$converter = WPCC_Converter_Factory::get_converter();
+		return $converter->convert( $str, 'zh-jp' );
+	} catch ( Exception $e ) {
+		error_log( 'WPCC zhconversion_jp Error: ' . $e->getMessage() );
+		return $str;
+	}
 }
 
 function zhconversion_hk( $str ) {
 	if ( $str === null || $str === '' ) {
 		return $str;
 	}
-	return OpenCC::convert( $str, strategy::S2HK );
-	// global $zh2Hant;
-
-	// return strtr(OpenCC::convert($str, strategy::S2HK), $zh2Hant);
+	try {
+		$converter = WPCC_Converter_Factory::get_converter();
+		return $converter->convert( $str, 'zh-hk' );
+	} catch ( Exception $e ) {
+		error_log( 'WPCC zhconversion_hk Error: ' . $e->getMessage() );
+		return $str;
+	}
 }
 
 /**
@@ -840,7 +892,7 @@ function wpcc_link_conversion( $link, $variant = null ) {
 		return $link;
 	}
 
-	if ( str_contains( $link, '?' ) || ! $wpcc_options['wpcc_use_permalink'] ?? 0 ) {
+	if ( str_contains( $link, '?' ) || ! ($wpcc_options['wpcc_use_permalink'] ?? 0) ) {
 		return add_query_arg( 'variant', $variant, $link );
 	}
 
@@ -1049,10 +1101,17 @@ function wpcc_rel_canonical() {
  */
 function variant_attribute( $default = "zh", $variant = false ) {
 	global $wpcc_langs;
+	
+	wpcc_init_languages();
+	
 	if ( ! $variant ) {
 		$variant = $GLOBALS['wpcc_target_lang'];
 	}
 	if ( ! $variant ) {
+		return $default;
+	}
+	
+	if ( !isset( $wpcc_langs[ $variant ] ) || !isset( $wpcc_langs[ $variant ][3] ) ) {
 		return $default;
 	}
 
@@ -1492,7 +1551,7 @@ function wpcc_parse_query( $query ) {
 	}
 
 	if ( ! $wpcc_target_lang ) {
-		if ( $request_lang == 'zh' ) {
+		if ( $request_lang == 'zh' && ! is_admin() ) {
 			if ( $wpcc_options['wpcc_use_cookie_variant'] != 0 ) {
 				setcookie( 'wpcc_variant_' . COOKIEHASH, 'zh', time() + 30000000, COOKIEPATH, COOKIE_DOMAIN );
 			} else {
@@ -1501,7 +1560,7 @@ function wpcc_parse_query( $query ) {
 			header( 'Location: ' . $wpcc_noconversion_url );
 			die();
 		}
-		if ( $request_lang == 'zh-reset' ) {
+		if ( $request_lang == 'zh-reset' && ! is_admin() ) {
 			setcookie( 'wpcc_variant_' . COOKIEHASH, '', time() - 30000000, COOKIEPATH, COOKIE_DOMAIN );
 			setcookie( 'wpcc_is_redirect_' . COOKIEHASH, '', time() - 30000000, COOKIEPATH, COOKIE_DOMAIN );
 			header( 'Location: ' . $wpcc_noconversion_url );
@@ -1586,14 +1645,14 @@ function wpcc_load_conversion_table() {
 	global $wpcc_options;
 	if ( ! empty( $wpcc_options['wpcc_no_conversion_ja'] ) || ! empty( $wpcc_options['wpcc_no_conversion_tag'] ) ) {
 		if ( ! function_exists( 'str_get_html' ) ) {
-			require_once( __DIR__ . '/simple_html_dom.php' );
+			require_once( __DIR__ . '/includes/core/simple_html_dom.php' );
 		}
 	}
 
 	global $zh2Hans;
 	if ( $zh2Hans == false ) {
 		global $zh2Hant, $zh2TW, $zh2CN, $zh2SG, $zh2HK;
-		require_once( dirname( __FILE__ ) . '/ZhConversion.php' );
+		require_once( dirname( __FILE__ ) . '/includes/core/ZhConversion.php' );
 		if ( file_exists( WP_CONTENT_DIR . '/extra_zhconversion.php' ) ) {
 			require_once( WP_CONTENT_DIR . '/extra_zhconversion.php' );
 		}
@@ -1706,8 +1765,11 @@ add_filter( "body_class", "wpcc_body_class" );
  */
 function wpcc_locale( $output, $doctype = 'html' ) {
 	global $wpcc_target_lang, $wpcc_langs;
+	
+	wpcc_init_languages();
+	
 	$lang = get_bloginfo( 'language' );
-	if ( $wpcc_target_lang && strpos( $lang, 'zh-' ) === 0 ) {
+	if ( $wpcc_target_lang && strpos( $lang, 'zh-' ) === 0 && isset( $wpcc_langs[ $wpcc_target_lang ] ) && isset( $wpcc_langs[ $wpcc_target_lang ][3] ) ) {
 		$lang   = $wpcc_langs[ $wpcc_target_lang ][3];
 		$output = preg_replace( '/lang="[^"]+"/', "lang=\"{$lang}\"", $output );
 	}

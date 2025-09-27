@@ -48,14 +48,14 @@ class wpcc_Admin {
 				'wpcc_flag_option'             => 1,
 				'wpcc_use_cookie_variant'      => 0,
 				'wpcc_use_fullpage_conversion' => 1,
-				'wpcso_use_sitemap'            => 1,
+				'wpcco_use_sitemap'            => 1,
 				'wpcc_trackback_plugin_author' => 0,
 				'wpcc_add_author_link'         => 0,
 				'wpcc_use_permalink'           => 0,
 				'wpcc_no_conversion_tag'       => '',
 				'wpcc_no_conversion_ja'        => 0,
 				'wpcc_no_conversion_qtag'      => 0,
-				'wpcc_engine'                  => 'mediawiki',
+				'wpcc_engine'                  => 'opencc',
 			);
 		}
 
@@ -84,6 +84,11 @@ class wpcc_Admin {
 		}
 
 		wp_enqueue_script( 'jquery' );
+
+
+		add_action( 'wp_ajax_wpcc_clear_cache', array( &$this, 'ajax_clear_cache' ) );
+		add_action( 'wp_ajax_wpcc_preload_conversions', array( &$this, 'ajax_preload_conversions' ) );
+		add_action( 'wp_ajax_wpcc_optimize_database', array( &$this, 'ajax_optimize_database' ) );
 	}
 
 	function action_links( $links, $file ) {
@@ -209,8 +214,10 @@ class wpcc_Admin {
 		if ( ! $this->options['wpcc_used_langs'] ) {
 			return $str;
 		}
-		foreach ( $this->langs as $key => $value ) {
-			$str .= '<span><a href="' . $this->url . '&variant=' . $key . '" title="' . $value[2] . '" ' . ( $variant == $key ? 'style="color: #464646; text-decoration: none !important;"' : '' ) . '>' . $value[2] . '</a>&nbsp;</span>';
+		if ( is_array( $this->langs ) ) {
+			foreach ( $this->langs as $key => $value ) {
+				$str .= '<span><a href="' . $this->url . '&variant=' . $key . '" title="' . $value[2] . '" ' . ( $variant == $key ? 'style="color: #464646; text-decoration: none !important;"' : '' ) . '>' . $value[2] . '</a>&nbsp;</span>';
+			}
 		}
 
 		return $str;
@@ -218,32 +225,72 @@ class wpcc_Admin {
 
 	function process() {
 		global $wp_rewrite, $wpcc_options;
-		$langs = array();
-		if ( is_array( $this->langs ) ) {
-			foreach ( $this->langs as $key => $value ) {
-				if ( isset( $_POST[ 'wpcco_variant_' . $key ] ) ) {
-					$langs[] = $key;
+		
+		// 获取当前设置作为基础
+		$options = $this->options;
+		
+		// 只更新表单中实际提交的字段
+		
+		// 语言设置
+		if ( isset( $_POST['wpcco_variant_zh-cn'] ) || isset( $_POST['wpcco_variant_zh-tw'] ) || isset( $_POST['wpcco_variant_zh-hk'] ) ) {
+			$langs = array();
+			if ( is_array( $this->langs ) ) {
+				foreach ( $this->langs as $key => $value ) {
+					if ( isset( $_POST[ 'wpcco_variant_' . $key ] ) ) {
+						$langs[] = $key;
+					}
+				}
+			}
+			$options['wpcc_used_langs'] = $langs;
+		}
+		
+
+		
+		// 复选框字段（未选中时不会在POST中出现）
+		$checkbox_fields = array(
+			'wpcco_use_fullpage_conversion' => 'wpcc_use_fullpage_conversion',
+			'wpcco_use_sitemap' => 'wpcco_use_sitemap',
+			'wpcco_auto_language_recong' => 'wpcc_auto_language_recong',
+			'wpcc_enable_cache_addon' => 'wpcc_enable_cache_addon',
+			'wpcc_enable_network_module' => 'wpcc_enable_network_module',
+			'wpcc_enable_hreflang_tags' => 'wpcc_enable_hreflang_tags',
+			'wpcc_enable_schema_conversion' => 'wpcc_enable_schema_conversion',
+			'wpcc_enable_meta_conversion' => 'wpcc_enable_meta_conversion'
+		);
+		
+		foreach ( $checkbox_fields as $post_field => $option_field ) {
+			$options[$option_field] = isset( $_POST[$post_field] ) ? 1 : 0;
+		}
+		
+		// 文本字段和下拉选择框
+		$text_fields = array(
+			'wpcc_translate_type' => 'wpcc_translate_type',
+			'wpcco_no_conversion_tag' => 'wpcc_no_conversion_tag',
+			'wpcco_no_conversion_tip' => 'nctip',
+			'wpcc_engine' => 'wpcc_engine',
+			'wpcco_search_conversion' => 'wpcc_search_conversion',
+			'wpcco_browser_redirect' => 'wpcc_browser_redirect',
+			'wpcco_use_cookie_variant' => 'wpcc_use_cookie_variant',
+			'wpcco_use_permalink' => 'wpcc_use_permalink',
+			'wpcco_sitemap_post_type' => 'wpcco_sitemap_post_type',
+			'wpcc_hreflang_x_default' => 'wpcc_hreflang_x_default'
+		);
+		
+		foreach ( $text_fields as $post_field => $option_field ) {
+			if ( isset( $_POST[$post_field] ) ) {
+				if ( $post_field === 'wpcco_no_conversion_tag' ) {
+					$options[$option_field] = trim( $_POST[$post_field], " \t\n\r\0\x0B,|" );
+				} elseif ( $post_field === 'wpcco_no_conversion_tip' ) {
+					$options[$option_field] = trim( $_POST[$post_field] );
+				} elseif ( $post_field === 'wpcco_sitemap_post_type' ) {
+					$options[$option_field] = trim( $_POST[$post_field] );
+				} elseif ( in_array( $post_field, ['wpcc_translate_type', 'wpcco_search_conversion', 'wpcco_browser_redirect', 'wpcco_use_cookie_variant', 'wpcco_use_permalink'] ) ) {
+					$options[$option_field] = intval( $_POST[$post_field] );
+				} else {
+					$options[$option_field] = sanitize_text_field( $_POST[$post_field] );
 				}
 			}
 		}
-		$options = array(
-			'wpcc_used_langs'              => $langs,
-			'wpcc_search_conversion'       => ( isset( $_POST['wpcco_search_conversion'] ) ? intval( $_POST['wpcco_search_conversion'] ) : 0 ),
-			'wpcc_browser_redirect'        => ( isset( $_POST['wpcco_browser_redirect'] ) ? intval( $_POST['wpcco_browser_redirect'] ) : 0 ),
-			'wpcc_translate_type'          => ( isset( $_POST['wpcc_translate_type'] ) ? intval( $_POST['wpcc_translate_type'] ) : 0 ),
-			'wpcc_use_cookie_variant'      => ( isset( $_POST['wpcco_use_cookie_variant'] ) ? intval( $_POST['wpcco_use_cookie_variant'] ) : 0 ),
-			'wpcc_use_fullpage_conversion' => ( isset( $_POST['wpcco_use_fullpage_conversion'] ) ? 1 : 0 ),
-			'wpcso_use_sitemap'            => ( isset( $_POST['wpcco_use_sitemap'] ) ? 1 : 0 ),
-			'wpcso_sitemap_post_type'      => ( isset( $_POST['wpcco_sitemap_post_type'] ) ? trim( $_POST['wpcco_sitemap_post_type'] ) : 'post,page' ),
-			'wpcc_trackback_plugin_author' => ( isset( $_POST['wpcco_trackback_plugin_author'] ) ? intval( $_POST['wpcco_trackback_plugin_author'] ) : 0 ),
-			'wpcc_add_author_link'         => ( isset( $_POST['wpcco_add_author_link'] ) ? 1 : 0 ),
-			'wpcc_use_permalink'           => ( isset( $_POST['wpcco_use_permalink'] ) ? intval( $_POST['wpcco_use_permalink'] ) : 0 ),
-			'wpcc_auto_language_recong'    => ( isset( $_POST['wpcco_auto_language_recong'] ) ? 1 : 0 ),
-			'wpcc_no_conversion_tag'       => ( isset( $_POST['wpcco_no_conversion_tag'] ) ? trim( $_POST['wpcco_no_conversion_tag'], " \t\n\r\0\x0B,|" ) : '' ),
-			'wpcc_no_conversion_ja'        => ( isset( $_POST['wpcco_no_conversion_ja'] ) ? 1 : 0 ),
-			'wpcc_no_conversion_qtag'      => ( isset( $_POST['wpcco_no_conversion_qtag'] ) ? 1 : 0 ),
-			'nctip'                        => ( isset( $_POST['wpcco_no_conversion_tip'] ) ? trim( $_POST['wpcco_no_conversion_tip'] ) : '不转换' ),
-		);
 
 		if ( is_array( $this->langs ) ) {
 			foreach ( $this->langs as $lang => $value ) {
@@ -258,12 +305,26 @@ class wpcc_Admin {
 		}
 
 		$wpcc_options = $options;
+		$need_flush_rules = false;
+		
 		if ( $this->options['wpcc_use_permalink'] != $options['wpcc_use_permalink'] ||
 		     ( $this->options['wpcc_use_permalink'] != 0 && $this->options['wpcc_used_langs'] != $options['wpcc_used_langs'] )
 		) {
 			if ( ! has_filter( 'rewrite_rules_array', 'wpcc_rewrite_rules' ) ) {
 				add_filter( 'rewrite_rules_array', 'wpcc_rewrite_rules' );
 			}
+			$need_flush_rules = true;
+		}
+		
+		// 检查站点地图设置是否有变化
+		if ( isset($this->options['wpcco_use_sitemap']) && isset($options['wpcco_use_sitemap']) &&
+		     $this->options['wpcco_use_sitemap'] != $options['wpcco_use_sitemap'] ) {
+			$need_flush_rules = true;
+			// 重置站点地图重写规则刷新标记
+			delete_option( 'wpcc_sitemap_rewrite_rules_flushed' );
+		}
+		
+		if ( $need_flush_rules ) {
 			$wp_rewrite->flush_rules();
 		}
 
@@ -272,5 +333,79 @@ class wpcc_Admin {
 		$this->options    = $options;
 		$this->is_success = true;
 		$this->message    .= '设置已更新。';
+	}
+	
+
+	
+	public function ajax_clear_cache() {
+		if ( ! check_ajax_referer( 'wpcc_tools', 'nonce', false ) ) {
+			wp_send_json_error( '安全验证失败' );
+			return;
+		}
+		
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( '权限不足' );
+			return;
+		}
+		
+		if ( class_exists( 'WPCC_Modern_Cache' ) ) {
+			$cache_module = new WPCC_Modern_Cache();
+			$cache_module->clear_all_cache();
+			
+			wp_send_json_success( array( 'message' => '缓存已清除' ) );
+		} else {
+			wp_send_json_error( '缓存模块未加载' );
+		}
+	}
+	
+	public function ajax_preload_conversions() {
+		if ( ! check_ajax_referer( 'wpcc_tools', 'nonce', false ) ) {
+			wp_send_json_error( '安全验证失败' );
+			return;
+		}
+		
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( '权限不足' );
+			return;
+		}
+		
+		if ( class_exists( 'WPCC_Modern_Cache' ) ) {
+			$cache_module = new WPCC_Modern_Cache();
+			$cache_module->preload_common_conversions();
+			
+			wp_send_json_success( array( 'message' => '常用转换预加载完成' ) );
+		} else {
+			wp_send_json_error( '缓存模块未加载' );
+		}
+	}
+	
+	public function ajax_optimize_database() {
+		if ( ! check_ajax_referer( 'wpcc_tools', 'nonce', false ) ) {
+			wp_send_json_error( '安全验证失败' );
+			return;
+		}
+		
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( '权限不足' );
+			return;
+		}
+		
+		global $wpdb;
+		
+		$tables = array( $wpdb->options );
+		$optimized = 0;
+		
+		foreach ( $tables as $table ) {
+			$result = $wpdb->query( "OPTIMIZE TABLE {$table}" );
+			if ( $result !== false ) {
+				$optimized++;
+			}
+		}
+		
+		if ( function_exists( 'wp_cache_flush' ) ) {
+			wp_cache_flush();
+		}
+		
+		wp_send_json_success( array( 'message' => "已优化 {$optimized} 个数据表" ) );
 	}
 }

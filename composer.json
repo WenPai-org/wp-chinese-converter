@@ -1,16 +1,18 @@
 {
-    "name": "root/wp-chinese-converter",
-    "autoload": {
-        "psr-4": {
-            "Root\\WpChineseConverter\\": "src/"
-        }
-    },
+    "name": "wpcc/wp-chinese-converter",
+    "description": "WordPress Chinese Simplified/Traditional Converter Plugin",
+    "type": "wordpress-plugin",
     "authors": [
         {
-            "name": "tl"
+            "name": "WPCC.NET",
+            "homepage": "https://wpcc.net"
         }
     ],
     "require": {
-        "overtrue/php-opencc": "^1.0"
+        "php": ">=7.4",
+        "overtrue/php-opencc": "^1.2"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.0"
     }
 }

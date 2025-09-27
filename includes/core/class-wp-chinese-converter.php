@@ -25,9 +25,9 @@ class WP_Chinese_Converter {
 	}
 
 	private function load_dependencies() {
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/ZhConversion.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/simple_html_dom.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/admin/wp-chinese-converter-admin.php';
+		require_once dirname( __FILE__ ) . '/ZhConversion.php';
+		require_once dirname( __FILE__ ) . '/simple_html_dom.php';
+		require_once dirname( dirname( __FILE__ ) ) . '/admin/wp-chinese-converter-admin.php';
 	}
 
 	private function set_locale() {
@@ -40,8 +40,7 @@ class WP_Chinese_Converter {
 
 	private function define_admin_hooks() {
 		if ( is_admin() ) {
-			add_action( 'admin_menu', 'wpcc_admin_init' );
-			add_action( 'network_admin_menu', 'wpcc_admin_init' );
+			
 		}
 	}
 

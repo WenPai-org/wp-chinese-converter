@@ -11,6 +11,10 @@ jQuery(document).ready(function($) {
     
     initializeTabs();
     
+
+    
+
+    
     $('.wpcc-tab').on('click', function(e) {
         e.preventDefault();
         
@@ -48,6 +52,72 @@ jQuery(document).ready(function($) {
             $dependent.hide();
         }
     });
+    
+    $('select[name="wpcc_engine"]').on('change', function() {
+        var selectedEngine = $(this).val();
+        $('.engine-details').hide();
+        $('.engine-details[data-engine="' + selectedEngine + '"]').show();
+    });
+    
+
+    
+    $('#wpcc_enable_rest_api').on('change', function() {
+        var authRow = $('#wpcc_auth_methods_row');
+        if ($(this).is(':checked')) {
+            authRow.show();
+        } else {
+            authRow.hide();
+        }
+    });
+    
+
+     
+     window.clearConversionCache = function() {
+         if (confirm('确定要清除所有转换缓存吗？')) {
+             $.post(ajaxurl, {
+                 action: 'wpcc_clear_cache',
+                 nonce: $('#wpcc_tools_nonce').val()
+             }, function(response) {
+                 if (response.success) {
+                     alert('转换缓存已清除');
+                     location.reload();
+                 } else {
+                     alert('清除缓存失败：' + response.data);
+                 }
+             });
+         }
+     };
+     
+     window.preloadCommonConversions = function() {
+         if (confirm('确定要预加载常用转换吗？这可能需要一些时间。')) {
+             $.post(ajaxurl, {
+                 action: 'wpcc_preload_conversions',
+                 nonce: $('#wpcc_tools_nonce').val()
+             }, function(response) {
+                 if (response.success) {
+                     alert('常用转换预加载完成');
+                     location.reload();
+                 } else {
+                     alert('预加载失败：' + response.data);
+                 }
+             });
+         }
+     };
+     
+     window.optimizeDatabase = function() {
+         if (confirm('确定要优化数据库吗？这可能需要一些时间。')) {
+             $.post(ajaxurl, {
+                 action: 'wpcc_optimize_database',
+                 nonce: $('#wpcc_tools_nonce').val()
+             }, function(response) {
+                 if (response.success) {
+                     alert('数据库优化完成');
+                 } else {
+                     alert('数据库优化失败：' + response.data);
+                 }
+             });
+         }
+     };
     
     $('select[name="wpcc_browser_redirect"]').on('change', function() {
         var value = $(this).val();

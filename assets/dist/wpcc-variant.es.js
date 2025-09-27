@@ -1333,7 +1333,7 @@ function ge(v) {
 function de(v) {
   let d = window.location.href, _ = new pe(d);
   const y = _.segment().filter((n) => n !== ""), p = y[0], m = y[y.length - 1];
-  !wpc_switcher_use_permalink_type || wpc_switcher_use_permalink_type == "0" ? (_.removeQuery("variant"), v && _.addQuery("variant", v)) : wpc_switcher_use_permalink_type == "1" ? (console.log(y), se.includes(m) ? _.segment(y.length - 1, v) : (y.push(v), _.segment(y))) : wpc_switcher_use_permalink_type == "2" && (se.includes(p) ? _.segment(0, v) : (y.unshift(v), _.segment(y))), window.location.href = _.toString();
+  !wpc_switcher_use_permalink_type || wpc_switcher_use_permalink_type == "0" ? (_.removeQuery("variant"), v && _.addQuery("variant", v)) : wpc_switcher_use_permalink_type == "1" ? (se.includes(m) ? _.segment(y.length - 1, v) : (y.push(v), _.segment(y))) : wpc_switcher_use_permalink_type == "2" && (se.includes(p) ? _.segment(0, v) : (y.unshift(v), _.segment(y))), window.location.href = _.toString();
 }
 export {
   ge as wpccRedirectToPage,

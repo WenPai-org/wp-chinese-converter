@@ -5,7 +5,7 @@
 .wpcc-settings .description {
     font-size: 13px;
     margin: 2px 0 5px;
-    color: #666;
+    color: #9e9e9e;
 }
 
 .wpcc-tabs-wrapper {
@@ -334,3 +334,118 @@
         flex-direction: column;
     }
 }
+
+.wpcc-module-card {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    padding: 20px;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+.wpcc-module-card h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #1d2327;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.wpcc-module-card .description {
+    margin-bottom: 15px;
+    color: #646970;
+}
+
+
+
+.wpcc-action-buttons {
+    margin: 15px 0;
+}
+
+.wpcc-action-buttons .button {
+    margin-right: 10px;
+    margin-bottom: 5px;
+}
+
+.wpcc-notice {
+    background: #fff;
+    border-left: 4px solid #dba617;
+    padding: 15px 20px;
+    margin: 20px 0;
+    border-radius: 0 4px 4px 0;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+.wpcc-notice-warning {
+    border-left-color: #dba617;
+}
+
+.wpcc-notice-error {
+    border-left-color: #d63638;
+}
+
+.wpcc-notice-success {
+    border-left-color: #00a32a;
+}
+
+.wpcc-notice h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #1d2327;
+}
+
+.wpcc-notice ul {
+    margin: 10px 0;
+    padding-left: 20px;
+}
+
+.wpcc-notice li {
+    margin-bottom: 5px;
+}
+
+.wpcc-switch.wpcc-disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.wpcc-switch.wpcc-disabled input[type="checkbox"] {
+    cursor: not-allowed;
+}
+
+.wpcc-switch.wpcc-disabled .wpcc-slider {
+    background-color: #dcdcde;
+    cursor: not-allowed;
+}
+
+.wpcc-switch.wpcc-disabled .wpcc-slider:before {
+    background-color: #f6f7f7;
+}
+
+.wpcc-switch.wpcc-disabled .wpcc-switch-label {
+    color: #8c8f94;
+    cursor: not-allowed;
+}
+
+.wpcc-disabled-text {
+    color: #8c8f94;
+    font-style: italic;
+}
+
+.wpcc-doc-link {
+    color: #646970;
+    text-decoration: none;
+    margin-left: 8px;
+    font-size: 12px;
+    opacity: 0.7;
+    transition: all 0.2s ease;
+    display: inline-block;
+}
+
+.wpcc-doc-link:hover {
+    color: #2271b1;
+    opacity: 1;
+    transform: translateY(-1px);
+    text-decoration: none;
+}
+
