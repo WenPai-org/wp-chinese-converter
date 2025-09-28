@@ -14,6 +14,9 @@ class WPCC_Cache_Addon extends WPCC_Abstract_Module {
 		$this->description = '缓存插件兼容性模块，支持多种缓存插件';
 		$this->dependencies = array();
 		
+		global $wpcc_options;
+		$this->enabled = isset( $wpcc_options['wpcc_enable_cache_addon'] ) ? $wpcc_options['wpcc_enable_cache_addon'] : true;
+		
 		if ( $this->is_enabled() ) {
 			add_action( 'init', array( $this, 'setup_cache_hooks' ) );
 		}
@@ -35,10 +38,22 @@ class WPCC_Cache_Addon extends WPCC_Abstract_Module {
 		if ( $this->is_w3_total_cache_active() ) {
 			$this->setup_w3_total_cache();
 		}
+		
+		if ( $this->is_wp_fastest_cache_active() ) {
+			$this->setup_wp_fastest_cache();
+		}
+		
+		if ( $this->is_autoptimize_active() ) {
+			$this->setup_autoptimize();
+		}
+		
+		if ( $this->is_jetpack_boost_active() ) {
+			$this->setup_jetpack_boost();
+		}
 	}
 	
 	private function is_wp_super_cache_active() {
-		return function_exists( 'wp_cache_get' ) && defined( 'WP_CACHE' );
+		return function_exists( 'wp_cache_is_enabled' ) || function_exists( 'wp_super_cache_init' );
 	}
 	
 	private function is_wp_rocket_active() {
@@ -51,6 +66,18 @@ class WPCC_Cache_Addon extends WPCC_Abstract_Module {
 	
 	private function is_w3_total_cache_active() {
 		return function_exists( 'w3tc_flush_all' );
+	}
+	
+	private function is_wp_fastest_cache_active() {
+		return class_exists( 'WpFastestCache' );
+	}
+	
+	private function is_autoptimize_active() {
+		return class_exists( 'autoptimizeMain' ) || function_exists( 'autoptimize_autoload' );
+	}
+	
+	private function is_jetpack_boost_active() {
+		return defined( 'JETPACK_BOOST_VERSION' ) || class_exists( 'Automattic\Jetpack_Boost\Jetpack_Boost' );
 	}
 	
 	private function setup_wp_super_cache() {
@@ -67,6 +94,18 @@ class WPCC_Cache_Addon extends WPCC_Abstract_Module {
 	
 	private function setup_w3_total_cache() {
 		add_action( 'wpcc_language_switched', array( $this, 'clear_w3_total_cache' ) );
+	}
+	
+	private function setup_wp_fastest_cache() {
+		add_action( 'wpcc_language_switched', array( $this, 'clear_wp_fastest_cache' ) );
+	}
+	
+	private function setup_autoptimize() {
+		add_action( 'wpcc_language_switched', array( $this, 'clear_autoptimize_cache' ) );
+	}
+	
+	private function setup_jetpack_boost() {
+		add_action( 'wpcc_language_switched', array( $this, 'clear_jetpack_boost_cache' ) );
 	}
 	
 	public function clear_wp_super_cache() {
@@ -108,6 +147,29 @@ class WPCC_Cache_Addon extends WPCC_Abstract_Module {
 		}
 	}
 	
+	public function clear_wp_fastest_cache() {
+		if ( class_exists( 'WpFastestCache' ) ) {
+			$wpfc = new WpFastestCache();
+			if ( method_exists( $wpfc, 'deleteCache' ) ) {
+				$wpfc->deleteCache();
+			}
+		}
+		
+		do_action( 'wpfc_clear_all_cache' );
+	}
+	
+	public function clear_autoptimize_cache() {
+		if ( class_exists( 'autoptimizeCache' ) ) {
+			autoptimizeCache::clearall();
+		}
+		
+		do_action( 'autoptimize_action_cachepurged' );
+	}
+	
+	public function clear_jetpack_boost_cache() {
+		do_action( 'jetpack_boost_clear_cache' );
+	}
+	
 	public function get_cache_status() {
 		$status = array();
 		
@@ -125,6 +187,18 @@ class WPCC_Cache_Addon extends WPCC_Abstract_Module {
 		
 		if ( $this->is_w3_total_cache_active() ) {
 			$status['w3_total_cache'] = 'active';
+		}
+		
+		if ( $this->is_wp_fastest_cache_active() ) {
+			$status['wp_fastest_cache'] = 'active';
+		}
+		
+		if ( $this->is_autoptimize_active() ) {
+			$status['autoptimize'] = 'active';
+		}
+		
+		if ( $this->is_jetpack_boost_active() ) {
+			$status['jetpack_boost'] = 'active';
 		}
 		
 		return $status;

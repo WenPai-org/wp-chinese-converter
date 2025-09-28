@@ -574,8 +574,33 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'basic';
                                     <span class="wpcc-switch-label"><?php _e('启用缓存插件兼容', 'wp-chinese-converter'); ?></span>
                                 </label>
                                 <p class="description">
-                                    <?php _e('支持 WP Super Cache、WP Rocket、LiteSpeed Cache、W3 Total Cache', 'wp-chinese-converter'); ?>
+                                    <?php _e('支持 WP Super Cache、WP Rocket、LiteSpeed Cache、W3 Total Cache 等流行的缓存插件。', 'wp-chinese-converter'); ?>
                                 </p>
+                                <?php
+                                // 显示检测到的缓存插件状态
+                                if (class_exists('WPCC_Cache_Addon')) {
+                                    $cache_addon = new WPCC_Cache_Addon();
+                                    $cache_status = $cache_addon->get_cache_status();
+                                    if (!empty($cache_status)) {
+                                        echo '<div style="margin-top: 10px; padding: 10px; background: #f0f8ff; border-left: 4px solid #0073aa;">';
+                                        echo '<strong>' . __('检测到的缓存插件:', 'wp-chinese-converter') . '</strong><br>';
+                                        $plugin_names = array(
+                                            'wp_super_cache' => 'WP Super Cache',
+                                            'wp_rocket' => 'WP Rocket',
+                                            'litespeed_cache' => 'LiteSpeed Cache',
+                                            'w3_total_cache' => 'W3 Total Cache',
+                                            'wp_fastest_cache' => 'WP Fastest Cache',
+                                            'autoptimize' => 'Autoptimize',
+                                            'jetpack_boost' => 'Jetpack Boost'
+                                        );
+                                        foreach ($cache_status as $plugin => $status) {
+                                            $name = isset($plugin_names[$plugin]) ? $plugin_names[$plugin] : $plugin;
+                                            echo '<span style="color: #00a32a;">✓ ' . esc_html($name) . '</span><br>';
+                                        }
+                                        echo '</div>';
+                                    }
+                                }
+                                ?>
                             </td>
                         </tr>
                         <?php if (is_multisite()): ?>
@@ -647,6 +672,67 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'basic';
                                 </div>
                             <?php endif; ?>
                             <p class="description"><?php _e('默认情况下，"识别浏览器中文语言动作"和"Cookie识别用户语言偏好"功能与缓存插件不兼容。', 'wp-chinese-converter'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
+                            <?php _e('缓存插件状态', 'wp-chinese-converter'); ?>
+                            <a href="https://wpcc.net/document/cache-compatibility" target="_blank" class="wpcc-doc-link" title="<?php _e('查看详细说明', 'wp-chinese-converter'); ?>">↗</a>
+                        </th>
+                        <td>
+                            <?php
+                            $plugin_names = array(
+                                'wp_super_cache' => 'WP Super Cache',
+                                'wp_rocket' => 'WP Rocket',
+                                'litespeed_cache' => 'LiteSpeed Cache',
+                                'w3_total_cache' => 'W3 Total Cache',
+                                'wp_fastest_cache' => 'WP Fastest Cache',
+                                'autoptimize' => 'Autoptimize',
+                                'jetpack_boost' => 'Jetpack Boost'
+                            );
+                            
+                            $active_cache_plugins = array();
+                            
+                            if (function_exists('wp_cache_is_enabled') || function_exists('wp_super_cache_init')) {
+                                $active_cache_plugins['wp_super_cache'] = 'WP Super Cache';
+                            }
+                            if (function_exists('rocket_clean_domain')) {
+                                $active_cache_plugins['wp_rocket'] = 'WP Rocket';
+                            }
+                            if (class_exists('LiteSpeed\Core')) {
+                                $active_cache_plugins['litespeed_cache'] = 'LiteSpeed Cache';
+                            }
+                            if (function_exists('w3tc_flush_all')) {
+                                $active_cache_plugins['w3_total_cache'] = 'W3 Total Cache';
+                            }
+                            if (class_exists('WpFastestCache')) {
+                                $active_cache_plugins['wp_fastest_cache'] = 'WP Fastest Cache';
+                            }
+                            if (class_exists('autoptimizeMain') || function_exists('autoptimize_autoload')) {
+                                $active_cache_plugins['autoptimize'] = 'Autoptimize';
+                            }
+                            if (defined('JETPACK_BOOST_VERSION') || class_exists('Automattic\Jetpack_Boost\Jetpack_Boost')) {
+                                $active_cache_plugins['jetpack_boost'] = 'Jetpack Boost';
+                            }
+                            
+                            if (!empty($active_cache_plugins)) {
+                                echo '<div style="margin-bottom: 15px;">';
+                                echo '<strong style="color: #00a32a;">' . __('检测到的活跃缓存插件:', 'wp-chinese-converter') . '</strong><br>';
+                                foreach ($active_cache_plugins as $plugin => $name) {
+                                    echo '<span style="display: inline-block; margin: 5px 10px 5px 0; padding: 3px 8px; background: #e7f3ff; border-left: 3px solid #0073aa; font-size: 12px;">✓ ' . esc_html($name) . '</span>';
+                                }
+                                echo '</div>';
+                                
+                                $cache_addon_enabled = isset($this->options['wpcc_enable_cache_addon']) ? $this->options['wpcc_enable_cache_addon'] : 1;
+                                if ($cache_addon_enabled) {
+                                    echo '<p style="color: #00a32a; font-weight: 500;">✓ 缓存兼容模块已启用，语言切换时将自动清除相关缓存。</p>';
+                                } else {
+                                    echo '<p style="color: #d63638; font-weight: 500;">⚠ 缓存兼容模块已禁用，请在基础设置中启用"缓存插件兼容"。</p>';
+                                }
+                            } else {
+                                echo '<p style="color: #666;">' . __('未检测到活跃的缓存插件。', 'wp-chinese-converter') . '</p>';
+                            }
+                            ?>
                         </td>
                     </tr>
                 </table>

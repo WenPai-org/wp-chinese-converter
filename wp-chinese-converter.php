@@ -41,6 +41,7 @@ use Overtrue\PHPOpenCC\Strategy;
 
 require_once dirname( __FILE__ ) . '/includes/core/class-converter-factory.php';
 require_once dirname( __FILE__ ) . '/includes/core/class-module-manager.php';
+require_once dirname( __FILE__ ) . '/includes/blocks/blocks-init.php';
 
 add_action( 'wp_enqueue_scripts', 'wpcc_add_global_js' );
 function wpcc_add_global_js() {
@@ -196,6 +197,8 @@ function wpcc_init() {
 		wpcc_init_languages();
 		wpcc_init_modules();
 	}, 1 );
+	
+	add_filter( 'render_block', 'wpcc_render_no_conversion_block', 5, 2 );
 }
 
 /**
@@ -347,6 +350,27 @@ function wpcc_conversion_meta_box_callback($post) {
 }
 
 add_action('init', 'wpcc_init_post_conversion');
+
+/**
+ * 处理不转换内容区块的渲染
+ * 为不转换内容区块添加wpcc_NC标签
+ */
+function wpcc_render_no_conversion_block($block_content, $block) {
+	if (isset($block['blockName']) && $block['blockName'] === 'wpcc/no-conversion') {
+		$unique_id = uniqid();
+		
+		$pattern = '/<div[^>]*class="[^"]*wpcc-no-conversion-content[^"]*"[^>]*>(.*?)<\/div>/s';
+		
+		$replacement = function($matches) use ($unique_id) {
+			$content = $matches[1];
+			return '<div class="wpcc-no-conversion-content"><!--wpcc_NC' . $unique_id . '_START-->' . $content . '<!--wpcc_NC' . $unique_id . '_END--></div>';
+		};
+		
+		$block_content = preg_replace_callback($pattern, $replacement, $block_content);
+	}
+	
+	return $block_content;
+}
 
 /**
  * 输出Header信息
@@ -672,7 +696,7 @@ function zhconversion_deep( $value ) {
  *
  */
 function limit_zhconversion( $str, $function ) {
-	if ( $m = preg_split( '/(<!--wpcc_NC(\d*)_START-->)(.*?)(<!--wpcc_NC\2_END-->)/s', $str, - 1, PREG_SPLIT_DELIM_CAPTURE ) ) {
+	if ( $m = preg_split( '/(<!--wpcc_NC([a-zA-Z0-9]*)_START-->)(.*?)(<!--wpcc_NC\2_END-->)/s', $str, - 1, PREG_SPLIT_DELIM_CAPTURE ) ) {
 		$r     = '';
 		$count = 0;
 		foreach ( $m as $v ) {

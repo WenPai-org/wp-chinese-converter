@@ -1,0 +1,210 @@
+.wpcc-language-switcher {
+    margin: 1rem 0;
+}
+
+.wpcc-language-switcher.wpcc-horizontal {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.wpcc-language-switcher.wpcc-dropdown {
+    display: inline-block;
+}
+
+.wpcc-horizontal-switcher {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.wpcc-lang-item {
+    display: inline-block;
+}
+
+.wpcc-lang-item .wpcc-link {
+    display: inline-block;
+    padding: 4px 8px;
+    background: #0073aa;
+    color: #fff;
+    text-decoration: none;
+    border: 1px solid #0073aa;
+    font-size: 13px;
+}
+
+.wpcc-lang-item .wpcc-link:hover {
+    background: #005a87;
+    border-color: #005a87;
+}
+
+.wpcc-lang-item.wpcc-current .wpcc-link {
+    background: #00a32a;
+    border-color: #00a32a;
+}
+
+.wpcc-lang-item.wpcc-no-conversion .wpcc-link {
+    background: #666;
+    border-color: #666;
+}
+
+.wpcc-lang-item.wpcc-no-conversion .wpcc-link:hover {
+    background: #555;
+    border-color: #555;
+}
+
+.wpcc-dropdown-switcher {
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    background: #fff;
+    font-size: 13px;
+    cursor: pointer;
+    min-width: 150px;
+}
+
+.wpcc-dropdown-switcher:focus {
+    outline: 1px solid #0073aa;
+    outline-offset: 1px;
+}
+
+.wpcc-conversion-status {
+    margin: 0.5rem 0;
+    display: inline-block;
+}
+
+.wpcc-status-container {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.wpcc-status-text {
+    font-size: 13px;
+}
+
+.wpcc-conversion-status.wpcc-format-badge .wpcc-status-text {
+    background: #0073aa;
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+}
+
+.wpcc-conversion-status.wpcc-format-text .wpcc-status-text {
+    color: #333;
+    font-size: 13px;
+}
+
+.wpcc-conversion-status.wpcc-format-minimal .wpcc-status-text {
+    font-size: 11px;
+    color: #666;
+}
+
+.wpcc-no-conversion-wrapper {
+    position: relative;
+}
+
+.wpcc-no-conversion-content {
+    position: relative;
+}
+
+@media (max-width: 768px) {
+    .wpcc-horizontal-switcher {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+    }
+    
+    .wpcc-lang-item {
+        width: 100%;
+    }
+    
+    .wpcc-lang-item .wpcc-link {
+        padding: 8px 12px;
+        font-size: 14px;
+        text-align: center;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .wpcc-dropdown-switcher {
+        width: 100%;
+        padding: 8px 12px;
+        font-size: 14px;
+    }
+}
+
+.wpcc-language-switcher.wpcc-size-small .wpcc-lang-item .wpcc-link {
+    padding: 2px 6px;
+    font-size: 11px;
+}
+
+.wpcc-language-switcher.wpcc-size-large .wpcc-lang-item .wpcc-link {
+    padding: 6px 12px;
+    font-size: 15px;
+}
+
+.wpcc-language-switcher.wpcc-size-small .wpcc-dropdown-switcher {
+    padding: 4px 6px;
+    font-size: 11px;
+    min-width: 120px;
+}
+
+.wpcc-language-switcher.wpcc-size-large .wpcc-dropdown-switcher {
+    padding: 8px 12px;
+    font-size: 15px;
+    min-width: 180px;
+}
+
+.wpcc-no-conversion-wrapper.wpcc-border-solid {
+    border-style: solid;
+}
+
+.wpcc-no-conversion-wrapper.wpcc-border-none {
+    border: none;
+    background: transparent;
+}
+
+.wpcc-conversion-status.wpcc-clickable {
+    cursor: pointer;
+}
+
+.wpcc-conversion-status.wpcc-clickable:hover .wpcc-status-text {
+    text-decoration: underline;
+}
+
+.wpcc-language-switcher.wpcc-size-small .wpcc-horizontal-switcher {
+    gap: 4px;
+}
+
+.wpcc-language-switcher.wpcc-size-large .wpcc-horizontal-switcher {
+    gap: 12px;
+}
+
+.wpcc-language-switcher.wpcc-size-small .wpcc-dropdown-switcher {
+    height: 28px;
+}
+
+.wpcc-language-switcher.wpcc-size-large .wpcc-dropdown-switcher {
+    height: 44px;
+}
+
+.wpcc-language-switcher .wpcc-lang-item .wpcc-link[target="_blank"]::after {
+    content: " ↗";
+    font-size: 0.8em;
+    opacity: 0.7;
+    margin-left: 2px;
+}
+
+.wpcc-language-switcher .wpcc-custom-label {
+    font-weight: 500;
+}
+
+.wpcc-language-switcher.wpcc-sorted-alphabetical .wpcc-lang-item {
+    order: 1;
+}
+
+.wpcc-language-switcher.wpcc-current-first .wpcc-lang-item.wpcc-current {
+    order: -1;
+}

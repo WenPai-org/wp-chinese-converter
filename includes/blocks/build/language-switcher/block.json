@@ -1,0 +1,72 @@
+{
+    "$schema": "https://schemas.wp.org/trunk/block.json",
+    "apiVersion": 2,
+    "name": "wpcc/language-switcher",
+    "title": "中文语言切换器",
+    "category": "widgets",
+    "icon": "translation",
+    "description": "显示中文语言变体切换器，支持简体、繁体等多种显示格式。",
+    "keywords": ["中文", "语言", "切换", "转换"],
+    "textdomain": "wp-chinese-converter",
+    "attributes": {
+        "displayStyle": {
+            "type": "string",
+            "default": "horizontal"
+        },
+        "showNoConversion": {
+            "type": "boolean",
+            "default": true
+        },
+        "alignment": {
+            "type": "string",
+            "default": "left"
+        },
+        "enabledLanguages": {
+            "type": "array",
+            "default": ["zh-cn", "zh-tw", "zh-hk", "zh-sg"]
+        },
+        "buttonSize": {
+            "type": "string",
+            "default": "medium"
+        },
+        "showCurrentFirst": {
+            "type": "boolean",
+            "default": false
+        },
+        "customNoConversionLabel": {
+            "type": "string",
+            "default": ""
+        },
+        "sortOrder": {
+            "type": "string",
+            "default": "default"
+        },
+        "openInNewWindow": {
+            "type": "boolean",
+            "default": false
+        },
+        "showLanguageCode": {
+            "type": "boolean",
+            "default": false
+        },
+        "customLabels": {
+            "type": "object",
+            "default": {}
+        }
+    },
+    "supports": {
+        "align": ["left", "center", "right"],
+        "html": false,
+        "color": {
+            "background": true,
+            "text": true
+        },
+        "spacing": {
+            "margin": true,
+            "padding": true
+        }
+    },
+    "editorScript": "file:./index.js",
+    "style": "wpcc-blocks-frontend",
+    "editorStyle": "wpcc-blocks-editor"
+}
