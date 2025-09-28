@@ -11,24 +11,6 @@
 * License URI: http://www.gnu.org/licenses/gpl-3.0.html
 */
 
-/*
-Copyright 2012-2025 WPCC.NET (https://wpcc.net)
-Developer: WPCC.NET
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program. If not, see <http://www.gnu.org/licenses/>.
-*/
-
 /**
  * WP Chinese Converter Plugin main file
  *
@@ -39,7 +21,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
  * @package WPChineseConverter
  * @version see wpcc_VERSION constant below
  * @TODO 用OO方式重写全部代码, 计划1.2版本实现.
- * @link http://wordpress.org/plugins/wp-chinese-converter Plugin Page on wordpress.org, including guides and docs.
  *
  */
 
@@ -122,6 +103,10 @@ function wpcc_init_languages() {
 			'zh-cn' => array( 'zhconversion_cn', 'cntip', __( '简体中文', 'wp-chinese-converter' ), 'zh-CN' ),
 			'zh-tw' => array( 'zhconversion_tw', 'twtip', __( '台灣正體', 'wp-chinese-converter' ), 'zh-TW' ),
 			'zh-hk' => array( 'zhconversion_hk', 'hktip', __( '港澳繁體', 'wp-chinese-converter' ), 'zh-HK' ),
+			'zh-hans' => array( 'zhconversion_hans', 'hanstip', __( '简体中文', 'wp-chinese-converter' ), 'zh-Hans' ),
+			'zh-hant' => array( 'zhconversion_hant', 'hanttip', __( '繁体中文', 'wp-chinese-converter' ), 'zh-Hant' ),
+			'zh-sg' => array( 'zhconversion_sg', 'sgtip', __( '马新简体', 'wp-chinese-converter' ), 'zh-SG' ),
+			'zh-jp' => array( 'zhconversion_jp', 'jptip', __( '日式汉字', 'wp-chinese-converter' ), 'zh-JP' ),
 		);
 	}
 }
@@ -318,21 +303,50 @@ function wpcc_parse_query_fix( $this_WP_Query ) {
 
 }
 
-//开发中功能, 发表文章时进行繁简转换
-/*
-add_filter('content_save_pre', $wpcc_langs['zh-tw'][0]);
-add_filter('title_save_pre', $wpcc_langs['zh-tw'][0]);
-
-add_action('admin_menu', 'wpcc_ep');
-function wpcc_ep() {
-	add_meta_box('chinese-conversion', 'WP Chinese Converter', 'wpcc_edit_post', 'post');
-	add_meta_box('chinese-conversion', 'WP Chinese Converter', 'wpcc_edit_post', 'page');
+function wpcc_init_post_conversion() {
+	global $wpcc_options;
+	
+	if (!empty($wpcc_options['wpcc_enable_post_conversion'])) {
+		$target_lang = $wpcc_options['wpcc_post_conversion_target'] ?? 'zh-cn';
+		
+		add_filter('content_save_pre', function($content) use ($target_lang) {
+			return zhconversion($content, $target_lang);
+		});
+		
+		add_filter('title_save_pre', function($title) use ($target_lang) {
+			return zhconversion($title, $target_lang);
+		});
+		
+		add_action('add_meta_boxes', 'wpcc_add_conversion_meta_box');
+	}
 }
 
-function wpcc_edit_post() {
-	echo '111';
+function wpcc_add_conversion_meta_box() {
+	add_meta_box(
+		'wpcc-conversion-meta-box',
+		'WP Chinese Converter',
+		'wpcc_conversion_meta_box_callback',
+		array('post', 'page'),
+		'side',
+		'default'
+	);
 }
-*/
+
+function wpcc_conversion_meta_box_callback($post) {
+	global $wpcc_options;
+	$target_lang = $wpcc_options['wpcc_post_conversion_target'] ?? 'zh-cn';
+	$lang_names = array(
+		'zh-cn' => '简体中文',
+		'zh-tw' => '台湾正体', 
+		'zh-hk' => '香港繁体'
+	);
+	
+	echo '<p><strong>自动转换设置</strong></p>';
+	echo '<p>发表时将自动转换为：<strong>' . ($lang_names[$target_lang] ?? $target_lang) . '</strong></p>';
+	echo '<p><small>可在插件设置中修改转换目标语言。</small></p>';
+}
+
+add_action('init', 'wpcc_init_post_conversion');
 
 /**
  * 输出Header信息
@@ -763,6 +777,19 @@ function zhconversion_hk( $str ) {
 		return $converter->convert( $str, 'zh-hk' );
 	} catch ( Exception $e ) {
 		error_log( 'WPCC zhconversion_hk Error: ' . $e->getMessage() );
+		return $str;
+	}
+}
+
+function zhconversion_sg( $str ) {
+	if ( $str === null || $str === '' ) {
+		return $str;
+	}
+	try {
+		$converter = WPCC_Converter_Factory::get_converter();
+		return $converter->convert( $str, 'zh-sg' );
+	} catch ( Exception $e ) {
+		error_log( 'WPCC zhconversion_sg Error: ' . $e->getMessage() );
 		return $str;
 	}
 }

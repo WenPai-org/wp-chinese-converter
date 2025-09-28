@@ -17,7 +17,7 @@ class WPCC_OpenCC_Converter implements WPCC_Converter_Interface {
 		'zh-cn'   => Strategy::TRADITIONAL_TO_SIMPLIFIED,
 		'zh-tw'   => Strategy::SIMPLIFIED_TO_TAIWAN_WITH_PHRASE,
 		'zh-hk'   => Strategy::SIMPLIFIED_TO_HONGKONG,
-		'zh-sg'   => Strategy::SIMPLIFIED_TO_TAIWAN,
+		'zh-sg'   => Strategy::TRADITIONAL_TO_SIMPLIFIED,
 		'zh-jp'   => Strategy::SIMPLIFIED_TO_JAPANESE,
 	);
 	

@@ -255,7 +255,8 @@ class wpcc_Admin {
 			'wpcc_enable_network_module' => 'wpcc_enable_network_module',
 			'wpcc_enable_hreflang_tags' => 'wpcc_enable_hreflang_tags',
 			'wpcc_enable_schema_conversion' => 'wpcc_enable_schema_conversion',
-			'wpcc_enable_meta_conversion' => 'wpcc_enable_meta_conversion'
+			'wpcc_enable_meta_conversion' => 'wpcc_enable_meta_conversion',
+			'wpcc_show_more_langs' => 'wpcc_show_more_langs'
 		);
 		
 		foreach ( $checkbox_fields as $post_field => $option_field ) {

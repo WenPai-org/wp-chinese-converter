@@ -4,15 +4,15 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'basic';
 
 <div class="wrap wpcc-settings">
     <h1>
-        <?php esc_html_e('WP Chinese Converter 设置', 'wp-chinese-converter'); ?>
+        <?php esc_html_e('文派译词设置', 'wp-chinese-converter'); ?>
         <span style="font-size: 13px; padding-left: 10px;">
             <?php printf(esc_html__('版本: %s', 'wp-chinese-converter'), esc_html(wpcc_VERSION)); ?>
         </span>
-        <a href="https://wenpai.org/" target="_blank" class="button button-secondary" style="margin-left: 10px;">
-            <?php esc_html_e('文派开源', 'wp-chinese-converter'); ?>
+        <a href="https://wpcc.net/document" target="_blank" class="button button-secondary" style="margin-left: 10px;">
+            <?php esc_html_e('文档', 'wp-chinese-converter'); ?>
         </a>
-        <a href="https://wpcc.net" target="_blank" class="button button-secondary">
-            <?php esc_html_e('插件主页', 'wp-chinese-converter'); ?>
+        <a href="https://wpcc.net/support" target="_blank" class="button button-secondary">
+            <?php esc_html_e('支持', 'wp-chinese-converter'); ?>
         </a>
     </h1>
 
@@ -54,22 +54,97 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'basic';
                                 <a href="https://wpcc.net/document/language-modules" target="_blank" class="wpcc-doc-link" title="<?php _e('查看详细说明', 'wp-chinese-converter'); ?>">↗</a>
                             </th>
                             <td>
-                                <?php if (is_array($this->langs)): ?>
-                                    <?php foreach ($this->langs as $key => $value): ?>
-                                        <div style="margin-bottom: 10px;">
-                                            <label class="wpcc-switch">
-                                                <input type="checkbox" name="wpcco_variant_<?php echo $key; ?>"
-                                                       <?php echo in_array($key, $this->options['wpcc_used_langs'] ?? []) ? 'checked="checked"' : ''; ?> />
-                                                <span class="wpcc-slider"></span>
-                                                <span class="wpcc-switch-label"><?php echo $value[2] . ' (' . $key . ')'; ?></span>
-                                            </label>
-                                            <input type="text" name="<?php echo $value[1]; ?>" 
-                                                   value="<?php echo esc_attr($this->options[$value[1]] ?? ''); ?>" 
-                                                   placeholder="<?php echo esc_attr($value[2]); ?>"
-                                                   class="regular-text wpcc-input" style="margin-left: 20px;" />
-                                        </div>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
+                                <div class="wpcc-language-section">
+                                    <div style="margin-bottom: 10px;">
+                                        <label class="wpcc-switch">
+                                            <input type="checkbox" name="wpcco_variant_zh-cn"
+                                                   <?php echo in_array('zh-cn', $this->options['wpcc_used_langs'] ?? []) ? 'checked="checked"' : ''; ?> />
+                                            <span class="wpcc-slider"></span>
+                                            <span class="wpcc-switch-label"><?php _e('中国大陆 (zh-cn)', 'wp-chinese-converter'); ?></span>
+                                        </label>
+                                        <input type="text" name="cntip" 
+                                               value="<?php echo esc_attr($this->options['cntip'] ?? '简体'); ?>" 
+                                               placeholder="<?php _e('中国大陆', 'wp-chinese-converter'); ?>"
+                                               class="regular-text wpcc-input" style="margin-left: 20px;" />
+                                    </div>
+                                    <div style="margin-bottom: 10px;">
+                                        <label class="wpcc-switch">
+                                            <input type="checkbox" name="wpcco_variant_zh-tw"
+                                                   <?php echo in_array('zh-tw', $this->options['wpcc_used_langs'] ?? []) ? 'checked="checked"' : ''; ?> />
+                                            <span class="wpcc-slider"></span>
+                                            <span class="wpcc-switch-label"><?php _e('台灣正體 (zh-tw)', 'wp-chinese-converter'); ?></span>
+                                        </label>
+                                        <input type="text" name="twtip" 
+                                               value="<?php echo esc_attr($this->options['twtip'] ?? '繁体'); ?>" 
+                                               placeholder="<?php _e('台灣正體', 'wp-chinese-converter'); ?>"
+                                               class="regular-text wpcc-input" style="margin-left: 20px;" />
+                                    </div>
+                                    <div style="margin-bottom: 10px;">
+                                        <label class="wpcc-switch">
+                                            <input type="checkbox" name="wpcco_variant_zh-hk"
+                                                   <?php echo in_array('zh-hk', $this->options['wpcc_used_langs'] ?? []) ? 'checked="checked"' : ''; ?> />
+                                            <span class="wpcc-slider"></span>
+                                            <span class="wpcc-switch-label"><?php _e('港澳繁體 (zh-hk)', 'wp-chinese-converter'); ?></span>
+                                        </label>
+                                        <input type="text" name="hktip" 
+                                               value="<?php echo esc_attr($this->options['hktip'] ?? '港澳'); ?>" 
+                                               placeholder="<?php _e('港澳繁體', 'wp-chinese-converter'); ?>"
+                                               class="regular-text wpcc-input" style="margin-left: 20px;" />
+                                    </div>
+                                </div>
+                                
+                                <div class="wpcc-extended-languages" style="margin-top: 15px; display: none;">
+                                    <h4><?php _e('扩展语言模块（国际）', 'wp-chinese-converter'); ?></h4>
+                                    <div style="margin-bottom: 10px;">
+                                        <label class="wpcc-switch">
+                                            <input type="checkbox" name="wpcco_variant_zh-hans"
+                                                   <?php echo in_array('zh-hans', $this->options['wpcc_used_langs'] ?? []) ? 'checked="checked"' : ''; ?> />
+                                            <span class="wpcc-slider"></span>
+                                            <span class="wpcc-switch-label"><?php _e('简体中文 (zh-hans)', 'wp-chinese-converter'); ?></span>
+                                        </label>
+                                        <input type="text" name="hanstip" 
+                                               value="<?php echo esc_attr($this->options['hanstip'] ?? '简体'); ?>" 
+                                               placeholder="<?php _e('简体中文', 'wp-chinese-converter'); ?>"
+                                               class="regular-text wpcc-input" style="margin-left: 20px;" />
+                                    </div>
+                                    <div style="margin-bottom: 10px;">
+                                        <label class="wpcc-switch">
+                                            <input type="checkbox" name="wpcco_variant_zh-hant"
+                                                   <?php echo in_array('zh-hant', $this->options['wpcc_used_langs'] ?? []) ? 'checked="checked"' : ''; ?> />
+                                            <span class="wpcc-slider"></span>
+                                            <span class="wpcc-switch-label"><?php _e('繁体中文 (zh-hant)', 'wp-chinese-converter'); ?></span>
+                                        </label>
+                                        <input type="text" name="hanttip" 
+                                               value="<?php echo esc_attr($this->options['hanttip'] ?? '繁体'); ?>" 
+                                               placeholder="<?php _e('繁体中文', 'wp-chinese-converter'); ?>"
+                                               class="regular-text wpcc-input" style="margin-left: 20px;" />
+                                    </div>
+                                    <div style="margin-bottom: 10px;">
+                                        <label class="wpcc-switch">
+                                            <input type="checkbox" name="wpcco_variant_zh-sg"
+                                                   <?php echo in_array('zh-sg', $this->options['wpcc_used_langs'] ?? []) ? 'checked="checked"' : ''; ?> />
+                                            <span class="wpcc-slider"></span>
+                                            <span class="wpcc-switch-label"><?php _e('马新简体 (zh-sg)', 'wp-chinese-converter'); ?></span>
+                                        </label>
+                                        <input type="text" name="sgtip" 
+                                               value="<?php echo esc_attr($this->options['sgtip'] ?? '马新'); ?>" 
+                                               placeholder="<?php _e('马新简体', 'wp-chinese-converter'); ?>"
+                                               class="regular-text wpcc-input" style="margin-left: 20px;" />
+                                    </div>
+                                    <div style="margin-bottom: 10px;" id="zh-jp-option">
+                                        <label class="wpcc-switch">
+                                            <input type="checkbox" name="wpcco_variant_zh-jp"
+                                                   <?php echo in_array('zh-jp', $this->options['wpcc_used_langs'] ?? []) ? 'checked="checked"' : ''; ?> />
+                                            <span class="wpcc-slider"></span>
+                                            <span class="wpcc-switch-label"><?php _e('日式汉字 (zh-jp)', 'wp-chinese-converter'); ?></span>
+                                            <span class="wpcc-engine-note" style="color: #666; font-size: 12px;"><?php _e('(仅 OpenCC 引擎)', 'wp-chinese-converter'); ?></span>
+                                        </label>
+                                        <input type="text" name="jptip" 
+                                               value="<?php echo esc_attr($this->options['jptip'] ?? '日式'); ?>" 
+                                               placeholder="<?php _e('日式汉字', 'wp-chinese-converter'); ?>"
+                                               class="regular-text wpcc-input" style="margin-left: 20px;" />
+                                    </div>
+                                </div>
                                 <p class="description"><?php _e('请至少勾选一种中文语言，否则插件无法正常运行。支持自定义名称，留空为默认值。', 'wp-chinese-converter'); ?></p>
                             </td>
                         </tr>
@@ -103,6 +178,23 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'basic';
                                     <span class="wpcc-radio-label"><?php _e('下拉列表', 'wp-chinese-converter'); ?></span>
                                 </label>
                                 <p class="description"><?php _e('选择语言切换按钮的展现方式。', 'wp-chinese-converter'); ?></p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>
+                                <?php _e('显示更多语言', 'wp-chinese-converter'); ?>
+                                <a href="https://wpcc.net/document/more-language-links" target="_blank" class="wpcc-doc-link" title="<?php _e('查看详细说明', 'wp-chinese-converter'); ?>">↗</a>
+                            </th>
+                            <td>
+                                <label class="wpcc-switch">
+                                    <input type="checkbox" name="wpcc_show_more_langs" id="wpcc_show_more_langs"
+                                           <?php checked(isset($this->options['wpcc_show_more_langs']) ? $this->options['wpcc_show_more_langs'] : 0, 1); ?> />
+                                    <span class="wpcc-slider"></span>
+                                    <span class="wpcc-switch-label"><?php _e('启用扩展语言模块', 'wp-chinese-converter'); ?></span>
+                                </label>
+                                <p class="description">
+                                    <?php _e('启用后将显示更多中文语言变体选项，包括 zh-hans、zh-hant、zh-sg、zh-jp 等。', 'wp-chinese-converter'); ?>
+                                </p>
                             </td>
                         </tr>
                 </table>
@@ -169,6 +261,52 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'basic';
                                 </label>
                                 <p class="description">
                                     <?php _e('如果遇到异常（包括中文转换错误，HTML页面错误或PHP错误等），请关闭此选项。', 'wp-chinese-converter'); ?>
+                                </p>
+                            </td>
+                        </tr>
+                </table>
+
+                <h3><?php _e('编辑器增强', 'wp-chinese-converter'); ?></h3>
+                <table class="form-table">
+                        <tr>
+                            <th>
+                                <?php _e('快速标签', 'wp-chinese-converter'); ?>
+                                <a href="https://wpcc.net/document/quicktags-feature" target="_blank" class="wpcc-doc-link" title="<?php _e('查看详细说明', 'wp-chinese-converter'); ?>">↗</a>
+                            </th>
+                            <td>
+                                <label class="wpcc-switch">
+                                    <input type="checkbox" name="wpcc_no_conversion_qtag" 
+                                           <?php checked(isset($this->options['wpcc_no_conversion_qtag']) ? $this->options['wpcc_no_conversion_qtag'] : 0, 1); ?> />
+                                    <span class="wpcc-slider"></span>
+                                    <span class="wpcc-switch-label"><?php _e('启用编辑器快速标签', 'wp-chinese-converter'); ?></span>
+                                </label>
+                                <p class="description">
+                                    <?php _e('在经典编辑器工具栏中添加"wpcc_NC"按钮，方便快速插入不转换标签。', 'wp-chinese-converter'); ?>
+                                </p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>
+                                <?php _e('发表时转换', 'wp-chinese-converter'); ?>
+                                <a href="https://wpcc.net/document/post-conversion-feature" target="_blank" class="wpcc-doc-link" title="<?php _e('查看详细说明', 'wp-chinese-converter'); ?>">↗</a>
+                            </th>
+                            <td>
+                                <label class="wpcc-switch">
+                                    <input type="checkbox" name="wpcc_enable_post_conversion" 
+                                           <?php checked(isset($this->options['wpcc_enable_post_conversion']) ? $this->options['wpcc_enable_post_conversion'] : 0, 1); ?> />
+                                    <span class="wpcc-slider"></span>
+                                    <span class="wpcc-switch-label"><?php _e('启用发表时自动转换', 'wp-chinese-converter'); ?></span>
+                                </label>
+                                <div style="margin-top: 10px; <?php echo (isset($this->options['wpcc_enable_post_conversion']) && $this->options['wpcc_enable_post_conversion']) ? '' : 'display: none;'; ?>" id="post-conversion-options">
+                                    <label for="wpcc_post_conversion_target"><?php _e('转换目标语言:', 'wp-chinese-converter'); ?></label>
+                                    <select name="wpcc_post_conversion_target" id="wpcc_post_conversion_target" class="wpcc-select" style="margin-left: 10px;">
+                                        <option value="zh-cn" <?php selected($this->options['wpcc_post_conversion_target'] ?? 'zh-cn', 'zh-cn'); ?>>简体中文 (zh-cn)</option>
+                                        <option value="zh-tw" <?php selected($this->options['wpcc_post_conversion_target'] ?? 'zh-cn', 'zh-tw'); ?>>台湾正体 (zh-tw)</option>
+                                        <option value="zh-hk" <?php selected($this->options['wpcc_post_conversion_target'] ?? 'zh-cn', 'zh-hk'); ?>>香港繁体 (zh-hk)</option>
+                                    </select>
+                                </div>
+                                <p class="description">
+                                    <?php _e('启用后，发表文章时会自动将标题和内容转换为指定的中文语言版本，并在编辑页面添加转换控制面板。', 'wp-chinese-converter'); ?>
                                 </p>
                             </td>
                         </tr>
@@ -316,6 +454,23 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'basic';
                                 </p>
                             </td>
                         </tr>
+                        <tr>
+                            <th>
+                                <?php _e('日语内容排除', 'wp-chinese-converter'); ?>
+                                <a href="https://wpcc.net/document/japanese-content-exclusion" target="_blank" class="wpcc-doc-link" title="<?php _e('查看详细说明', 'wp-chinese-converter'); ?>">↗</a>
+                            </th>
+                            <td>
+                                <label class="wpcc-switch">
+                                    <input type="checkbox" name="wpcc_no_conversion_ja" 
+                                           <?php checked(isset($this->options['wpcc_no_conversion_ja']) ? $this->options['wpcc_no_conversion_ja'] : 0, 1); ?> />
+                                    <span class="wpcc-slider"></span>
+                                    <span class="wpcc-switch-label"><?php _e('排除日语内容转换', 'wp-chinese-converter'); ?></span>
+                                </label>
+                                <p class="description">
+                                    <?php _e('启用后，标记为日语（lang="ja"）的内容将不进行中文繁简转换，避免日语汉字被错误转换。', 'wp-chinese-converter'); ?>
+                                </p>
+                            </td>
+                        </tr>
                 </table>
 
                 <h3><?php _e('SEO 优化功能', 'wp-chinese-converter'); ?></h3>
@@ -345,9 +500,23 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'basic';
                             <td>
                                 <label for="wpcc_hreflang_x_default"><?php _e('x-default 语言:', 'wp-chinese-converter'); ?></label>
                                 <select name="wpcc_hreflang_x_default" id="wpcc_hreflang_x_default" class="wpcc-select" style="margin-left: 10px;">
-                                    <option value="zh-cn" <?php selected($this->options['wpcc_hreflang_x_default'] ?? 'zh-cn', 'zh-cn'); ?>>简体中文 (zh-cn)</option>
-                                    <option value="zh-tw" <?php selected($this->options['wpcc_hreflang_x_default'] ?? 'zh-cn', 'zh-tw'); ?>>台湾正体 (zh-tw)</option>
-                                    <option value="zh-hk" <?php selected($this->options['wpcc_hreflang_x_default'] ?? 'zh-cn', 'zh-hk'); ?>>香港繁体 (zh-hk)</option>
+                                    <?php
+                                    $all_languages = array(
+                                        'zh-cn' => '简体中文 (zh-cn)',
+                                        'zh-tw' => '台湾正体 (zh-tw)',
+                                        'zh-hk' => '香港繁体 (zh-hk)',
+                                        'zh-hans' => '简体中文 (zh-hans)',
+                                        'zh-hant' => '繁体中文 (zh-hant)',
+                                        'zh-sg' => '马新简体 (zh-sg)',
+                                        'zh-jp' => '日式汉字 (zh-jp)'
+                                    );
+                                    
+                                    $current_value = $this->options['wpcc_hreflang_x_default'] ?? 'zh-cn';
+                                    
+                                    foreach ($all_languages as $code => $name) {
+                                        echo '<option value="' . esc_attr($code) . '"' . selected($current_value, $code, false) . '>' . esc_html($name) . '</option>';
+                                    }
+                                    ?>
                                 </select>
                                 <p class="description">
                                     <?php _e('设置 x-default hreflang 标签指向的默认语言版本。', 'wp-chinese-converter'); ?>
@@ -513,3 +682,71 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'basic';
         </div>
     </div>
 </div>
+
+<script type="text/javascript">
+jQuery(document).ready(function($) {
+    // 控制发表时转换选项的显示/隐藏
+    $('input[name="wpcc_enable_post_conversion"]').change(function() {
+        if ($(this).is(':checked')) {
+            $('#post-conversion-options').show();
+        } else {
+            $('#post-conversion-options').hide();
+        }
+    });
+    
+    // 控制浏览器重定向相关选项的显示/隐藏
+    $('select[name="wpcco_browser_redirect"]').change(function() {
+        if ($(this).val() == '0') {
+            $('.browser-redirect-dependent').hide();
+        } else {
+            $('.browser-redirect-dependent').show();
+        }
+    });
+    
+    // 控制扩展语言模块的显示/隐藏
+    function toggleExtendedLanguages() {
+        var showMoreLangs = $('#wpcc_show_more_langs').is(':checked');
+        var extendedSection = $('.wpcc-extended-languages');
+        
+        if (showMoreLangs) {
+            extendedSection.show();
+        } else {
+            extendedSection.hide();
+        }
+    }
+    
+    // 控制引擎相关选项的启用/禁用
+    function toggleEngineRelatedOptions() {
+        var engine = $('select[name="wpcc_engine"]').val();
+        var jpOption = $('#zh-jp-option');
+        var jpCheckbox = jpOption.find('input[type="checkbox"]');
+        var jpInput = jpOption.find('input[type="text"]');
+        
+        if (engine === 'opencc') {
+            // OpenCC 引擎支持日式汉字
+            jpCheckbox.prop('disabled', false);
+            jpInput.prop('disabled', false);
+            jpOption.find('.wpcc-engine-note').text('(仅 OpenCC 引擎)').css('color', '#0073aa');
+        } else {
+            // MediaWiki 引擎不支持日式汉字
+            jpCheckbox.prop('disabled', true).prop('checked', false);
+            jpInput.prop('disabled', true);
+            jpOption.find('.wpcc-engine-note').text('(不支持此引擎)').css('color', '#d63638');
+        }
+    }
+    
+    // 页面加载时检查
+    toggleExtendedLanguages();
+    toggleEngineRelatedOptions();
+    
+    // 显示更多语言选项改变时
+    $('#wpcc_show_more_langs').change(function() {
+        toggleExtendedLanguages();
+    });
+    
+    // 转换引擎改变时检查
+    $('select[name="wpcc_engine"]').change(function() {
+        toggleEngineRelatedOptions();
+    });
+});
+</script>
