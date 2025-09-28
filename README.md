@@ -1,4 +1,4 @@
-# 关于 WPCC.NET 中文简繁转换插件
+## WPCC.NET 开源 WordPress 中文简繁转换器。
 
 文派简繁转换（WP Chinese Converter），简称 WPCC，是完全符合阅读习惯和 SEO 优化的 WordPress 网站中文繁简转换解决方案。
 
@@ -31,3 +31,4 @@ WPCC 是一个 WordPress 插件，用于将网站中的中文内容转换为简�
 ---
 
 **Copyright © 2025 · WPCC.NET , All Rights Reserved. 文派 （广州） 科技有限公司；**
+
