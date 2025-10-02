@@ -28,7 +28,7 @@ class WP_Chinese_Converter {
 		require_once dirname( __FILE__ ) . '/ZhConversion.php';
 		require_once dirname( __FILE__ ) . '/simple_html_dom.php';
 		require_once dirname( dirname( __FILE__ ) ) . '/admin/wp-chinese-converter-admin.php';
-	}s
+	}
 
 	private function set_locale() {
 		load_plugin_textdomain(

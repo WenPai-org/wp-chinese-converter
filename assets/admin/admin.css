@@ -333,6 +333,113 @@
     .wpcc-action-buttons {
         flex-direction: column;
     }
+    
+    .wpcc-settings .form-table th {
+        width: auto;
+        display: block;
+        padding-bottom: 5px;
+    }
+    
+    .wpcc-settings .form-table td {
+        display: block;
+        padding-left: 0;
+    }
+    
+    .wpcc-settings .form-table tr {
+        display: block;
+        margin-bottom: 20px;
+        border-bottom: 1px solid #f0f0f1;
+        padding-bottom: 15px;
+    }
+    
+    .wpcc-card {
+        margin: 10px 0;
+        padding: 15px;
+    }
+    
+    .wrap h1 {
+        font-size: 20px;
+        line-height: 1.3;
+    }
+    
+    .wrap h1 .button {
+        display: block;
+        margin: 10px 0 5px 0;
+        text-align: center;
+    }
+    
+    .wpcc-language-section > div {
+        margin-bottom: 15px;
+        padding: 10px;
+        background: #f9f9f9;
+        border-radius: 4px;
+    }
+    
+    .wpcc-language-section .wpcc-switch {
+        display: block;
+        margin-bottom: 10px;
+    }
+    
+    .wpcc-language-section .regular-text {
+        margin-left: 0 !important;
+        width: 100%;
+        box-sizing: border-box;
+    }
+}
+
+@media (max-width: 480px) {
+    .wpcc-card {
+        margin: 5px 0;
+        padding: 10px;
+        border-radius: 0;
+    }
+    
+    .wpcc-tab {
+        padding: 10px 12px;
+        font-size: 13px;
+        text-align: center;
+    }
+    
+    .wpcc-switch-label {
+        font-size: 14px;
+        line-height: 1.4;
+    }
+    
+    .wpcc-input, .wpcc-select, .wpcc-textarea {
+        font-size: 16px;
+        padding: 8px 12px;
+    }
+    
+    .wpcc-tooltip .tooltiptext {
+        width: 250px;
+        margin-left: -125px;
+        font-size: 11px;
+    }
+    
+    .wrap h1 span {
+        display: block;
+        margin-top: 5px;
+        font-size: 12px;
+    }
+    
+    .wpcc-action-buttons .button {
+        width: 100%;
+        margin-bottom: 8px;
+        text-align: center;
+    }
+    
+    .wpcc-language-section > div {
+        padding: 8px;
+    }
+    
+    .wpcc-switch {
+        align-items: flex-start;
+    }
+    
+    .wpcc-switch-label {
+        margin-left: 8px;
+        margin-top: 2px;
+    }
 }
 
 .wpcc-module-card {

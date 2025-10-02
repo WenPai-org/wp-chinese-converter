@@ -300,9 +300,32 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'basic';
                                 <div style="margin-top: 10px; <?php echo (isset($this->options['wpcc_enable_post_conversion']) && $this->options['wpcc_enable_post_conversion']) ? '' : 'display: none;'; ?>" id="post-conversion-options">
                                     <label for="wpcc_post_conversion_target"><?php _e('转换目标语言:', 'wp-chinese-converter'); ?></label>
                                     <select name="wpcc_post_conversion_target" id="wpcc_post_conversion_target" class="wpcc-select" style="margin-left: 10px;">
-                                        <option value="zh-cn" <?php selected($this->options['wpcc_post_conversion_target'] ?? 'zh-cn', 'zh-cn'); ?>>简体中文 (zh-cn)</option>
-                                        <option value="zh-tw" <?php selected($this->options['wpcc_post_conversion_target'] ?? 'zh-cn', 'zh-tw'); ?>>台湾正体 (zh-tw)</option>
-                                        <option value="zh-hk" <?php selected($this->options['wpcc_post_conversion_target'] ?? 'zh-cn', 'zh-hk'); ?>>香港繁体 (zh-hk)</option>
+                                        <?php
+                                        $enabled_langs = $this->options['wpcc_used_langs'] ?? array();
+                                        $current_target = $this->options['wpcc_post_conversion_target'] ?? 'zh-cn';
+                                        
+                                        $lang_options = array(
+                                            'zh-cn' => array('name' => $this->options['cntip'] ?? '中国大陆', 'code' => 'zh-cn'),
+                                            'zh-tw' => array('name' => $this->options['twtip'] ?? '台湾正体', 'code' => 'zh-tw'),
+                                            'zh-hk' => array('name' => $this->options['hktip'] ?? '港澳繁体', 'code' => 'zh-hk'),
+                                            'zh-hans' => array('name' => $this->options['hanstip'] ?? '简体中文', 'code' => 'zh-hans'),
+                                            'zh-hant' => array('name' => $this->options['hanttip'] ?? '繁体中文', 'code' => 'zh-hant'),
+                                            'zh-sg' => array('name' => $this->options['sgtip'] ?? '马新简体', 'code' => 'zh-sg'),
+                                            'zh-jp' => array('name' => $this->options['jptip'] ?? '日式汉字', 'code' => 'zh-jp')
+                                        );
+                                        
+                                        foreach ($enabled_langs as $lang_code) {
+                                            if (isset($lang_options[$lang_code])) {
+                                                $lang = $lang_options[$lang_code];
+                                                $selected = selected($current_target, $lang_code, false);
+                                                echo "<option value=\"{$lang_code}\" {$selected}>{$lang['name']} ({$lang_code})</option>";
+                                            }
+                                        }
+                                        
+                                        if (empty($enabled_langs)) {
+                                            echo '<option value="">' . __('请先启用语言模块', 'wp-chinese-converter') . '</option>';
+                                        }
+                                        ?>
                                     </select>
                                 </div>
                                 <p class="description">
@@ -801,6 +824,49 @@ jQuery(document).ready(function($) {
         }
     }
     
+    // 检测是否使用Gutenberg编辑器
+    function isGutenbergActive() {
+        // 检查WordPress是否启用了Gutenberg编辑器
+        // 通过PHP传递的全局变量检查
+        if (typeof wpccAdminData !== 'undefined' && wpccAdminData.isGutenbergActive !== undefined) {
+            return wpccAdminData.isGutenbergActive;
+        }
+        
+        // 备用检测方法：检查是否存在Gutenberg相关的全局变量
+        return (typeof wp !== 'undefined' && wp.blocks) || 
+               document.body.classList.contains('block-editor-page') ||
+               document.querySelector('.block-editor') !== null ||
+               (typeof window.wp !== 'undefined' && window.wp.blockEditor);
+    }
+    
+    // 控制编辑器增强选项的启用/禁用
+    function toggleEditorEnhancementOptions() {
+        var isGutenberg = isGutenbergActive();
+        var quicktagsOption = $('input[name="wpcc_no_conversion_qtag"]').closest('tr');
+        var postConversionOption = $('input[name="wpcc_enable_post_conversion"]').closest('tr');
+        
+        if (isGutenberg) {
+            // Gutenberg环境下只禁用快速标签功能，保留发表时转换功能
+            quicktagsOption.find('.wpcc-switch').addClass('wpcc-disabled');
+            quicktagsOption.find('input[type="checkbox"]').prop('disabled', true);
+            quicktagsOption.find('.description').html('<?php _e("在经典编辑器工具栏中添加\"wpcc_NC\"按钮，方便快速插入不转换标签。", "wp-chinese-converter"); ?><br><span class="wpcc-disabled-text"><?php _e("(区块编辑器环境下不可用)", "wp-chinese-converter"); ?></span>');
+            
+            // 发表时转换功能在区块编辑器下保持可用
+            postConversionOption.find('.wpcc-switch').removeClass('wpcc-disabled');
+            postConversionOption.find('input[type="checkbox"]').prop('disabled', false);
+            postConversionOption.find('.description').html('<?php _e("启用后，在发布或更新文章时自动转换内容。", "wp-chinese-converter"); ?>');
+        } else {
+            // 经典编辑器环境下启用所有编辑器增强功能
+            quicktagsOption.find('.wpcc-switch').removeClass('wpcc-disabled');
+            quicktagsOption.find('input[type="checkbox"]').prop('disabled', false);
+            quicktagsOption.find('.description').html('<?php _e("在经典编辑器工具栏中添加\"wpcc_NC\"按钮，方便快速插入不转换标签。", "wp-chinese-converter"); ?>');
+            
+            postConversionOption.find('.wpcc-switch').removeClass('wpcc-disabled');
+            postConversionOption.find('input[type="checkbox"]').prop('disabled', false);
+            postConversionOption.find('.description').html('<?php _e("启用后，在发布或更新文章时自动转换内容。", "wp-chinese-converter"); ?>');
+        }
+    }
+    
     // 控制引擎相关选项的启用/禁用
     function toggleEngineRelatedOptions() {
         var engine = $('select[name="wpcc_engine"]').val();
@@ -824,6 +890,7 @@ jQuery(document).ready(function($) {
     // 页面加载时检查
     toggleExtendedLanguages();
     toggleEngineRelatedOptions();
+    toggleEditorEnhancementOptions();
     
     // 显示更多语言选项改变时
     $('#wpcc_show_more_langs').change(function() {

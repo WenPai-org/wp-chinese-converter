@@ -11,38 +11,43 @@ class WPCC_Blocks {
         add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_block_editor_assets' ) );
         add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_frontend_assets' ) );
     }
-    
+
     public function register_blocks() {
         $blocks = array(
             'language-switcher',
-            'conversion-status', 
+            'conversion-status',
             'no-conversion'
         );
-        
+
         foreach ( $blocks as $block ) {
             $this->register_single_block( $block );
         }
     }
-    
+
     private function register_single_block( $block_name ) {
         $block_path = plugin_dir_path( __FILE__ ) . 'build/' . $block_name;
-        
+
         if ( file_exists( $block_path . '/index.js' ) ) {
             register_block_type( $block_path );
         }
     }
     
     public function enqueue_block_editor_assets() {
+        // 确保wpcc-variant脚本已加载
+        if ( ! wp_script_is( 'wpcc-variant', 'registered' ) ) {
+            wp_register_script( 'wpcc-variant', plugins_url( 'assets/dist/wpcc-variant.umd.js', dirname( dirname( __FILE__ ) ) ), array(), '1.1.0' );
+        }
+
         wp_enqueue_style(
             'wpcc-blocks-editor',
             plugins_url( 'assets/css/blocks-editor.css', dirname( dirname( __FILE__ ) ) ),
             array(),
             '1.0.0'
         );
-        
+
         global $wpcc_options;
         $enabled_languages = $wpcc_options['wpcc_used_langs'] ?? array();
-        
+
         wp_localize_script(
             'wp-blocks',
             'wpccBlockSettings',
@@ -63,13 +68,18 @@ class WPCC_Blocks {
     }
     
     public function enqueue_frontend_assets() {
+        // 确保wpcc-variant脚本已加载
+        if ( ! wp_script_is( 'wpcc-variant', 'registered' ) ) {
+            wp_register_script( 'wpcc-variant', plugins_url( 'assets/dist/wpcc-variant.umd.js', dirname( dirname( __FILE__ ) ) ), array(), '1.1.0' );
+        }
+
         wp_enqueue_style(
             'wpcc-blocks-frontend',
             plugins_url( 'assets/css/blocks-frontend.css', dirname( dirname( __FILE__ ) ) ),
             array(),
             '1.0.0'
         );
-        
+
         wp_enqueue_script(
             'wpcc-blocks-frontend',
             plugins_url( 'assets/js/blocks-frontend.js', dirname( dirname( __FILE__ ) ) ),
