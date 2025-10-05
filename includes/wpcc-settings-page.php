@@ -281,7 +281,7 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'basic';
                                     <span class="wpcc-switch-label"><?php _e('启用编辑器快速标签', 'wp-chinese-converter'); ?></span>
                                 </label>
                                 <p class="description">
-                                    <?php _e('在经典编辑器工具栏中添加"wpcc_NC"按钮，方便快速插入不转换标签。', 'wp-chinese-converter'); ?>
+<?php _e('在经典编辑器工具栏中添加"wpcc_NC"按钮，插入 [wpcc_nc]…[/wpcc_nc] 不转换包裹。例如：[wpcc_nc]文人墨客，文派墨图，文风笔笙[/wpcc_nc]', 'wp-chinese-converter'); ?>
                                 </p>
                             </td>
                         </tr>
@@ -854,7 +854,7 @@ jQuery(document).ready(function($) {
             // Gutenberg环境下只禁用快速标签功能，保留发表时转换功能
             quicktagsOption.find('.wpcc-switch').addClass('wpcc-disabled');
             quicktagsOption.find('input[type="checkbox"]').prop('disabled', true);
-            quicktagsOption.find('.description').html('<?php _e("在经典编辑器工具栏中添加\"wpcc_NC\"按钮，方便快速插入不转换标签。", "wp-chinese-converter"); ?><br><span class="wpcc-disabled-text"><?php _e("(区块编辑器环境下不可用)", "wp-chinese-converter"); ?></span>');
+quicktagsOption.find('.description').html('<?php _e("在经典编辑器工具栏中添加\"wpcc_NC\"按钮。例如：[wpcc_nc]文人墨客，文派墨图，文风笔笙[/wpcc_nc]", "wp-chinese-converter"); ?><br><span class="wpcc-disabled-text"><?php _e("(区块编辑器环境下不可用)", "wp-chinese-converter"); ?></span>');
             
             // 发表时转换功能在区块编辑器下保持可用
             postConversionOption.find('.wpcc-switch').removeClass('wpcc-disabled');
@@ -864,7 +864,7 @@ jQuery(document).ready(function($) {
             // 经典编辑器环境下启用所有编辑器增强功能
             quicktagsOption.find('.wpcc-switch').removeClass('wpcc-disabled');
             quicktagsOption.find('input[type="checkbox"]').prop('disabled', false);
-            quicktagsOption.find('.description').html('<?php _e("在经典编辑器工具栏中添加\"wpcc_NC\"按钮，方便快速插入不转换标签。", "wp-chinese-converter"); ?>');
+quicktagsOption.find('.description').html('<?php _e("在经典编辑器工具栏中添加\"wpcc_NC\"按钮。例如：[wpcc_nc]文人墨客，文派墨图，文风笔笙[/wpcc_nc]", "wp-chinese-converter"); ?>');
             
             postConversionOption.find('.wpcc-switch').removeClass('wpcc-disabled');
             postConversionOption.find('input[type="checkbox"]').prop('disabled', false);

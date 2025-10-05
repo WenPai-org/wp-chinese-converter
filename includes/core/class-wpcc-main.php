@@ -540,17 +540,8 @@ class WPCC_Main {
     public function render_no_conversion_block( string $block_content, array $block ): string {
         if ( isset( $block['blockName'] ) && $block['blockName'] === 'wpcc/no-conversion' ) {
             $unique_id = uniqid();
-            
-            $pattern = '/<div[^>]*class="[^"]*wpcc-no-conversion-content[^"]*"[^>]*>(.*?)<\\/div>/s';
-            
-            $replacement = function ( $matches ) use ( $unique_id ) {
-                $content = $matches[1];
-                return '<div class="wpcc-no-conversion-content"><!--wpcc_NC' . $unique_id . '_START-->' . $content . '<!--wpcc_NC' . $unique_id . '_END--></div>';
-            };
-            
-            $block_content = preg_replace_callback( $pattern, $replacement, $block_content );
+            return '<!--wpcc_NC' . $unique_id . '_START-->' . $block_content . '<!--wpcc_NC' . $unique_id . '_END-->';
         }
-        
         return $block_content;
     }
     

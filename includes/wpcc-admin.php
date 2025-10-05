@@ -80,17 +80,17 @@ function wpcc_activate() {
  */
 function wpcc_appthemes_add_quicktags() {
 	global $wpcc_options;
-	if ( ! empty( $wpcc_options ) && ! empty( $wpcc_options['wpcc_no_conversion_qtag'] ) && wp_script_is( 'quicktags', 'enqueued' ) ) {
+	if ( ! empty( $wpcc_options ) && ! empty( $wpcc_options['wpcc_no_conversion_qtag'] ) ) {
 		?>
         <script type="text/javascript">
             //<![CDATA[
             jQuery(document).ready(function($) {
                 if (typeof QTags !== 'undefined' && QTags.addButton) {
-                    QTags.addButton('eg_wpcc_nc', 'wpcc_NC', '<!--wpcc_NC_START-->', '<!--wpcc_NC_END-->', null, 'WP Chinese Converter DO-NOT Convert Tag', 120);
+QTags.addButton('eg_wpcc_nc', 'wpcc_NC', '[wpcc_nc]', '[/wpcc_nc]', null, 'WP Chinese Converter: Insert no-convert markers', 120);
                 } else {
                     setTimeout(function() {
                         if (typeof QTags !== 'undefined' && QTags.addButton) {
-                            QTags.addButton('eg_wpcc_nc', 'wpcc_NC', '<!--wpcc_NC_START-->', '<!--wpcc_NC_END-->', null, 'WP Chinese Converter DO-NOT Convert Tag', 120);
+                            QTags.addButton('eg_wpcc_nc', 'wpcc_NC', '<!--wpcc_NC_START-->', '<!--wpcc_NC_END-->', null, 'WP Chinese Converter: Insert no-convert markers', 120);
                         }
                     }, 100);
                 }

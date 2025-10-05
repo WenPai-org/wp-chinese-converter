@@ -17,6 +17,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 // 全局变量初始化
 $wpcc_langs = array();
 
+// 短代码：提供 [wpcc_nc]...[/wpcc_nc] 与 [wpcs_nc]...[/wpcs_nc]，在编辑器无法保留注释时作为稳健的占位
+add_shortcode( 'wpcc_nc', function( $atts, $content = '' ) {
+    return '<span data-wpcc-no-conversion="true">' . $content . '</span>';
+} );
+add_shortcode( 'wpcs_nc', function( $atts, $content = '' ) {
+    return '<span data-wpcc-no-conversion="true">' . $content . '</span>';
+} );
+
+
 /**
  * 初始化语言配置
  */
@@ -391,6 +400,10 @@ function zhconversion2( $str, $variant = null ) {
 		return $str;
 	}
 
+	// 兜底：如未加保护标记，则在转换前为“不转换内容”区块添加保护标记
+	$str = wpcc_protect_no_conversion_blocks( $str );
+
+	return limit_zhconversion( $str, $wpcc_langs[ $variant ][0] );
 	return limit_zhconversion( $str, $wpcc_langs[ $variant ][0] );
 }
 
@@ -497,10 +510,42 @@ function zhconversion_deep( $value ) {
 }
 
 /**
+ * 兜底保护 - 为“不转换内容”区块添加注释标记
+ */
+function wpcc_protect_no_conversion_blocks( $str ) {
+	// 已有保护则跳过
+if ( preg_match( '/<!--wpc(?:c|s)_NC.*?_START-->/', $str ) ) {
+		return $str;
+	}
+	
+	$wrap_whole_callback = function( $matches ) {
+		$id = wpcc_id();
+		return '<!--wpcc_NC' . $id . '_START-->' . $matches[0] . '<!--wpcc_NC' . $id . '_END-->';
+	};
+	
+	$wrap_inner_callback = function( $matches ) {
+		$id = wpcc_id();
+		$open = $matches[1];
+		$inner = $matches[2];
+		$close = $matches[3];
+		return $open . '<!--wpcc_NC' . $id . '_START-->' . $inner . '<!--wpcc_NC' . $id . '_END-->' . $close;
+	};
+	
+	// 优先：包裹 .wpcc-no-conversion-content 内部
+	$str = preg_replace_callback( '/(<div[^>]*class=\"[^\"]*wpcc-no-conversion-content[^\"]*\"[^>]*>)([\s\S]*?)(<\/div>)/i', $wrap_inner_callback, $str );
+	// 兜底：包裹外层 wrapper 或 data 属性
+	$str = preg_replace_callback( '/<div[^>]*class=\"[^\"]*wpcc-no-conversion-wrapper[^\"]*\"[^>]*>[\s\S]*?<\/div>/i', $wrap_whole_callback, $str );
+	$str = preg_replace_callback( '/<[^>]*data-wpcc-no-conversion=\"true\"[^>]*>[\s\S]*?<\/[^>]+>/i', $wrap_whole_callback, $str );
+	
+	return $str;
+}
+
+/**
  * 有限转换函数 - 不转换指定标签内的内容
  */
+
 function limit_zhconversion( $str, $function ) {
-	if ( $m = preg_split( '/(<!--wpcc_NC([a-zA-Z0-9]*)_START-->)(.*?)(<!--wpcc_NC\2_END-->)/s', $str, - 1, PREG_SPLIT_DELIM_CAPTURE ) ) {
+if ( $m = preg_split( '/(<!--wpc(?:c|s)_NC([a-zA-Z0-9]*)_START-->)(.*?)(<!--wpc(?:c|s)_NC\\2_END-->)/s', $str, - 1, PREG_SPLIT_DELIM_CAPTURE ) ) {
 		$r = '';
 		$count = 0;
 		foreach ( $m as $v ) {
@@ -928,6 +973,10 @@ function wpcc_do_conversion() {
 		add_filter( 'the_content_rss', 'wpcc_no_conversion_filter', 15 );
 	}
 
+	// 为了让“全页面转换”模式也能正确排除“不转换”片段，先把注释标记包裹的内容替换为持久性包装（不被压缩器移除）
+	add_filter( 'the_content', 'wpcc_wrap_nc_markers', 1 );
+	add_filter( 'the_excerpt', 'wpcc_wrap_nc_markers', 1 );
+	
 	if ( $wpcc_options['wpcc_use_fullpage_conversion'] == 1 ) {
 		@ob_start( 'wpcc_ob_callback' );
 		return;
@@ -1007,6 +1056,20 @@ function wpcc_ob_callback( $buffer ) {
 		$buffer = preg_replace( '|(<a\s(?!class="wpcc_link")[^<>]*?href=([\'"]))' . preg_quote( esc_url( home_url( '' ) ), '|' ) . '/?(\2[^<>]*?>)|', '\\1' . esc_url( $wpcc_home_url ) . '\\3', $buffer );
 	}
 	return zhconversion2( $buffer ) . "\n" . '<!-- WP WP Chinese Converter Full Page Converted. Target Lang: ' . $wpcc_target_lang . ' -->';
+}
+
+/**
+ * 将注释标记包裹的区域转换为持久性 data 包裹，避免被HTML压缩器移除注释
+ */
+function wpcc_wrap_nc_markers( $content ) {
+	if ( empty( $content ) || strpos( $content, 'wpc' ) === false ) {
+		return $content;
+	}
+	$pattern = '/<!--wpc(?:c|s)_NC([a-zA-Z0-9]*)_START-->([\s\S]*?)<!--wpc(?:c|s)_NC\\1_END-->/i';
+	return preg_replace_callback( $pattern, function( $m ) {
+		$inner = $m[2];
+		return '<span data-wpcc-no-conversion="true">' . $inner . '</span>';
+	}, $content );
 }
 
 /**
@@ -1201,15 +1264,7 @@ function wpcc_locale( $output, $doctype = 'html' ) {
 function wpcc_render_no_conversion_block( $block_content, $block ) {
 	if ( isset( $block['blockName'] ) && $block['blockName'] === 'wpcc/no-conversion' ) {
 		$unique_id = uniqid();
-
-		$pattern = '/<div[^>]*class="[^"]*wpcc-no-conversion-content[^"]*"[^>]*>(.*?)<\/div>/s';
-
-		$replacement = function ( $matches ) use ( $unique_id ) {
-			$content = $matches[1];
-			return '<div class="wpcc-no-conversion-content"><!--wpcc_NC' . $unique_id . '_START-->' . $content . '<!--wpcc_NC' . $unique_id . '_END--></div>';
-		};
-
-		$block_content = preg_replace_callback( $pattern, $replacement, $block_content );
+		return '<!--wpcc_NC' . $unique_id . '_START-->' . $block_content . '<!--wpcc_NC' . $unique_id . '_END-->';
 	}
 
 	return $block_content;
