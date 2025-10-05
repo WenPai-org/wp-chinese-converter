@@ -111,32 +111,88 @@ function wpcc_init_post_conversion() {
 		$wpcc_options = get_wpcc_option( 'wpcc_options' );
 	}
 
-	error_log( 'WPCC DEBUG: wpcc_init_post_conversion called' );
-	error_log( 'WPCC DEBUG: wpcc_options = ' . print_r( $wpcc_options, true ) );
-
 	if ( ! empty( $wpcc_options['wpcc_enable_post_conversion'] ) ) {
 		$target_lang = $wpcc_options['wpcc_post_conversion_target'] ?? 'zh-cn';
 
-		error_log( 'WPCC DEBUG: Adding filters for post conversion, target_lang = ' . $target_lang );
-
+		/**
+		 * 在保存时安全地转换块内容：
+		 * - 跳过 WPCC 自有区块（wpcc/*），避免破坏区块占位和结构
+		 * - 仅转换非 WPCC 区块的纯文本片段（innerContent 字符串等）
+		 */
 		add_filter( 'content_save_pre', function ( $content ) use ( $target_lang ) {
-			error_log( 'WPCC DEBUG: content_save_pre filter triggered, content length = ' . strlen( $content ) );
-			$converted = zhconversion( $content, $target_lang );
-			error_log( 'WPCC DEBUG: content converted from ' . substr( $content, 0, 50 ) . ' to ' . substr( $converted, 0, 50 ) );
-			return $converted;
+			if ( empty( $content ) ) {
+				return $content;
+			}
+			try {
+				return wpcc_convert_post_content_safely( $content, $target_lang );
+			} catch ( Exception $e ) {
+				error_log( 'WPCC Content Conversion Error: ' . $e->getMessage() );
+				return $content;
+			}
 		} );
 
 		add_filter( 'title_save_pre', function ( $title ) use ( $target_lang ) {
-			error_log( 'WPCC DEBUG: title_save_pre filter triggered, title = ' . $title );
-			$converted = zhconversion( $title, $target_lang );
-			error_log( 'WPCC DEBUG: title converted from ' . $title . ' to ' . $converted );
-			return $converted;
+			if ( empty( $title ) ) {
+				return $title;
+			}
+			try {
+				return zhconversion( $title, $target_lang );
+			} catch ( Exception $e ) {
+				error_log( 'WPCC Title Conversion Error: ' . $e->getMessage() );
+				return $title;
+			}
 		} );
 
 		add_action( 'add_meta_boxes', 'wpcc_add_conversion_meta_box' );
-	} else {
-		error_log( 'WPCC DEBUG: Post conversion is disabled' );
 	}
+}
+
+/**
+ * 使用区块解析安全转换文章内容，仅转换非 WPCC 区块的纯文本
+ */
+function wpcc_convert_post_content_safely( $content, $target_lang ) {
+	if ( ! function_exists( 'parse_blocks' ) || ! function_exists( 'serialize_blocks' ) ) {
+		// 回退：无法解析区块时，使用整体转换（可能导致占位被转换）
+		return zhconversion( $content, $target_lang );
+	}
+
+	$blocks = parse_blocks( $content );
+	$converted = wpcc_convert_blocks_array_safely( $blocks, $target_lang );
+	return serialize_blocks( $converted );
+}
+
+function wpcc_convert_blocks_array_safely( $blocks, $target_lang ) {
+	foreach ( $blocks as &$block ) {
+		$name = isset( $block['blockName'] ) ? (string) $block['blockName'] : '';
+
+		// 跳过 WPCC 自有区块，避免转换其内部占位与结构
+		if ( substr( $name, 0, 5 ) === 'wpcc/' ) {
+			// 递归处理其子块（如不希望转换子块，也可以直接 continue）
+			if ( ! empty( $block['innerBlocks'] ) && is_array( $block['innerBlocks'] ) ) {
+				$block['innerBlocks'] = wpcc_convert_blocks_array_safely( $block['innerBlocks'], $target_lang );
+			}
+			continue;
+		}
+
+		// 转换非 WPCC 区块的纯文本内容
+		if ( isset( $block['innerContent'] ) && is_array( $block['innerContent'] ) ) {
+			foreach ( $block['innerContent'] as $i => $piece ) {
+				if ( is_string( $piece ) && $piece !== '' ) {
+					$block['innerContent'][ $i ] = zhconversion( $piece, $target_lang );
+				}
+			}
+		}
+
+		if ( isset( $block['innerHTML'] ) && is_string( $block['innerHTML'] ) && $block['innerHTML'] !== '' ) {
+			$block['innerHTML'] = zhconversion( $block['innerHTML'], $target_lang );
+		}
+
+		// 递归处理子块
+		if ( ! empty( $block['innerBlocks'] ) && is_array( $block['innerBlocks'] ) ) {
+			$block['innerBlocks'] = wpcc_convert_blocks_array_safely( $block['innerBlocks'], $target_lang );
+		}
+	}
+	return $blocks;
 }
 
 /**

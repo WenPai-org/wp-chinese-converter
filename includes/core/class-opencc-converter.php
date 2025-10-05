@@ -80,8 +80,60 @@ class WPCC_OpenCC_Converter implements WPCC_Converter_Interface {
 			return $texts;
 		}
 		
+		if ( ! is_array( $texts ) ) {
+			return $texts;
+		}
+		
+		// 检查缓存
+		$cached_results = array();
+		$uncached_texts = array();
+		$uncached_indices = array();
+		
+		foreach ( $texts as $index => $text ) {
+			$cached_result = WPCC_Conversion_Cache::get_cached_conversion( $text, $target_variant );
+			if ( $cached_result !== null ) {
+				$cached_results[ $index ] = $cached_result;
+			} else {
+				$uncached_texts[] = $text;
+				$uncached_indices[] = $index;
+			}
+		}
+		
+		// 如果所有内容都在缓存中，直接返回
+		if ( empty( $uncached_texts ) ) {
+			$results = array();
+			foreach ( $texts as $index => $text ) {
+				$results[] = $cached_results[ $index ];
+			}
+			return $results;
+		}
+		
 		try {
-			return OpenCC::convert( $texts, $this->strategy_map[ $target_variant ] );
+			// 转换未缓存的内容
+			$converted_texts = OpenCC::convert( $uncached_texts, $this->strategy_map[ $target_variant ] );
+			
+			// 合并结果并缓存新转换的内容
+			$results = array();
+			$uncached_index = 0;
+			
+			foreach ( $texts as $index => $original_text ) {
+				if ( isset( $cached_results[ $index ] ) ) {
+					$results[] = $cached_results[ $index ];
+				} else {
+					$converted_text = is_array( $converted_texts ) ? $converted_texts[ $uncached_index ] : $converted_texts;
+					$results[] = $converted_text;
+					
+					// 缓存转换结果
+					if ( $converted_text !== $original_text ) {
+						WPCC_Conversion_Cache::set_cached_conversion( $original_text, $target_variant, $converted_text );
+					}
+					
+					$uncached_index++;
+				}
+			}
+			
+			return $results;
+			
 		} catch ( Exception $e ) {
 			error_log( 'WPCC OpenCC Batch Conversion Error: ' . $e->getMessage() );
 			return $texts;

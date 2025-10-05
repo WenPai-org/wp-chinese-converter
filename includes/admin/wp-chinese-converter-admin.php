@@ -2,22 +2,19 @@
 
 class wpcc_Admin
 {
-    var $base = "";
-    var $is_submitted = false;
-    var $is_success = false;
-    var $is_error = false;
-    var $message = "";
-    var $options = false;
-    var $langs = false;
-    var $url = "";
-    var $admin_lang = false;
+    private string $base = "";
+    private bool $is_submitted = false;
+    private bool $is_success = false;
+    private bool $is_error = false;
+    private string $message = "";
+    private $options = false;
+    private $langs = false;
+    private string $url = "";
+    private $admin_lang = false;
 
-    function wpcc_Admin()
-    {
-        return $this->__construct();
-    }
+    // 移除旧式构造函数，只使用 __construct
 
-    function clean_invalid_langs()
+    private function clean_invalid_langs(): void
     {
         global $wpcc_langs;
         if (
@@ -34,7 +31,7 @@ class wpcc_Admin
         }
     }
 
-    function __construct()
+    public function __construct()
     {
         global $wpcc_options, $wpcc_langs, $wpcc_modules;
         if (function_exists("wpcc_init_languages")) {
@@ -110,7 +107,7 @@ class wpcc_Admin
         ]);
     }
 
-    function action_links($links, $file)
+    public function action_links(array $links, string $file): array
     {
         if ($file == $this->base . "wp-chinese-converter.php") {
             $links[] =
@@ -120,7 +117,7 @@ class wpcc_Admin
         return $links;
     }
 
-    function is_gutenberg_active()
+    public function is_gutenberg_active(): bool
     {
         // 检查是否启用了Gutenberg编辑器
         if (function_exists("use_block_editor_for_post_type")) {
@@ -133,7 +130,7 @@ class wpcc_Admin
             function_exists("wp_enqueue_block_editor_assets");
     }
 
-    function install_cache_module()
+    public function install_cache_module(): bool
     {
         global $wpcc_options;
 
@@ -172,7 +169,7 @@ class wpcc_Admin
         return $ret;
     }
 
-    function uninstall_cache_module()
+    public function uninstall_cache_module(): bool
     {
         return unlink(
             WP_PLUGIN_DIR .
@@ -180,7 +177,7 @@ class wpcc_Admin
         );
     }
 
-    function get_cache_status()
+    public function get_cache_status(): int
     {
         if (!function_exists("wp_cache_is_enabled")) {
             return 0;

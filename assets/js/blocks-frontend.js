@@ -75,7 +75,9 @@ function renderLanguageSwitcher(
   };
 
   const target = openInNewWindow ? ' target="_blank"' : "";
-  const noConversionText = customNoConversionLabel || "不转换";
+  const rel = openInNewWindow ? ' rel="noopener noreferrer"' : "";
+  const strings = (typeof wpccFrontendSettings !== 'undefined' && wpccFrontendSettings.strings) ? wpccFrontendSettings.strings : {};
+  const noConversionText = customNoConversionLabel || strings.noConversionLabel || "不转换";
 
   let html = "";
 
@@ -85,22 +87,24 @@ function renderLanguageSwitcher(
     if (showNoConversion) {
       const isActive = !currentLang || currentLang === "";
       html += `<span class="wpcc-lang-item wpcc-no-conversion ${isActive ? "wpcc-current" : ""}">
-                <a href="${getLanguageUrl("")}" class="wpcc-link"${target}>${noConversionText}</a>
+                <a href="${getLanguageUrl("")}" class="wpcc-link"${target}${rel}>${noConversionText}</a>
             </span>`;
     }
 
     availableLanguages.forEach(function (lang) {
       const isActive = currentLang === lang.code;
       const label = getLanguageLabel(lang);
+      const ariaCurrent = isActive ? ' aria-current="page"' : '';
       html += `<span class="wpcc-lang-item ${isActive ? "wpcc-current" : ""}">
-                <a href="${getLanguageUrl(lang.code)}" class="wpcc-link" title="${lang.label}"${target}>${label}</a>
+                <a href="${getLanguageUrl(lang.code)}" class="wpcc-link" title="${lang.label}"${target}${rel}${ariaCurrent}>${label}</a>
             </span>`;
     });
 
     html += "</div>";
   } else {
+    const ariaLabel = (typeof strings !== 'undefined' && strings.languageSelectLabel) ? strings.languageSelectLabel : '选择语言';
     html =
-      '<select class="wpcc-dropdown-switcher" onchange="handleLanguageChange(this.value, this)">';
+      `<select class="wpcc-dropdown-switcher" aria-label="${ariaLabel}" onchange="handleLanguageChange(this.value, this)">`;
 
     if (showNoConversion) {
       const selected = !currentLang || currentLang === "" ? "selected" : "";
@@ -172,13 +176,16 @@ function renderConversionStatus(container, showIcon, displayFormat) {
 
   let html = "";
 
+  const strings = (typeof wpccFrontendSettings !== 'undefined' && wpccFrontendSettings.strings) ? wpccFrontendSettings.strings : {};
+  const currentPrefix = strings.currentLanguagePrefix || '当前语言：';
+
   let statusText = "";
   switch (displayFormat) {
     case "badge":
       statusText = langInfo.label;
       break;
     case "text":
-      statusText = `当前语言：${langInfo.label}`;
+      statusText = `${currentPrefix}${langInfo.label}`;
       break;
     case "minimal":
       statusText = langInfo.name;
@@ -187,6 +194,9 @@ function renderConversionStatus(container, showIcon, displayFormat) {
       statusText = langInfo.label;
   }
 
+  if (showIcon) {
+    html += `<span class="dashicons dashicons-translation" aria-hidden="true"></span>`;
+  }
   html += `<span class="wpcc-status-text">${statusText}</span>`;
 
   container.innerHTML = html;
@@ -239,6 +249,11 @@ function getAvailableLanguages() {
 }
 
 function getCurrentLanguage() {
+  // 优先使用服务端注入的当前语言（如果存在）
+  if (typeof wpcc_target_lang !== "undefined" && wpcc_target_lang) {
+    return wpcc_target_lang;
+  }
+
   const urlParams = new URLSearchParams(window.location.search);
   const variant = urlParams.get("variant");
 
@@ -266,8 +281,23 @@ function getLanguageInfo(langCode) {
 }
 
 function getLanguageUrl(langCode) {
-  const currentUrl = new URL(window.location.href);
+  // 优先使用服务端注入的 URL 映射（如可用）
+  try {
+    if (typeof wpcc_langs_urls === "object" && wpcc_langs_urls) {
+      if (!langCode || langCode === "") {
+        if (typeof wpcc_noconversion_url === "string" && wpcc_noconversion_url) {
+          return wpcc_noconversion_url;
+        }
+      } else if (wpcc_langs_urls[langCode]) {
+        return wpcc_langs_urls[langCode];
+      }
+    }
+  } catch (e) {
+    // 忽略映射读取错误，回退到查询参数模式
+  }
 
+  // 回退：使用查询参数模式
+  const currentUrl = new URL(window.location.href);
   if (langCode) {
     currentUrl.searchParams.set("variant", langCode);
   } else {

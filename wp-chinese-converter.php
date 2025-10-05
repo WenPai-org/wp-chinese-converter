@@ -60,8 +60,13 @@ use Overtrue\PHPOpenCC\OpenCC;
 use Overtrue\PHPOpenCC\Strategy;
 
 // 载入核心依赖
+require_once dirname(__FILE__) . "/includes/core/class-wpcc-exception-handler.php";
+require_once dirname(__FILE__) . "/includes/core/class-wpcc-utils.php";
 require_once dirname(__FILE__) . "/includes/core/class-converter-factory.php";
 require_once dirname(__FILE__) . "/includes/core/class-module-manager.php";
+require_once dirname(__FILE__) . "/includes/core/class-conversion-cache.php";
+require_once dirname(__FILE__) . "/includes/core/class-wpcc-config.php";
+require_once dirname(__FILE__) . "/includes/core/class-wpcc-main.php";
 require_once dirname(__FILE__) . "/includes/blocks/blocks-init.php";
 
 // 加载JS和CSS资源
@@ -88,37 +93,12 @@ function wpcc_add_global_js()
     ]);
 }
 
-// 获取插件配置
-$wpcc_options = get_wpcc_option("wpcc_options");
-if (empty($wpcc_options)) {
-    $wpcc_options = [
-        "wpcc_search_conversion" => 1,
-        "wpcc_used_langs" => [
-            "zh-hans",
-            "zh-hant",
-            "zh-cn",
-            "zh-hk",
-            "zh-sg",
-            "zh-tw",
-        ],
-        "wpcc_browser_redirect" => 0,
-        "wpcc_auto_language_recong" => 0,
-        "wpcc_flag_option" => 1,
-        "wpcc_use_cookie_variant" => 0,
-        "wpcc_use_fullpage_conversion" => 1,
-        "wpcco_use_sitemap" => 1,
-        "wpcc_trackback_plugin_author" => 0,
-        "wpcc_add_author_link" => 0,
-        "wpcc_use_permalink" => 0,
-        "wpcc_no_conversion_tag" => "",
-        "wpcc_no_conversion_ja" => 0,
-        "wpcc_no_conversion_qtag" => 0,
-        "wpcc_enable_post_conversion" => 0,
-        "wpcc_post_conversion_target" => "zh-cn",
-        "wpcc_engine" => "opencc", // alternative: mediawiki
-        "nctip" => "",
-    ];
-}
+// 初始化现代化架构
+$wpcc_main = WPCC_Main::get_instance();
+$wpcc_config = $wpcc_main->get_config();
+
+// 保持向后兼容性
+$wpcc_options = $wpcc_config->get_all_options();
 
 // 加载站点地图模块
 $modules_dir = __DIR__ . "/includes/modules/";
@@ -132,7 +112,7 @@ if (
     is_array($wpcc_options) &&
     is_array($wpcc_options["wpcc_used_langs"])
 ) {
-    // 加载核心功能模块
+    // 加载遗留的核心功能模块（为了向后兼容）
     require_once dirname(__FILE__) . "/includes/wpcc-core.php";
 
     // 加载管理后台模块（仅在后台时加载）
@@ -140,19 +120,8 @@ if (
         require_once dirname(__FILE__) . "/includes/wpcc-admin.php";
     }
 
-    // 注册基础钩子
-    add_action("wp_enqueue_scripts", "wpcc_add_global_js");
-    add_filter("query_vars", "wpcc_insert_query_vars");
-    add_action("init", "wpcc_init");
-
-    // 调试模式下的重写规则刷新
-    if (WP_DEBUG || (defined("wpcc_DEBUG") && wpcc_DEBUG == true)) {
-        add_action("init", function () {
-            global $wp_rewrite;
-            $wp_rewrite->flush_rules();
-        });
-        add_action("wp_footer", "wpcc_debug");
-    }
+    // 新架构已经处理了大部分初始化；移除旧版全局脚本入列以避免重复/冲突
+    // add_action("wp_enqueue_scripts", "wpcc_add_global_js");
 }
 
 /**

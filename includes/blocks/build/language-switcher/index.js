@@ -246,13 +246,8 @@ function sortLanguages(languages, sortOrder, showCurrentFirst) {
             customLabels
         }=attributes;
         
+        // Keep save output stable, do not depend on runtime settings
         let finalEnabledLanguages = enabledLanguages;
-        if (typeof wpccBlockSettings !== 'undefined' && wpccBlockSettings.enabledLanguages) {
-            finalEnabledLanguages = enabledLanguages.filter(lang => wpccBlockSettings.enabledLanguages.includes(lang));
-            if (finalEnabledLanguages.length === 0) {
-                finalEnabledLanguages = wpccBlockSettings.enabledLanguages;
-            }
-        }
         
         const blockProps=a.useBlockProps.save({
             className:`wpcc-language-switcher wpcc-${displayStyle} wpcc-align-${alignment} wpcc-size-${buttonSize}`
@@ -270,7 +265,7 @@ function sortLanguages(languages, sortOrder, showCurrentFirst) {
                 "data-open-in-new-window":openInNewWindow,
                 "data-show-language-code":showLanguageCode,
                 "data-custom-labels":JSON.stringify(customLabels)
-            },(0,n.__)("语言切换器","wp-chinese-converter"))
+            },"")
         );
     }
 });})();

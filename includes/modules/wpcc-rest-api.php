@@ -29,8 +29,14 @@ class WPCC_Rest_Api extends WPCC_Abstract_Module {
 	private function check_rest_api_availability() {
 		return class_exists( 'WP_REST_Server' ) && function_exists( 'rest_ensure_response' );
 	}
-	
 
+	/**
+	 * 确保API密钥存在
+	 */
+	public function ensure_api_key_exists() {
+		// 这个方法可以用来初始化API相关的设置
+		// 目前为空实现，保持兼容性
+	}
 	
 	public function register_routes() {
 		register_rest_route( $this->namespace, '/convert', array(

@@ -27,7 +27,8 @@ class WPCC_Blocks {
     private function register_single_block( $block_name ) {
         $block_path = plugin_dir_path( __FILE__ ) . 'build/' . $block_name;
 
-        if ( file_exists( $block_path . '/index.js' ) ) {
+        // 更符合规范的做法：检测 block.json 是否存在
+        if ( file_exists( $block_path . '/block.json' ) ) {
             register_block_type( $block_path );
         }
     }
@@ -43,6 +44,15 @@ class WPCC_Blocks {
             plugins_url( 'assets/css/blocks-editor.css', dirname( dirname( __FILE__ ) ) ),
             array(),
             '1.0.0'
+        );
+
+        // 兼容层：为编辑器注册旧占位文本的 deprecated 版本，避免校验失败
+        wp_enqueue_script(
+            'wpcc-block-compat',
+            plugins_url( 'assets/js/wpcc-block-compat.js', dirname( dirname( __FILE__ ) ) ),
+            array( 'wp-blocks', 'wp-element', 'wp-block-editor', 'wp-hooks' ),
+            '1.0.0',
+            true
         );
 
         global $wpcc_options;
@@ -62,7 +72,12 @@ class WPCC_Blocks {
                     'zh-sg' => $wpcc_options['sgtip'] ?? '马新',
                     'zh-jp' => $wpcc_options['jptip'] ?? '日式'
                 ),
-                'noConversionLabel' => $wpcc_options['nctip'] ?? '不转换'
+                'noConversionLabel' => $wpcc_options['nctip'] ?? '不转换',
+                'strings' => array(
+                    'noConversionLabel' => $wpcc_options['nctip'] ?? __('不转换', 'wp-chinese-converter'),
+                    'currentLanguagePrefix' => __('当前语言：', 'wp-chinese-converter'),
+                    'languageSelectLabel' => __('选择语言', 'wp-chinese-converter')
+                )
             )
         );
     }
@@ -72,6 +87,9 @@ class WPCC_Blocks {
         if ( ! wp_script_is( 'wpcc-variant', 'registered' ) ) {
             wp_register_script( 'wpcc-variant', plugins_url( 'assets/dist/wpcc-variant.umd.js', dirname( dirname( __FILE__ ) ) ), array(), '1.1.0' );
         }
+
+        // 为前端状态指示器的 dashicons 图标提供样式支持
+        wp_enqueue_style( 'dashicons' );
 
         wp_enqueue_style(
             'wpcc-blocks-frontend',
@@ -105,7 +123,12 @@ class WPCC_Blocks {
                     'zh-sg' => $wpcc_options['sgtip'] ?? '马新',
                     'zh-jp' => $wpcc_options['jptip'] ?? '日式'
                 ),
-                'noConversionLabel' => $wpcc_options['nctip'] ?? '不转换'
+                'noConversionLabel' => $wpcc_options['nctip'] ?? '不转换',
+                'strings' => array(
+                    'noConversionLabel' => $wpcc_options['nctip'] ?? __('不转换', 'wp-chinese-converter'),
+                    'currentLanguagePrefix' => __('当前语言：', 'wp-chinese-converter'),
+                    'languageSelectLabel' => __('选择语言', 'wp-chinese-converter')
+                )
             )
         );
     }
