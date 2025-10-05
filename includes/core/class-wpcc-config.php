@@ -69,7 +69,7 @@ class WPCC_Config {
             'wpcc_use_cookie_variant' => 1,
 
             // 不转换
-'wpcc_no_conversion_tag' => 'pre,code,pre.wp-block-code,pre.wp-block-preformatted,script,noscript,style,kbd,samp',
+'wpcc_no_conversion_tag' => '',
             'wpcc_no_conversion_ja' => 0,
             'wpcc_no_conversion_qtag' => 0,
 
@@ -88,6 +88,7 @@ class WPCC_Config {
             'wpcc_enable_schema_conversion' => 1,
             'wpcc_enable_meta_conversion' => 1,
 
+
             // 其他
             'wpcc_flag_option' => 1,
             'wpcc_trackback_plugin_author' => 0,
@@ -103,14 +104,15 @@ class WPCC_Config {
      * 初始化语言配置
      */
     private function init_languages(): void {
+        // 注意：为避免在 init 之前触发 _load_textdomain_just_in_time，这里不调用 __()，仅存储原始中文标签。
         $this->languages = [
-            'zh-cn' => [ 'zhconversion_cn', 'cntip', __( '简体中文', 'wp-chinese-converter' ), 'zh-CN' ],
-            'zh-tw' => [ 'zhconversion_tw', 'twtip', __( '台灣正體', 'wp-chinese-converter' ), 'zh-TW' ],
-            'zh-hk' => [ 'zhconversion_hk', 'hktip', __( '港澳繁體', 'wp-chinese-converter' ), 'zh-HK' ],
-            'zh-hans' => [ 'zhconversion_hans', 'hanstip', __( '简体中文', 'wp-chinese-converter' ), 'zh-Hans' ],
-            'zh-hant' => [ 'zhconversion_hant', 'hanttip', __( '繁体中文', 'wp-chinese-converter' ), 'zh-Hant' ],
-            'zh-sg' => [ 'zhconversion_sg', 'sgtip', __( '马新简体', 'wp-chinese-converter' ), 'zh-SG' ],
-            'zh-jp' => [ 'zhconversion_jp', 'jptip', __( '日式汉字', 'wp-chinese-converter' ), 'zh-JP' ],
+            'zh-cn'   => [ 'zhconversion_cn',   'cntip',   '简体中文',  'zh-CN'   ],
+            'zh-tw'   => [ 'zhconversion_tw',   'twtip',   '台灣正體',  'zh-TW'   ],
+            'zh-hk'   => [ 'zhconversion_hk',   'hktip',   '港澳繁體',  'zh-HK'   ],
+            'zh-hans' => [ 'zhconversion_hans', 'hanstip', '简体中文',  'zh-Hans' ],
+            'zh-hant' => [ 'zhconversion_hant', 'hanttip', '繁体中文',  'zh-Hant' ],
+            'zh-sg'   => [ 'zhconversion_sg',   'sgtip',   '马新简体',  'zh-SG'   ],
+            'zh-jp'   => [ 'zhconversion_jp',   'jptip',   '日式汉字',  'zh-JP'   ],
         ];
     }
     

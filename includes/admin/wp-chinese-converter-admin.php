@@ -66,7 +66,7 @@ class wpcc_Admin
                 "wpcc_use_cookie_variant" => 1,
 
                 // 不转换
-"wpcc_no_conversion_tag" => "pre,code,pre.wp-block-code,pre.wp-block-preformatted,script,noscript,style,kbd,samp",
+"wpcc_no_conversion_tag" => "",
                 "wpcc_no_conversion_ja" => 0,
                 "wpcc_no_conversion_qtag" => 0,
 
@@ -84,6 +84,7 @@ class wpcc_Admin
                 "wpcc_hreflang_x_default" => "zh-cn",
                 "wpcc_enable_schema_conversion" => 1,
                 "wpcc_enable_meta_conversion" => 1,
+
 
                 // 其他
                 "wpcc_flag_option" => 1,

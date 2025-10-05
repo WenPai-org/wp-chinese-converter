@@ -171,10 +171,14 @@ class WPCC_Main {
         // 设置无转换URL
         $noconversion_url = $this->get_noconversion_url();
         $this->config->set_noconversion_url( $noconversion_url );
+        // 向后兼容：同步全局变量
+        $GLOBALS['wpcc_noconversion_url'] = $noconversion_url;
         
         // 获取目标语言
         $target_lang = $this->determine_target_language( $wp );
         $this->config->set_target_lang( $target_lang );
+        // 向后兼容：同步全局变量
+        $GLOBALS['wpcc_target_lang'] = $target_lang;
         
         // 处理搜索转换
         $this->handle_search_conversion();
@@ -323,6 +327,8 @@ class WPCC_Main {
         }
         
         $this->config->set_langs_urls( $langs_urls );
+        // 向后兼容：同步全局变量
+        $GLOBALS['wpcc_langs_urls'] = $langs_urls;
     }
     
     /**

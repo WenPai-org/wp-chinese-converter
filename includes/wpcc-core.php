@@ -892,6 +892,7 @@ function wpcc_do_conversion() {
 
 	add_action( 'wp_head', 'wpcc_header' );
 
+
 	if ( ! $wpcc_direct_conversion_flag ) {
 		remove_action( 'wp_head', 'rel_canonical' );
 		add_action( 'wp_head', 'wpcc_rel_canonical' );
@@ -1054,6 +1055,7 @@ function wpcc_id() {
 	global $_wpcc_id;
 	return $_wpcc_id ++;
 }
+
 
 /**
  * 修复链接转换

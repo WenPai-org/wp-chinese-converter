@@ -471,9 +471,9 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'basic';
                             </th>
                             <td>
                                 <textarea name="wpcco_no_conversion_tag" class="large-text wpcc-textarea" rows="3"
-placeholder="<?php _e('推荐默认值: pre,code,pre.wp-block-code,pre.wp-block-preformatted', 'wp-chinese-converter'); ?>"><?php echo esc_textarea($this->options['wpcc_no_conversion_tag'] ?? 'pre,code,pre.wp-block-code,pre.wp-block-preformatted'); ?></textarea>
+                                          placeholder="<?php _e('推荐默认值: pre,code,pre.wp-block-code,pre.wp-block-preformatted', 'wp-chinese-converter'); ?>"><?php echo esc_textarea($this->options['wpcc_no_conversion_tag'] ?? 'pre,code,pre.wp-block-code,pre.wp-block-preformatted'); ?></textarea>
                                 <p class="description">
-<?php _e('这里输入的HTML标签或选择器内内容将不进行中文繁简转换，推荐设置', 'wp-chinese-converter'); ?> <code>pre,code,pre.wp-block-code,pre.wp-block-preformatted</code> <?php _e('来排除区块编辑器的代码块与预格式化内容。', 'wp-chinese-converter'); ?>
+                                    <?php _e('这里输入的HTML标签或选择器内内容将不进行中文繁简转换，推荐设置', 'wp-chinese-converter'); ?> <code>pre,code,pre.wp-block-code,pre.wp-block-preformatted</code> <?php _e('来排除区块编辑器的代码块与预格式化内容。', 'wp-chinese-converter'); ?>
                                 </p>
                             </td>
                         </tr>
@@ -652,6 +652,7 @@ placeholder="<?php _e('推荐默认值: pre,code,pre.wp-block-code,pre.wp-block-
                         <?php endif; ?>
                 </table>
 
+
                 <div class="wpcc-submit-wrapper">
                     <button type="submit" class="button button-primary"><?php esc_attr_e('保存设置', 'wp-chinese-converter'); ?></button>
                     <?php wp_nonce_field('wpcc_reset_defaults', 'wpcc_reset_nonce'); ?>
@@ -664,6 +665,7 @@ placeholder="<?php _e('推荐默认值: pre,code,pre.wp-block-code,pre.wp-block-
         <div class="wpcc-section" id="wpcc-section-tools" style="<?php echo $active_tab !== 'tools' ? 'display: none;' : ''; ?>">
             <h2><?php _e('工具维护', 'wp-chinese-converter'); ?></h2>
             <p class="wpcc-section-desc"><?php _e('插件管理和维护工具。', 'wp-chinese-converter'); ?></p>
+
 
             <h3><?php _e('缓存兼容性和插件管理', 'wp-chinese-converter'); ?></h3>
             <table class="form-table">
@@ -876,7 +878,7 @@ jQuery(document).ready(function($) {
         var jpOption = $('#zh-jp-option');
         var jpCheckbox = jpOption.find('input[type="checkbox"]');
         var jpInput = jpOption.find('input[type="text"]');
-        
+
         if (engine === 'opencc') {
             // OpenCC 引擎支持日式汉字
             jpCheckbox.prop('disabled', false);

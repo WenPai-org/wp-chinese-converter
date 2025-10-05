@@ -72,7 +72,7 @@ final class WPCC_Presets {
 
                     'wpcc_use_fullpage_conversion'  => 0,
 
-'wpcc_no_conversion_tag'        => 'pre,code,pre.wp-block-code,pre.wp-block-preformatted,script,noscript,style,kbd,samp',
+'wpcc_no_conversion_tag'        => '',
                     'wpcc_no_conversion_ja'         => 0,
                     'wpcc_no_conversion_qtag'       => 0,
 
