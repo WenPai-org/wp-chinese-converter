@@ -45,21 +45,54 @@ class wpcc_Admin
         $this->options = $wpcc_options;
         if (empty($this->options)) {
             $this->options = [
+                // 语言与标签
+                "wpcc_used_langs" => ["zh-cn", "zh-tw"],
+                "cntip" => "简体",
+                "twtip" => "繁体",
+                "hktip" => "港澳",
+                "hanstip" => "简体",
+                "hanttip" => "繁体",
+                "sgtip" => "马新",
+                "jptip" => "日式",
+
+                // 引擎与转换
+                "wpcc_engine" => "mediawiki",
                 "wpcc_search_conversion" => 1,
-                "wpcc_used_langs" => ["zh-cn", "zh-tw", "zh-hk"],
+                "wpcc_use_fullpage_conversion" => 0,
+
+                // 浏览器与 Cookie
                 "wpcc_browser_redirect" => 0,
                 "wpcc_auto_language_recong" => 0,
-                "wpcc_flag_option" => 1,
-                "wpcc_use_cookie_variant" => 0,
-                "wpcc_use_fullpage_conversion" => 1,
-                "wpcco_use_sitemap" => 1,
-                "wpcc_trackback_plugin_author" => 0,
-                "wpcc_add_author_link" => 0,
-                "wpcc_use_permalink" => 0,
-                "wpcc_no_conversion_tag" => "",
+                "wpcc_use_cookie_variant" => 1,
+
+                // 不转换
+"wpcc_no_conversion_tag" => "pre,code,pre.wp-block-code,pre.wp-block-preformatted,script,noscript,style,kbd,samp",
                 "wpcc_no_conversion_ja" => 0,
                 "wpcc_no_conversion_qtag" => 0,
-                "wpcc_engine" => "opencc",
+
+                // 发表时转换
+                "wpcc_enable_post_conversion" => 0,
+                "wpcc_post_conversion_target" => "zh-cn",
+
+                // URL 与站点地图
+                "wpcc_use_permalink" => 0,
+                "wpcco_use_sitemap" => 0,
+                "wpcco_sitemap_post_type" => "post,page",
+
+                // SEO
+                "wpcc_enable_hreflang_tags" => 1,
+                "wpcc_hreflang_x_default" => "zh-cn",
+                "wpcc_enable_schema_conversion" => 1,
+                "wpcc_enable_meta_conversion" => 1,
+
+                // 其他
+                "wpcc_flag_option" => 1,
+                "wpcc_trackback_plugin_author" => 0,
+                "wpcc_add_author_link" => 0,
+                "wpcc_translate_type" => 0,
+                "nctip" => "",
+                "wpcc_enable_cache_addon" => 1,
+                "wpcc_enable_network_module" => 0,
             ];
         }
 
@@ -232,6 +265,31 @@ class wpcc_Admin
             return;
         }
 
+        // 处理“重置为默认设置”
+        if (!empty($_POST['wpcc_reset_defaults']) && current_user_can('manage_options')) {
+            if (check_admin_referer('wpcc_reset_defaults', 'wpcc_reset_nonce')) {
+                $ok = false;
+                if (class_exists('WPCC_Presets')) {
+                    // 利用工厂默认预设恢复默认
+                    $ok = WPCC_Presets::apply_preset('factory_default');
+                }
+                if ($ok) {
+                    $this->options = get_wpcc_option('wpcc_options', []);
+                    $this->is_submitted = true;
+                    $this->is_success = true;
+                    $this->message .= __('已重置为默认设置。', 'wp-chinese-converter');
+                } else {
+                    $this->is_submitted = true;
+                    $this->is_error = true;
+                    $this->message .= __('重置失败。', 'wp-chinese-converter');
+                }
+            } else {
+                $this->is_submitted = true;
+                $this->is_error = true;
+                $this->message .= __('安全验证失败。', 'wp-chinese-converter');
+            }
+        }
+
         if (!empty($_POST["toggle_cache"])) {
             if ($this->get_cache_status() == 1) {
                 $result = $this->install_cache_module();
@@ -270,7 +328,7 @@ class wpcc_Admin
             }
         }
 
-        if (!empty($_POST["wpcco_submitted"])) {
+        if (!empty($_POST["wpcco_submitted"]) && empty($_POST['wpcc_reset_defaults'])) {
             $this->is_submitted = true;
             $this->process();
 

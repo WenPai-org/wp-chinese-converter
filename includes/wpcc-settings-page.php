@@ -471,9 +471,9 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'basic';
                             </th>
                             <td>
                                 <textarea name="wpcco_no_conversion_tag" class="large-text wpcc-textarea" rows="3"
-                                          placeholder="<?php _e('推荐默认值: pre,code,wp-block-code', 'wp-chinese-converter'); ?>"><?php echo esc_textarea($this->options['wpcc_no_conversion_tag'] ?? 'pre,code,wp-block-code'); ?></textarea>
+placeholder="<?php _e('推荐默认值: pre,code,pre.wp-block-code,pre.wp-block-preformatted', 'wp-chinese-converter'); ?>"><?php echo esc_textarea($this->options['wpcc_no_conversion_tag'] ?? 'pre,code,pre.wp-block-code,pre.wp-block-preformatted'); ?></textarea>
                                 <p class="description">
-                                    <?php _e('这里输入的HTML标签里内容将不进行中文繁简转换，推荐设置', 'wp-chinese-converter'); ?> <code>pre,code,wp-block-code</code> <?php _e('来排除代码块内容。', 'wp-chinese-converter'); ?>
+<?php _e('这里输入的HTML标签或选择器内内容将不进行中文繁简转换，推荐设置', 'wp-chinese-converter'); ?> <code>pre,code,pre.wp-block-code,pre.wp-block-preformatted</code> <?php _e('来排除区块编辑器的代码块与预格式化内容。', 'wp-chinese-converter'); ?>
                                 </p>
                             </td>
                         </tr>
@@ -654,6 +654,8 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'basic';
 
                 <div class="wpcc-submit-wrapper">
                     <button type="submit" class="button button-primary"><?php esc_attr_e('保存设置', 'wp-chinese-converter'); ?></button>
+                    <?php wp_nonce_field('wpcc_reset_defaults', 'wpcc_reset_nonce'); ?>
+                    <button type="submit" class="button button-secondary" name="wpcc_reset_defaults" value="1" onclick="return confirm('<?php echo esc_js(__('确定要将所有设置重置为默认吗？此操作将覆盖当前配置。', 'wp-chinese-converter')); ?>');"><?php _e('重置选项', 'wp-chinese-converter'); ?></button>
                 </div>
             </form>
         </div>
@@ -789,6 +791,7 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'basic';
                     </tr>
                 </table>
         </div>
+
     </div>
 </div>
 

@@ -66,6 +66,7 @@ require_once dirname(__FILE__) . "/includes/core/class-converter-factory.php";
 require_once dirname(__FILE__) . "/includes/core/class-module-manager.php";
 require_once dirname(__FILE__) . "/includes/core/class-conversion-cache.php";
 require_once dirname(__FILE__) . "/includes/core/class-wpcc-config.php";
+require_once dirname(__FILE__) . "/includes/core/class-wpcc-presets.php";
 require_once dirname(__FILE__) . "/includes/core/class-wpcc-main.php";
 require_once dirname(__FILE__) . "/includes/blocks/blocks-init.php";
 

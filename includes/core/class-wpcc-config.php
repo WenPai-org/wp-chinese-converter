@@ -48,31 +48,54 @@ class WPCC_Config {
      */
     private function get_default_options(): array {
         return [
+            // 语言与标签
+            'wpcc_used_langs' => ['zh-cn','zh-tw'],
+            'cntip' => '简体',
+            'twtip' => '繁体',
+            'hktip' => '港澳',
+            'hanstip' => '简体',
+            'hanttip' => '繁体',
+            'sgtip' => '马新',
+            'jptip' => '日式',
+
+            // 引擎与转换
+            'wpcc_engine' => 'mediawiki',
             'wpcc_search_conversion' => 1,
-            'wpcc_used_langs' => [
-                'zh-hans',
-                'zh-hant',
-                'zh-cn',
-                'zh-hk',
-                'zh-sg',
-                'zh-tw',
-            ],
+            'wpcc_use_fullpage_conversion' => 0,
+
+            // 浏览器与 Cookie
             'wpcc_browser_redirect' => 0,
             'wpcc_auto_language_recong' => 0,
-            'wpcc_flag_option' => 1,
-            'wpcc_use_cookie_variant' => 0,
-            'wpcc_use_fullpage_conversion' => 1,
-            'wpcco_use_sitemap' => 1,
-            'wpcc_trackback_plugin_author' => 0,
-            'wpcc_add_author_link' => 0,
-            'wpcc_use_permalink' => 0,
-            'wpcc_no_conversion_tag' => '',
+            'wpcc_use_cookie_variant' => 1,
+
+            // 不转换
+'wpcc_no_conversion_tag' => 'pre,code,pre.wp-block-code,pre.wp-block-preformatted,script,noscript,style,kbd,samp',
             'wpcc_no_conversion_ja' => 0,
             'wpcc_no_conversion_qtag' => 0,
+
+            // 发表时转换
             'wpcc_enable_post_conversion' => 0,
             'wpcc_post_conversion_target' => 'zh-cn',
-            'wpcc_engine' => 'opencc',
+
+            // URL 与站点地图
+            'wpcc_use_permalink' => 0,
+            'wpcco_use_sitemap' => 0,
+            'wpcco_sitemap_post_type' => 'post,page',
+
+            // SEO
+            'wpcc_enable_hreflang_tags' => 1,
+            'wpcc_hreflang_x_default' => 'zh-cn',
+            'wpcc_enable_schema_conversion' => 1,
+            'wpcc_enable_meta_conversion' => 1,
+
+            // 其他
+            'wpcc_flag_option' => 1,
+            'wpcc_trackback_plugin_author' => 0,
+            'wpcc_add_author_link' => 0,
+            'wpcc_translate_type' => 0,
             'nctip' => '',
+            'wpcc_enable_cache_addon' => 1,
+            'wpcc_enable_network_module' => 0,
         ];
     }
     
