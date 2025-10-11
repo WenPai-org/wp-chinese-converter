@@ -101,15 +101,14 @@
    - **不转换**: 指定不需要转换的内容区域
 
 ### 短代码支持
-```php
-// 显示语言切换器
-[wpcc_language_switcher]
-
-// 显示转换状态
-[wpcc_conversion_status]
-
-// 不转换指定内容
-[wpcc_no_conversion]不转换的内容[/wpcc_no_conversion]
+- 语言切换器（老短代码，平铺/下拉由“展示形式”设置控制）
+```
+[wp-chinese-converter]
+```
+- 不转换内容（编辑器无法保留注释时作为稳健占位）：
+```
+[wpcc_nc]不转换的内容[/wpcc_nc]
+[wpcs_nc]不转换的内容[/wpcs_nc]
 ```
 
 ### PHP 函数调用
@@ -147,6 +146,25 @@ add_action('wpcc_before_conversion', 'before_convert');
 add_action('wpcc_after_conversion', 'after_convert');
 ```
 
+## 链接与重写规则行为说明（重要）
+
+- 链接格式与固定链接的关系
+  - 当 WordPress 启用了固定链接，且“URL 链接格式”选择了“前缀/后缀”时：生成 /zh-xx/ 样式链接（或 …/zh-xx/）
+  - 当 WordPress 未启用固定链接（或环境未正确应用 rewrite 规则）时：自动回退为 ?variant=zh-xx，避免 404
+- 首页根级变体访问行为
+  - 访问 /zh/ 或 /zh-reset/：作为“哨兵”回到不转换首页（https://example.com/），并设置 zh 偏好以覆盖浏览器/Cookie 策略
+  - 访问 /zh-xx/（如 /zh-tw/、/zh-hk/）：统一 302 跳转到首页，避免首页重复内容与 404
+- zh 哨兵与 rel="nofollow"
+  - 仅当“不转换”链接为覆盖策略而携带 zh 哨兵（URL 含 /zh/ 或 ?variant=zh）时自动添加 rel="nofollow"
+  - 当不需要哨兵（直接是原始 URL）时，不加 nofollow，避免影响站内权重传递
+
+## 兼容层与新版内核
+
+- 新内核（WPCC_Main / WPCC_Config 等）统一管理重写、变体解析、链接构造、注入脚本等；
+- 为了兼容历史主题/插件/短代码调用，保留了 includes/wpcc-core.php 中的“老函数”（如 wpcc_link_conversion、set_wpcc_langs_urls、wpcc_output_navi、短代码 [wp-chinese-converter] 等）；
+- 老函数的行为已与新内核对齐（例如固定链接未启用时自动降级为 ?variant=xx），确保前后端一致；
+- 建议新项目优先使用区块与新内核能力；对生态依赖的老接口，后续会以 @deprecated 标注与迁移指引逐步过渡。
+
 ## 故障排除
 
 ### 常见问题
@@ -161,7 +179,7 @@ A: 请检查选择的转换引擎和目标语言是否正确。OpenCC 引擎适�
 A: 请检查 WordPress 缓存配置，或尝试清除转换缓存：`设置 > WP Chinese Converter > 高级设置 > 清除缓存`
 
 **Q: URL 重写不工作？**
-A: 请确保服务器的 mod_rewrite 模块已启用，并重新保存固定链接设置。
+A: 请确保 WordPress 固定链接已启用并“保存更改”一次；服务器需正确支持 rewrite（如 Nginx/Apache 规则）。插件在未启用固定链接时会自动回退为 ?variant=xx。
 
 ## 性能优化建议
 
@@ -194,6 +212,13 @@ A: 请确保服务器的 mod_rewrite 模块已启用，并重新保存固定链�
 ---
 
 ## 版本历史
+
+### v1.4.x (2025年稳定版补丁)
+- 统一“展示形式”数值语义：1=平铺，0=下拉；修复短代码展示反向问题
+- 单站模式：当 WordPress 未启用固定链接时，链接自动降级为 ?variant=xx，避免 /zh-xx/ 404
+- 首页根级变体：/zh/ 与 /zh-xx/ 统一 302 到首页；/zh/ 同时设置 zh 偏好覆盖浏览器/Cookie 策略
+- 前端切换器：仅在携带 zh 哨兵时为“不转换”链接添加 rel="nofollow"，并与新窗口 noopener noreferrer 兼容
+- 统一文件命名风格：核心类重命名为 class-wpcc-*.php；保留兼容层但与新内核对齐
 
 ### v1.3.0 (2025年重构版本)
 - 完全重写插件架构，采用现代化 OOP 设计
