@@ -6,7 +6,7 @@
  * 包含所有前台转换相关功能
  *
  * @package WPChineseConverter
- * @version 1.2.0
+ * @version 1.4
  */
 
 // 防止直接访问
@@ -28,20 +28,14 @@ add_shortcode( 'wpcs_nc', function( $atts, $content = '' ) {
 
 /**
  * 初始化语言配置
+ * 使用中心化的语言配置管理
  */
 function wpcc_init_languages(): void {
 	global $wpcc_langs;
 
 	if ( empty( $wpcc_langs ) ) {
-		$wpcc_langs = [
-			'zh-cn' => [ 'zhconversion_cn', 'cntip', __( '简体中文', 'wp-chinese-converter' ), 'zh-CN' ],
-			'zh-tw' => [ 'zhconversion_tw', 'twtip', __( '台灣正體', 'wp-chinese-converter' ), 'zh-TW' ],
-			'zh-hk' => [ 'zhconversion_hk', 'hktip', __( '港澳繁體', 'wp-chinese-converter' ), 'zh-HK' ],
-			'zh-hans' => [ 'zhconversion_hans', 'hanstip', __( '简体中文', 'wp-chinese-converter' ), 'zh-Hans' ],
-			'zh-hant' => [ 'zhconversion_hant', 'hanttip', __( '繁体中文', 'wp-chinese-converter' ), 'zh-Hant' ],
-			'zh-sg' => [ 'zhconversion_sg', 'sgtip', __( '马新简体', 'wp-chinese-converter' ), 'zh-SG' ],
-			'zh-jp' => [ 'zhconversion_jp', 'jptip', __( '日式汉字', 'wp-chinese-converter' ), 'zh-JP' ],
-		];
+		// 使用中心化的语言配置
+		$wpcc_langs = WPCC_Language_Config::get_all_languages();
 	}
 }
 
@@ -49,6 +43,17 @@ function wpcc_init_languages(): void {
  * 插件核心初始化
  */
 function wpcc_init() {
+	// 当新版核心 WPCC_Main 存在时，仍需要确保重写规则正确设置
+	if ( class_exists( 'WPCC_Main' ) ) {
+		// 确保重写规则被正确设置（新版本的重写规则可能有问题）
+		global $wpcc_options;
+		if ( isset( $wpcc_options['wpcc_use_permalink'] ) && $wpcc_options['wpcc_use_permalink'] != 0 ) {
+			if ( ! has_filter( 'rewrite_rules_array', 'wpcc_rewrite_rules' ) ) {
+				add_filter( 'rewrite_rules_array', 'wpcc_rewrite_rules' );
+			}
+		}
+		return;
+	}
 	global $wpcc_options, $wp_rewrite;
 
 	if ( isset( $wpcc_options['wpcc_use_permalink'] ) && $wpcc_options['wpcc_use_permalink'] != 0 && empty( $wp_rewrite->permalink_structure ) ) {
@@ -61,17 +66,23 @@ function wpcc_init() {
 	}
 
 	// 处理评论提交的转换
-	if ( ( isset( $_SERVER['PHP_SELF'] ) && ( strpos( $_SERVER['PHP_SELF'], 'wp-comments-post.php' ) !== false
-	       || strpos( $_SERVER['PHP_SELF'], 'ajax-comments.php' ) !== false
-	       || strpos( $_SERVER['PHP_SELF'], 'comments-ajax.php' ) !== false )
+	$php_self = isset( $_SERVER['PHP_SELF'] ) ? sanitize_text_field( wp_unslash( $_SERVER['PHP_SELF'] ) ) : '';
+	$request_method = isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : '';
+	
+	if ( ( $php_self && ( strpos( $php_self, 'wp-comments-post.php' ) !== false
+	       || strpos( $php_self, 'ajax-comments.php' ) !== false
+	       || strpos( $php_self, 'comments-ajax.php' ) !== false )
 	     ) &&
-	     isset( $_SERVER["REQUEST_METHOD"] ) && $_SERVER["REQUEST_METHOD"] == "POST" &&
-	     isset( $_POST['variant'] ) && ! empty( $_POST['variant'] ) && in_array( $_POST['variant'], $wpcc_options['wpcc_used_langs'] )
+	     $request_method === 'POST' &&
+	     isset( $_POST['variant'] ) && ! empty( $_POST['variant'] )
 	) {
-		global $wpcc_target_lang;
-		$wpcc_target_lang = $_POST['variant'];
-		wpcc_do_conversion();
-		return;
+		$variant = sanitize_text_field( wp_unslash( $_POST['variant'] ) );
+		if ( in_array( $variant, $wpcc_options['wpcc_used_langs'], true ) ) {
+			global $wpcc_target_lang;
+			$wpcc_target_lang = $variant;
+			wpcc_do_conversion();
+			return;
+		}
 	}
 
 	// 修复首页显示Page时的问题
@@ -143,10 +154,10 @@ function wpcc_parse_query( $query ) {
 		return;
 	}
 
-	$request_lang = isset( $query->query_vars['variant'] ) ? $query->query_vars['variant'] : '';
-	$cookie_lang = isset( $_COOKIE[ 'wpcc_variant_' . COOKIEHASH ] ) ? $_COOKIE[ 'wpcc_variant_' . COOKIEHASH ] : '';
+	$request_lang = isset( $query->query_vars['variant'] ) ? sanitize_text_field( $query->query_vars['variant'] ) : '';
+	$cookie_lang = isset( $_COOKIE[ 'wpcc_variant_' . COOKIEHASH ] ) ? sanitize_text_field( wp_unslash( $_COOKIE[ 'wpcc_variant_' . COOKIEHASH ] ) ) : '';
 
-	if ( $request_lang && in_array( $request_lang, $wpcc_options['wpcc_used_langs'] ) ) {
+	if ( $request_lang && in_array( $request_lang, $wpcc_options['wpcc_used_langs'], true ) ) {
 		$wpcc_target_lang = $request_lang;
 	} else {
 		$wpcc_target_lang = false;
@@ -212,11 +223,15 @@ function wpcc_template_redirect() {
  */
 function set_wpcc_langs_urls() {
 	global $wpcc_langs_urls, $wpcc_options, $wpcc_noconversion_url;
-
+	
 	if ( ! $wpcc_langs_urls ) {
-		if ( $wpcc_noconversion_url == get_option( 'home' ) . '/' && $wpcc_options['wpcc_use_permalink'] ) {
+		$permalinks_enabled = (string) get_option( 'permalink_structure' ) !== '';
+		$style = (int) ( $wpcc_options['wpcc_use_permalink'] ?? 0 );
+		$style_effective = $permalinks_enabled ? $style : 0;
+		
+		if ( $wpcc_noconversion_url == get_option( 'home' ) . '/' && $style_effective ) {
 			foreach ( $wpcc_options['wpcc_used_langs'] as $value ) {
-				$wpcc_langs_urls[ $value ] = $wpcc_noconversion_url . $value . '/';
+				$wpcc_langs_urls[ $value ] = trailingslashit( $wpcc_noconversion_url . $value );
 			}
 		} else {
 			foreach ( $wpcc_options['wpcc_used_langs'] as $value ) {
@@ -231,11 +246,13 @@ function set_wpcc_langs_urls() {
  */
 function wpcc_get_noconversion_url() {
 	global $wpcc_options;
-	$reg = implode( '|', $wpcc_options['wpcc_used_langs'] );
-	$tmp = ( is_ssl() ? 'https://' : 'http://' ) .
-	       ( isset( $_SERVER['HTTP_HOST'] ) ? $_SERVER['HTTP_HOST'] : '' ) .
-	       ( isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : '' );
-	$tmp = trim( strtolower( remove_query_arg( 'variant', $tmp ) ) );
+	$reg = implode( '|', array_map( 'preg_quote', $wpcc_options['wpcc_used_langs'] ) );
+	
+	$protocol = is_ssl() ? 'https://' : 'http://';
+	$host = isset( $_SERVER['HTTP_HOST'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ) ) : '';
+	$uri = isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+	
+	$tmp = trim( strtolower( remove_query_arg( 'variant', $protocol . $host . $uri ) ) );
 
 	if ( preg_match( '/^(.*)\/(' . $reg . '|zh|zh-reset)(\/.*)?$/', $tmp, $matches ) ) {
 		$tmp = user_trailingslashit( trailingslashit( $matches[1] ) . ltrim( $matches[3] ?? '', '/' ) );
@@ -252,44 +269,67 @@ function wpcc_get_noconversion_url() {
  */
 function wpcc_link_conversion( $link, $variant = null ) {
 	global $wpcc_options;
-
+	
 	static $wpcc_wp_home;
 	if ( empty( $wpcc_wp_home ) ) {
 		$wpcc_wp_home = home_url();
 	}
-
+	
 	if ( $variant === null ) {
 		$variant = $GLOBALS['wpcc_target_lang'];
 	}
 	if ( $variant == false ) {
 		return $link;
 	}
-	if ( str_contains( $link, $variant ) ) {
-		return $link;
+	
+	$style = (int) ( $wpcc_options['wpcc_use_permalink'] ?? 0 );
+	$permalinks_enabled = (string) get_option( 'permalink_structure' ) !== '';
+	
+	// Split path and query
+	$qpos = strpos( $link, '?' );
+	$path = $qpos !== false ? substr( $link, 0, $qpos ) : $link;
+	$qs   = $qpos !== false ? substr( $link, $qpos ) : '';
+	
+	// Detect existing variant in path; if present, strip duplicate query param if any
+	$enabled = isset( $wpcc_options['wpcc_used_langs'] ) && is_array( $wpcc_options['wpcc_used_langs'] ) ? $wpcc_options['wpcc_used_langs'] : [];
+	$variant_regex = '#/(?:' . implode( '|', array_map( 'preg_quote', $enabled ) ) . '|zh|zh-reset)(/|$)#i';
+	$path_only = parse_url( $path, PHP_URL_PATH );
+	if ( $path_only === null ) { $path_only = $path; }
+	if ( preg_match( $variant_regex, $path_only ) ) {
+		if ( $qpos !== false ) {
+			$qs = preg_replace( '/([?&])variant=[^&]*(&|$)/', '$1', $qs );
+			$qs = rtrim( $qs, '?&' );
+			if ( $qs && $qs[0] !== '?' ) { $qs = '?' . ltrim( $qs, '?' ); }
+		}
+		return $path . $qs;
 	}
-
-	if ( str_contains( $link, '?' ) || ! ($wpcc_options['wpcc_use_permalink'] ?? 0) ) {
+	
+	// 当 WP 未启用固定链接时，强制使用查询参数，避免 /zh-xx/ 404
+	if ( ! $permalinks_enabled || $style === 0 ) {
 		return add_query_arg( 'variant', $variant, $link );
 	}
-
-	if ( $wpcc_options['wpcc_use_permalink'] == 1 ) {
-		return user_trailingslashit( trailingslashit( $link ) . $variant );
+	
+	if ( $style === 1 ) {
+		// suffix style
+		return user_trailingslashit( trailingslashit( $path ) . $variant ) . $qs;
 	}
+	
+	// prefix style (2)
 	if ( is_multisite() && wpcc_mobile_exist( 'network' ) ) {
 		$sites = get_sites();
 		foreach ( $sites as $site ) {
 			if ( '/' == $site->path ) {
 				continue;
 			}
-			$path = str_replace( '/', '', $site->path );
-			$sub_url = "$site->domain/$path";
-			if ( str_contains( $link, $sub_url ) ) {
-				return str_replace( $sub_url, "$sub_url/$variant", $link );
+			$path_seg = str_replace( '/', '', $site->path );
+			$sub_url = "$site->domain/$path_seg";
+			if ( str_contains( $path, $sub_url ) ) {
+				return str_replace( $sub_url, "$sub_url/$variant", $path ) . $qs;
 			}
 		}
 	}
-
-	return str_replace( $wpcc_wp_home, "$wpcc_wp_home/$variant", $link );
+	
+	return str_replace( $wpcc_wp_home, "$wpcc_wp_home/$variant", $path ) . $qs;
 }
 
 /**
@@ -404,7 +444,6 @@ function zhconversion2( $str, $variant = null ) {
 	$str = wpcc_protect_no_conversion_blocks( $str );
 
 	return limit_zhconversion( $str, $wpcc_langs[ $variant ][0] );
-	return limit_zhconversion( $str, $wpcc_langs[ $variant ][0] );
 }
 
 /**
@@ -513,8 +552,10 @@ function zhconversion_deep( $value ) {
  * 兜底保护 - 为“不转换内容”区块添加注释标记
  */
 function wpcc_protect_no_conversion_blocks( $str ) {
-	// 已有保护则跳过
-if ( preg_match( '/<!--wpc(?:c|s)_NC.*?_START-->/', $str ) ) {
+	// 若内容中不存在可识别的不转换占位（data 属性或指定类），则无需处理
+	$has_data_attr = preg_match( '/data-wpcc-no-conversion=("|\')true\1/i', $str );
+	$has_nc_class = preg_match( '/wpcc-no-conversion-(content|wrapper)/i', $str );
+	if ( ! $has_data_attr && ! $has_nc_class ) {
 		return $str;
 	}
 	
@@ -532,10 +573,10 @@ if ( preg_match( '/<!--wpc(?:c|s)_NC.*?_START-->/', $str ) ) {
 	};
 	
 	// 优先：包裹 .wpcc-no-conversion-content 内部
-	$str = preg_replace_callback( '/(<div[^>]*class=\"[^\"]*wpcc-no-conversion-content[^\"]*\"[^>]*>)([\s\S]*?)(<\/div>)/i', $wrap_inner_callback, $str );
+	$str = preg_replace_callback( '/(<div[^>]*class="[^"]*wpcc-no-conversion-content[^"]*"[^>]*>)([\s\S]*?)(<\/div>)/i', $wrap_inner_callback, $str );
 	// 兜底：包裹外层 wrapper 或 data 属性
-	$str = preg_replace_callback( '/<div[^>]*class=\"[^\"]*wpcc-no-conversion-wrapper[^\"]*\"[^>]*>[\s\S]*?<\/div>/i', $wrap_whole_callback, $str );
-	$str = preg_replace_callback( '/<[^>]*data-wpcc-no-conversion=\"true\"[^>]*>[\s\S]*?<\/[^>]+>/i', $wrap_whole_callback, $str );
+	$str = preg_replace_callback( '/<div[^>]*class="[^"]*wpcc-no-conversion-wrapper[^"]*"[^>]*>[\s\S]*?<\/div>/i', $wrap_whole_callback, $str );
+	$str = preg_replace_callback( '/<[^>]*data-wpcc-no-conversion="true"[^>]*>[\s\S]*?<\/[a-zA-Z0-9]+>/i', $wrap_whole_callback, $str );
 	
 	return $str;
 }
@@ -545,7 +586,7 @@ if ( preg_match( '/<!--wpc(?:c|s)_NC.*?_START-->/', $str ) ) {
  */
 
 function limit_zhconversion( $str, $function ) {
-if ( $m = preg_split( '/(<!--wpc(?:c|s)_NC([a-zA-Z0-9]*)_START-->)(.*?)(<!--wpc(?:c|s)_NC\\2_END-->)/s', $str, - 1, PREG_SPLIT_DELIM_CAPTURE ) ) {
+if ( $m = preg_split( '/(<!--wpc(?:c|s)_NC([a-zA-Z0-9]*)_START-->)(.*?)(<!--wpc(?:c|s)_NC\2_END-->)/s', $str, - 1, PREG_SPLIT_DELIM_CAPTURE ) ) {
 		$r = '';
 		$count = 0;
 		foreach ( $m as $v ) {
@@ -593,73 +634,75 @@ function wpcc_output_navi( $args = '', $isReturn = false ) {
 		return;
 	}
 
+	// 计算“不转换”标签
 	if ( ! empty( $wpcc_options['nctip'] ) ) {
 		$noconverttip = $wpcc_options['nctip'];
 	} else {
 		$locale = str_replace( '_', '-', strtolower( get_locale() ) );
-		if ( in_array( $locale, array( 'zh-hant', 'zh-tw', 'zh-hk', 'zh-mo' ) ) ) {
-			$noconverttip = '不转换';
-		} else {
-			$noconverttip = '不转换';
-		}
+		$noconverttip = in_array( $locale, array( 'zh-hant', 'zh-tw', 'zh-hk', 'zh-mo' ) ) ? '不转换' : '不转换';
 	}
 	if ( $wpcc_target_lang ) {
 		$noconverttip = zhconversion( $noconverttip );
 	}
 
-	if ( ( $wpcc_options['wpcc_browser_redirect'] == 2 || $wpcc_options['wpcc_use_cookie_variant'] == 2 ) &&
-	     $wpcc_target_lang
-	) {
-		$default_url = wpcc_link_conversion( $wpcc_noconversion_url, 'zh' );
-		if ( $wpcc_options['wpcc_use_permalink'] != 0 && is_home() && ! is_paged() ) {
+	// 计算“不转换”链接（必要时注入 zh 哨兵以覆盖浏览器/Cookie 策略）
+	if ( ( ! empty($wpcc_options['wpcc_browser_redirect']) && $wpcc_options['wpcc_browser_redirect'] == 2 ) ||
+	     ( ! empty($wpcc_options['wpcc_use_cookie_variant']) && $wpcc_options['wpcc_use_cookie_variant'] == 2 ) ) {
+		$default_url = $wpcc_target_lang ? wpcc_link_conversion( $wpcc_noconversion_url, 'zh' ) : $wpcc_noconversion_url;
+		if ( ! empty($wpcc_options['wpcc_use_permalink']) && is_home() && ! is_paged() ) {
 			$default_url = trailingslashit( $default_url );
 		}
 	} else {
 		$default_url = $wpcc_noconversion_url;
 	}
 
-	$wpcc_translate_type = $wpcc_options['wpcc_translate_type'] ?? 0;
+    // 展示形式：优先使用新字段 wpcc_translate_type，兼容旧字段 wpcc_flag_option
+    $wpcc_translate_type = $wpcc_options['wpcc_translate_type'] ?? ($wpcc_options['wpcc_flag_option'] ?? 0);
 
-	$output = "\n" . '<div id="wpcc_widget_inner"><!--wpcc_NC_START-->' . "\n";
-	if ( $wpcc_translate_type == 0 ) {
-		$output .= '	<span id="wpcc_original_link" class="' . ( $wpcc_target_lang == false ? 'wpcc_current_lang' : 'wpcc_lang' ) . '" ><a class="wpcc_link" href="' . esc_url( $default_url ) . '" title="' . esc_html( $noconverttip ) . '" langvar="">' . esc_html( $noconverttip ) . '</a></span>' . "\n";
+	$html = "\n" . '<div id="wpcc_widget_inner"><!--wpcc_NC_START-->' . "\n";
+
+	// 统一语义：1 = 平铺，0 = 下拉
+	if ( $wpcc_translate_type == 1 ) {
+		$__nofollow = ( preg_match( '/\/zh\//i', $default_url ) || preg_match( '/(?:[?&])variant=zh(?:&|$)/i', $default_url ) ) ? ' rel="nofollow"' : '';
+		$html .= '<span id="wpcc_original_link" class="' . ( $wpcc_target_lang == false ? 'wpcc_current_lang' : 'wpcc_lang' ) . '"><a class="wpcc_link"' . $__nofollow . ' href="' . esc_url( $default_url ) . '" title="' . esc_attr( $noconverttip ) . '" langvar="">' . esc_html( $noconverttip ) . '</a></span>' . "\n";
 
 		foreach ( $wpcc_langs_urls as $key => $value ) {
 			if ( !isset( $wpcc_langs[ $key ] ) || !isset( $wpcc_langs[ $key ][1] ) || !isset( $wpcc_langs[ $key ][2] ) ) {
 				continue;
 			}
-			$tip = ! empty( $wpcc_options[ $wpcc_langs[ $key ][1] ] ) ? esc_html( $wpcc_options[ $wpcc_langs[ $key ][1] ] ) : $wpcc_langs[ $key ][2];
+			$tip = ! empty( $wpcc_options[ $wpcc_langs[ $key ][1] ] ) ? $wpcc_options[ $wpcc_langs[ $key ][1] ] : $wpcc_langs[ $key ][2];
 			if ( $wpcc_target_lang ) {
 				$tip = zhconversion( $tip );
 			}
 			$safe_key = esc_attr( $key );
-			$output .= '	<span id="wpcc_' . $safe_key . '_link" class="' . ( $wpcc_target_lang == $key ? 'wpcc_current_lang' : 'wpcc_lang' ) . '" ><a class="wpcc_link" rel="nofollow" href="' . esc_url( $value ) . '" title="' . esc_attr( $tip ) . '" langvar="' . $safe_key . '">' . esc_html( $tip ) . '</a></span>' . "\n";
+			$html .= '<span id="wpcc_' . $safe_key . '_link" class="' . ( $wpcc_target_lang == $key ? 'wpcc_current_lang' : 'wpcc_lang' ) . '"><a class="wpcc_link" rel="nofollow" href="' . esc_url( $value ) . '" title="' . esc_attr( $tip ) . '" langvar="' . $safe_key . '">' . esc_html( $tip ) . '</a></span>' . "\n";
 		}
-	} else if ( $wpcc_translate_type == 1 ) {
+	} else if ( $wpcc_translate_type == 0 ) {
 		$checkSelected = function ( $selected_lang ) use ( $wpcc_target_lang ) {
-			return $selected_lang == $wpcc_target_lang ? "selected" : "";
+			return $selected_lang == $wpcc_target_lang ? 'selected' : '';
 		};
-		$output .= sprintf( '<select id="wpcc_translate_type" value="%s" onchange="wpccRedirectToPage(this)">', $wpcc_translate_type );
-		$output .= sprintf( '<option id="wpcc_original_link" value="" %s>%s</option>', $checkSelected( '' ), esc_html( $noconverttip ) );
+		$html .= '<select id="wpcc_translate_type" value="' . esc_attr( (string) $wpcc_translate_type ) . '" onchange="wpccRedirectToPage(this)">';
+		$html .= '<option id="wpcc_original_link" value="" ' . $checkSelected( '' ) . '>' . esc_html( $noconverttip ) . '</option>';
 		foreach ( $wpcc_langs_urls as $key => $value ) {
 			if ( !isset( $wpcc_langs[ $key ] ) || !isset( $wpcc_langs[ $key ][1] ) || !isset( $wpcc_langs[ $key ][2] ) ) {
 				continue;
 			}
-			$tip = ! empty( $wpcc_options[ $wpcc_langs[ $key ][1] ] ) ? esc_html( $wpcc_options[ $wpcc_langs[ $key ][1] ] ) : $wpcc_langs[ $key ][2];
+			$tip = ! empty( $wpcc_options[ $wpcc_langs[ $key ][1] ] ) ? $wpcc_options[ $wpcc_langs[ $key ][1] ] : $wpcc_langs[ $key ][2];
 			if ( $wpcc_target_lang ) {
 				$tip = zhconversion( $tip );
 			}
 			$safe_key = esc_attr( $key );
-			$output .= sprintf( '<option id="wpcc_%s_link" class="%s" value="%s" %s>%s</option>', $safe_key, esc_attr( $wpcc_target_lang == $key ? 'wpcc_current_lang' : 'wpcc_lang' ), $safe_key, $checkSelected( $key ), esc_html( $tip ) );
+			$html .= '<option id="wpcc_' . $safe_key . '_link" class="' . esc_attr( $wpcc_target_lang == $key ? 'wpcc_current_lang' : 'wpcc_lang' ) . '" value="' . $safe_key . '" ' . $checkSelected( $key ) . '>' . esc_html( $tip ) . '</option>';
 		}
-		$output .= sprintf( '</select>' );
+		$html .= '</select>';
 	}
-	$output .= '<!--wpcc_NC_END--></div>' . "\n";
+
+	$html .= '<!--wpcc_NC_END--></div>' . "\n";
 
 	if ( ! $echo || $isReturn ) {
-		return $output;
+		return $html;
 	}
-	echo $output;
+	echo $html;
 }
 
 /**
@@ -668,23 +711,23 @@ function wpcc_output_navi( $args = '', $isReturn = false ) {
 function wpcc_output_navi2() {
 	global $wpcc_target_lang, $wpcc_noconversion_url, $wpcc_langs_urls, $wpcc_options;
 
-	if ( ( $wpcc_options['wpcc_browser_redirect'] == 2 || $wpcc_options['wpcc_use_cookie_variant'] == 2 ) &&
-	     $wpcc_target_lang
-	) {
+	if ( ( ! empty($wpcc_options['wpcc_browser_redirect']) && $wpcc_options['wpcc_browser_redirect'] == 2 ) && $wpcc_target_lang ||
+	     ( ! empty($wpcc_options['wpcc_use_cookie_variant']) && $wpcc_options['wpcc_use_cookie_variant'] == 2 ) && $wpcc_target_lang ) {
 		$default_url = wpcc_link_conversion( $wpcc_noconversion_url, 'zh' );
-		if ( $wpcc_options['wpcc_use_permalink'] != 0 && is_home() && ! is_paged() ) {
+		if ( ! empty($wpcc_options['wpcc_use_permalink']) && is_home() && ! is_paged() ) {
 			$default_url = trailingslashit( $default_url );
 		}
 	} else {
 		$default_url = $wpcc_noconversion_url;
 	}
 
-	$output = "\n" . '<div id="wpcc_widget_inner"><!--wpcc_NC_START-->' . "\n";
-	$output .= '	<span id="wpcc_original_link" class="' . ( $wpcc_target_lang == false ? 'wpcc_current_lang' : 'wpcc_lang' ) . '" ><a class="wpcc_link" href="' . esc_url( $default_url ) . '" title="' . esc_html( '不转换' ) . '">' . esc_html( '不转换' ) . '</a></span>' . "\n";
-	$output .= '	<span id="wpcc_cn_link" class="' . ( $wpcc_target_lang == 'zh-cn' ? 'wpcc_current_lang' : 'wpcc_lang' ) . '" ><a class="wpcc_link" rel="nofollow" href="' . esc_url( $wpcc_langs_urls['zh-cn'] ) . '" title="' . esc_html( '大陆简体' ) . '" >' . esc_html( '大陆简体' ) . '</a></span>' . "\n";
-	$output .= '	<span id="wpcc_tw_link" class="' . ( $wpcc_target_lang == 'zh-tw' ? 'wpcc_current_lang' : 'wpcc_lang' ) . '"><a class="wpcc_link" rel="nofollow" href="' . esc_url( $wpcc_langs_urls['zh-tw'] ) . '" title="' . esc_html( '台湾正体' ) . '" >' . esc_html( '台湾正体' ) . '</a></span>' . "\n";
-	$output .= '<!--wpcc_NC_END--></div>' . "\n";
-	echo $output;
+	$html = "\n" . '<div id="wpcc_widget_inner"><!--wpcc_NC_START-->' . "\n";
+	$__nofollow2 = ( preg_match( '/\/zh\//i', $default_url ) || preg_match( '/(?:[?&])variant=zh(?:&|$)/i', $default_url ) ) ? ' rel="nofollow"' : '';
+	$html .= '<span id="wpcc_original_link" class="' . ( $wpcc_target_lang == false ? 'wpcc_current_lang' : 'wpcc_lang' ) . '"><a class="wpcc_link"' . $__nofollow2 . ' href="' . esc_url( $default_url ) . '" title="' . esc_html( '不转换' ) . '">' . esc_html( '不转换' ) . '</a></span>' . "\n";
+	$html .= '<span id="wpcc_cn_link" class="' . ( $wpcc_target_lang == 'zh-cn' ? 'wpcc_current_lang' : 'wpcc_lang' ) . '"><a class="wpcc_link" rel="nofollow" href="' . esc_url( $wpcc_langs_urls['zh-cn'] ) . '" title="' . esc_html( '大陆简体' ) . '">' . esc_html( '大陆简体' ) . '</a></span>' . "\n";
+	$html .= '<span id="wpcc_tw_link" class="' . ( $wpcc_target_lang == 'zh-tw' ? 'wpcc_current_lang' : 'wpcc_lang' ) . '"><a class="wpcc_link" rel="nofollow" href="' . esc_url( $wpcc_langs_urls['zh-tw'] ) . '" title="' . esc_html( '台湾正体' ) . '">' . esc_html( '台湾正体' ) . '</a></span>' . "\n";
+	$html .= '<!--wpcc_NC_END--></div>' . "\n";
+	echo $html;
 }
 
 /**
@@ -932,6 +975,10 @@ function wpcc_load_conversion_table() {
  * 执行转换
  */
 function wpcc_do_conversion() {
+	// 当新版核心 WPCC_Main 存在时，跳过旧版全页面转换与过滤器，避免重复执行
+	if ( class_exists( 'WPCC_Main' ) ) {
+		return;
+	}
 	global $wpcc_direct_conversion_flag, $wpcc_options;
 	wpcc_load_conversion_table();
 
@@ -1035,7 +1082,7 @@ function wpcc_header() {
 	echo '</script>';
 
 	if ( ! $wpcc_direct_conversion_flag ) {
-		wp_enqueue_script( 'wpcc-search-js', wpcc_DIR_URL . 'assets/js/search-variant.min.js', array(), '1.1', false );
+wp_enqueue_script( 'wpcc-search-js', wpcc_DIR_URL . 'assets/js/search-variant.min.js', array(), wpcc_VERSION, false );
 	}
 
 	if ( $wpcc_direct_conversion_flag ||
@@ -1065,7 +1112,7 @@ function wpcc_wrap_nc_markers( $content ) {
 	if ( empty( $content ) || strpos( $content, 'wpc' ) === false ) {
 		return $content;
 	}
-	$pattern = '/<!--wpc(?:c|s)_NC([a-zA-Z0-9]*)_START-->([\s\S]*?)<!--wpc(?:c|s)_NC\\1_END-->/i';
+	$pattern = '/<!--wpc(?:c|s)_NC([a-zA-Z0-9]*)_START-->([\\s\\S]*?)<!--wpc(?:c|s)_NC\1_END-->/i';
 	return preg_replace_callback( $pattern, function( $m ) {
 		$inner = $m[2];
 		return '<span data-wpcc-no-conversion="true">' . $inner . '</span>';
@@ -1246,14 +1293,33 @@ function wpcc_body_class( $classes ) {
  * 语言属性过滤器
  */
 function wpcc_locale( $output, $doctype = 'html' ) {
-	global $wpcc_target_lang, $wpcc_langs;
+	global $wpcc_target_lang, $wpcc_langs, $wp;
 
 	wpcc_init_languages();
 
 	$lang = get_bloginfo( 'language' );
-	if ( $wpcc_target_lang && strpos( $lang, 'zh-' ) === 0 && isset( $wpcc_langs[ $wpcc_target_lang ] ) && isset( $wpcc_langs[ $wpcc_target_lang ][3] ) ) {
+
+	// 仅在“确实处于变体页面”时才覆盖 <html lang>
+	$variant_from_query = '';
+	if ( isset( $wp->query_vars['variant'] ) ) {
+		$variant_from_query = sanitize_text_field( $wp->query_vars['variant'] );
+	}
+	$variant_from_path = '';
+	$path = isset( $wp->request ) ? $wp->request : '';
+	if ( $path && preg_match( '/^(zh-cn|zh-tw|zh-hk|zh-hans|zh-hant|zh-sg|zh|zh-reset)\b/i', $path, $m ) ) {
+		$variant_from_path = strtolower( $m[1] );
+	}
+	$is_variant_request = ( $variant_from_query !== '' ) || ( $variant_from_path !== '' );
+
+	if (
+		$wpcc_target_lang &&
+		$is_variant_request &&
+		strpos( $lang, 'zh-' ) === 0 &&
+		isset( $wpcc_langs[ $wpcc_target_lang ] ) &&
+		isset( $wpcc_langs[ $wpcc_target_lang ][3] )
+	) {
 		$lang = $wpcc_langs[ $wpcc_target_lang ][3];
-		$output = preg_replace( '/lang="[^"]+"/', "lang=\"{$lang}\"", $output );
+		$output = preg_replace( '/lang=\"[^\"]+\"/', "lang=\"{$lang}\"", $output );
 	}
 	return $output;
 }
@@ -1277,7 +1343,7 @@ function wpcc_init_modules() {
 	$module_manager = WPCC_Module_Manager::get_instance();
 
 	$module_manager->register_module( 'WPCC_Cache_Addon', dirname( __FILE__ ) . '/../modules/wpcc-cache-addon.php' );
-	$module_manager->register_module( 'WPCC_Network', dirname( __FILE__ ) . '/../modules/wpcc-network.php' );
+	// $module_manager->register_module( 'WPCC_Network', dirname( __FILE__ ) . '/../modules/wpcc-network.php' ); // 已被新的网络设置模块替代
 	$module_manager->register_module( 'WPCC_Rest_Api', dirname( __FILE__ ) . '/../modules/wpcc-rest-api.php' );
 	$module_manager->register_module( 'WPCC_Modern_Cache', dirname( __FILE__ ) . '/../modules/wpcc-modern-cache.php' );
 	$module_manager->register_module( 'WPCC_SEO_Enhancement', dirname( __FILE__ ) . '/../modules/wpcc-seo-enhancement.php' );
@@ -1322,6 +1388,33 @@ function variant( $default = false ) {
 add_shortcode( 'wp-chinese-converter', 'wp_chinese_converter_shortcode' );
 add_filter( "body_class", "wpcc_body_class" );
 add_filter( 'language_attributes', 'wpcc_locale' );
+
+// 兜底层兜底：在未启用新内核时，显式将根级变体规则置于顶端，避免 /zh-xx/ 404
+if ( ! class_exists( 'WPCC_Main' ) ) {
+    add_action( 'init', function() {
+        global $wpcc_options;
+        if ( empty( $wpcc_options ) || empty( $wpcc_options['wpcc_use_permalink'] ) ) {
+            return;
+        }
+        $enabled = isset( $wpcc_options['wpcc_used_langs'] ) && is_array( $wpcc_options['wpcc_used_langs'] ) ? $wpcc_options['wpcc_used_langs'] : [];
+        if ( empty( $enabled ) ) {
+            return;
+        }
+        $reg = implode( '|', array_map( 'preg_quote', $enabled ) );
+        if ( function_exists( 'add_rewrite_rule' ) ) {
+            // 多次尝试添加规则，确保优先级
+            add_rewrite_rule( '^(' . $reg . '|zh|zh-reset)/?$', 'index.php?variant=$matches[1]', 'top' );
+            
+            // 添加钩子确保规则被正确处理
+            add_filter( 'rewrite_rules_array', function( $rules ) use ( $reg ) {
+                $new_rules = [];
+                $root_rule = '^(' . $reg . '|zh|zh-reset)/?$';
+                $new_rules[ $root_rule ] = 'index.php?variant=$matches[1]';
+                return array_merge( $new_rules, $rules );
+            }, 1 ); // 最高优先级
+        }
+    }, 1 );
+}
 
 // 初始化小部件
 if ( ! empty( $wpcc_options ) && is_array( $wpcc_options ) && is_array( $wpcc_options['wpcc_used_langs'] ) ) {

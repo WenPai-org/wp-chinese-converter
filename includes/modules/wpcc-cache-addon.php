@@ -10,7 +10,7 @@ class WPCC_Cache_Addon extends WPCC_Abstract_Module {
 	
 	public function init() {
 		$this->name = 'Cache Addon';
-		$this->version = '2.0.0';
+		$this->version = '1.4';
 		$this->description = '缓存插件兼容性模块，支持多种缓存插件';
 		$this->dependencies = array();
 		

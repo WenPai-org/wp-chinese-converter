@@ -11,6 +11,10 @@ class wpcc_Admin
     private $langs = false;
     private string $url = "";
     private $admin_lang = false;
+    
+    private array $network_controlled_options = [];
+    private bool $is_network_enforced = false;
+    private array $network_options = [];
 
     // 移除旧式构造函数，只使用 __construct
 
@@ -43,6 +47,10 @@ class wpcc_Admin
         }
         $this->langs = &$wpcc_langs;
         $this->options = $wpcc_options;
+        
+        // 初始化网络控制
+        $this->init_network_control();
+        
         if (empty($this->options)) {
             $this->options = [
                 // 语言与标签
@@ -98,6 +106,7 @@ class wpcc_Admin
         }
 
         $this->clean_invalid_langs();
+
         update_wpcc_option("wpcc_options", $this->options);
 
         $this->base = plugin_basename(dirname(__FILE__)) . "/";
@@ -109,7 +118,8 @@ class wpcc_Admin
             $this->url = admin_url("options-general.php?page=" . $page_slug);
         }
 
-        if (is_multisite() && wpcc_mobile_exist("network")) {
+        if (is_multisite() && is_network_admin() && wpcc_mobile_exist("network")) {
+            // 网络管理界面菜单（实际网络设置页面由 WPCC_Network_Settings 提供，此处保持入口一致）
             add_submenu_page(
                 "settings.php",
                 "WP Chinese Converter",
@@ -118,14 +128,18 @@ class wpcc_Admin
                 $page_slug,
                 [&$this, "display_options"],
             );
-        } else {
-            add_options_page(
-                "WP Chinese Converter",
-                "WP Chinese Converter",
-                "manage_options",
-                $page_slug,
-                [&$this, "display_options"],
-            );
+        } elseif (!is_network_admin()) {
+            // 子站点菜单：当未启用强制网络管理时显示
+            $network_enforced = is_multisite() ? (int) get_site_option('wpcc_network_enforce', 0) : 0;
+            if (!$network_enforced) {
+                add_options_page(
+                    "WP Chinese Converter",
+                    "WP Chinese Converter",
+                    "manage_options",
+                    $page_slug,
+                    [&$this, "display_options"],
+                );
+            }
         }
 
         wp_enqueue_script("jquery");
@@ -238,7 +252,7 @@ class wpcc_Admin
                 dirname(dirname(__DIR__)) . "/wp-chinese-converter.php",
             ) . "assets/admin/admin.css",
             [],
-            "2.0.0",
+            wpcc_VERSION,
         );
 
         wp_enqueue_script(
@@ -247,7 +261,7 @@ class wpcc_Admin
                 dirname(dirname(__DIR__)) . "/wp-chinese-converter.php",
             ) . "assets/admin/admin.js",
             ["jquery"],
-            "2.0.0",
+            wpcc_VERSION,
             true,
         );
 
@@ -402,35 +416,42 @@ class wpcc_Admin
 
         // 只更新表单中实际提交的字段
 
-        // 语言设置
-        if (
-            isset($_POST["wpcco_variant_zh-cn"]) ||
-            isset($_POST["wpcco_variant_zh-tw"]) ||
-            isset($_POST["wpcco_variant_zh-hk"])
-        ) {
-            $langs = [];
-            if (is_array($this->langs)) {
-                foreach ($this->langs as $key => $value) {
-                    if (isset($_POST["wpcco_variant_" . $key])) {
-                        $langs[] = $key;
-                    }
+        // 确保关键字段存在默认值，防止未定义键产生警告
+        if (!is_array($options)) { $options = []; }
+        if (!isset($options['wpcc_use_permalink'])) { $options['wpcc_use_permalink'] = 0; }
+        if (!isset($this->options['wpcc_use_permalink'])) { $this->options['wpcc_use_permalink'] = 0; }
+        if (!isset($options['wpcc_used_langs']) || !is_array($options['wpcc_used_langs'])) { $options['wpcc_used_langs'] = []; }
+        if (!isset($this->options['wpcc_used_langs']) || !is_array($this->options['wpcc_used_langs'])) { $this->options['wpcc_used_langs'] = []; }
+
+        // 语言设置：总是基于提交的 wpcco_variant_* 重建已启用语言，避免部分站点无法保存
+        $langs = [];
+        if (is_array($this->langs)) {
+            foreach ($this->langs as $key => $value) {
+                if (isset($_POST["wpcco_variant_" . $key])) {
+                    $langs[] = $key;
                 }
             }
-            $options["wpcc_used_langs"] = $langs;
         }
+        $options["wpcc_used_langs"] = $langs;
 
         // 复选框字段（未选中时不会在POST中出现）
         $checkbox_fields = [
+            // 同时兼容两种命名（历史与现用）
             "wpcco_use_fullpage_conversion" => "wpcc_use_fullpage_conversion",
+            "wpcc_use_fullpage_conversion" => "wpcc_use_fullpage_conversion",
             "wpcco_use_sitemap" => "wpcco_use_sitemap",
+            // 支持两种命名（历史兼容）：wpcco_* 与 wpcc_*
             "wpcco_auto_language_recong" => "wpcc_auto_language_recong",
+            "wpcc_auto_language_recong" => "wpcc_auto_language_recong",
             "wpcc_enable_cache_addon" => "wpcc_enable_cache_addon",
             "wpcc_enable_network_module" => "wpcc_enable_network_module",
             "wpcc_enable_hreflang_tags" => "wpcc_enable_hreflang_tags",
+            "wpcc_enable_hreflang_x_default" => "wpcc_enable_hreflang_x_default",
             "wpcc_enable_schema_conversion" => "wpcc_enable_schema_conversion",
             "wpcc_enable_meta_conversion" => "wpcc_enable_meta_conversion",
             "wpcc_show_more_langs" => "wpcc_show_more_langs",
             "wpcc_no_conversion_qtag" => "wpcc_no_conversion_qtag",
+            "wpcc_no_conversion_ja" => "wpcc_no_conversion_ja",
             "wpcc_enable_post_conversion" => "wpcc_enable_post_conversion",
         ];
 
@@ -445,9 +466,13 @@ class wpcc_Admin
             "wpcco_no_conversion_tip" => "nctip",
             "wpcc_engine" => "wpcc_engine",
             "wpcco_search_conversion" => "wpcc_search_conversion",
+            // 支持两种命名（历史兼容）：wpcco_* 与 wpcc_*
             "wpcco_browser_redirect" => "wpcc_browser_redirect",
+            "wpcc_browser_redirect" => "wpcc_browser_redirect",
             "wpcco_use_cookie_variant" => "wpcc_use_cookie_variant",
+            "wpcc_use_cookie_variant" => "wpcc_use_cookie_variant",
             "wpcco_use_permalink" => "wpcc_use_permalink",
+            "wpcc_use_permalink" => "wpcc_use_permalink",
             "wpcco_sitemap_post_type" => "wpcco_sitemap_post_type",
             "wpcc_hreflang_x_default" => "wpcc_hreflang_x_default",
             "wpcc_post_conversion_target" => "wpcc_post_conversion_target",
@@ -482,6 +507,11 @@ class wpcc_Admin
             }
         }
 
+        // 兼容旧字段：当表单提交了 wpcc_flag_option 时，将其映射为 wpcc_translate_type
+        if (isset($_POST['wpcc_flag_option'])) {
+            $options['wpcc_translate_type'] = intval($_POST['wpcc_flag_option']);
+        }
+
         if (is_array($this->langs)) {
             foreach ($this->langs as $lang => $value) {
                 if (
@@ -495,6 +525,22 @@ class wpcc_Admin
             }
         }
 
+        // 根据本地“显示更多语言”与引擎裁剪启用语言，防止未启用的扩展语言（如 zh-sg）误入站点配置
+        $enable_more = isset($options['wpcc_show_more_langs']) ? (int)$options['wpcc_show_more_langs'] : 1;
+        if (! $enable_more) {
+            $base_langs = array('zh-cn','zh-tw','zh-hk');
+            $options['wpcc_used_langs'] = array_values(array_intersect($options['wpcc_used_langs'], $base_langs));
+        }
+        // 非 OpenCC 引擎移除 zh-jp
+        $engine = isset($options['wpcc_engine']) ? $options['wpcc_engine'] : 'opencc';
+        if ($engine !== 'opencc') {
+            $options['wpcc_used_langs'] = array_values(array_diff($options['wpcc_used_langs'], array('zh-jp')));
+        }
+        // 至少保留一种语言
+        if (empty($options['wpcc_used_langs'])) {
+            $options['wpcc_used_langs'] = array('zh-cn');
+        }
+
         if (
             $this->get_cache_status() == 2 &&
             empty($options["wpcc_browser_redirect"]) &&
@@ -506,12 +552,14 @@ class wpcc_Admin
         $wpcc_options = $options;
         $need_flush_rules = false;
 
+        $current_permalink = isset($this->options["wpcc_use_permalink"]) ? (int) $this->options["wpcc_use_permalink"] : 0;
+        $new_permalink = isset($options["wpcc_use_permalink"]) ? (int) $options["wpcc_use_permalink"] : 0;
+        $current_langs = isset($this->options["wpcc_used_langs"]) && is_array($this->options["wpcc_used_langs"]) ? $this->options["wpcc_used_langs"] : [];
+        $new_langs = isset($options["wpcc_used_langs"]) && is_array($options["wpcc_used_langs"]) ? $options["wpcc_used_langs"] : [];
+
         if (
-            $this->options["wpcc_use_permalink"] !=
-                $options["wpcc_use_permalink"] ||
-            ($this->options["wpcc_use_permalink"] != 0 &&
-                $this->options["wpcc_used_langs"] !=
-                    $options["wpcc_used_langs"])
+            $current_permalink !== $new_permalink ||
+            ($current_permalink !== 0 && $current_langs != $new_langs)
         ) {
             if (!has_filter("rewrite_rules_array", "wpcc_rewrite_rules")) {
                 add_filter("rewrite_rules_array", "wpcc_rewrite_rules");
@@ -533,6 +581,8 @@ class wpcc_Admin
         if ($need_flush_rules) {
             $wp_rewrite->flush_rules();
         }
+
+        // 网络设置交由 WPCC_Network_Settings 统一管理，此处不再重复保存以避免冲突
 
         update_wpcc_option("wpcc_options", $options);
 
@@ -614,5 +664,72 @@ class wpcc_Admin
         }
 
         wp_send_json_success(["message" => "已优化 {$optimized} 个数据表"]);
+    }
+
+    /**
+     * 初始化网络控制
+     */
+    private function init_network_control() {
+        if (!is_multisite()) {
+            return;
+        }
+
+        // 获取网络控制的选项
+        $this->network_controlled_options = get_site_option('wpcc_network_controlled_options', []);
+        $this->is_network_enforced = get_site_option('wpcc_network_enforce', false);
+        
+        // 如果启用了网络强制模式，获取网络选项值
+        if ($this->is_network_enforced) {
+            $this->network_options = get_site_option('wpcc_network_options', []);
+            $this->apply_network_options();
+        }
+    }
+
+    /**
+     * 应用网络选项值
+     */
+    private function apply_network_options() {
+        foreach ($this->network_controlled_options as $option_name) {
+            if (isset($this->network_options[$option_name])) {
+                $this->options[$option_name] = $this->network_options[$option_name];
+            }
+        }
+    }
+
+    /**
+     * 检查选项是否被网络控制
+     */
+    public function is_option_controlled($option_name) {
+        if (!is_multisite()) {
+            return false;
+        }
+        return in_array($option_name, $this->network_controlled_options);
+    }
+
+    /**
+     * 获取字段属性（用于禁用网络控制的字段）
+     */
+    public function get_field_attributes($option_name) {
+        if ($this->is_option_controlled($option_name)) {
+            return 'disabled="disabled" title="此选项由网络管理员控制"';
+        }
+        return '';
+    }
+
+    /**
+     * 获取网络控制提示
+     */
+    public function get_network_controlled_notice($option_name) {
+        if ($this->is_option_controlled($option_name)) {
+            return '<p class="description" style="color: #d63638;"><strong>此选项由网络管理员统一控制，无法在子站点修改。</strong></p>';
+        }
+        return '';
+    }
+
+    /**
+     * 检查是否为网络强制模式
+     */
+    public function is_network_enforced() {
+        return $this->is_network_enforced;
     }
 }

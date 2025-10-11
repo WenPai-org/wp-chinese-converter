@@ -26,11 +26,12 @@
 
 .wpcc-lang-item .wpcc-link {
     display: inline-block;
-    padding: 4px 8px;
+    padding: 4px 10px;
     background: #0073aa;
     color: #fff;
     text-decoration: none;
     border: 1px solid #0073aa;
+    border-radius: 5px;
     font-size: 13px;
 }
 
@@ -115,11 +116,11 @@
         align-items: stretch;
         gap: 6px;
     }
-    
+
     .wpcc-lang-item {
         width: 100%;
     }
-    
+
     .wpcc-lang-item .wpcc-link {
         padding: 8px 12px;
         font-size: 14px;
@@ -127,7 +128,7 @@
         width: 100%;
         box-sizing: border-box;
     }
-    
+
     .wpcc-dropdown-switcher {
         width: 100%;
         padding: 8px 12px;

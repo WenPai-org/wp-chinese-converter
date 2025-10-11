@@ -36,14 +36,14 @@ class WPCC_Blocks {
     public function enqueue_block_editor_assets() {
         // 确保wpcc-variant脚本已加载
         if ( ! wp_script_is( 'wpcc-variant', 'registered' ) ) {
-            wp_register_script( 'wpcc-variant', plugins_url( 'assets/dist/wpcc-variant.umd.js', dirname( dirname( __FILE__ ) ) ), array(), '1.1.0' );
+            wp_register_script( 'wpcc-variant', plugins_url( 'assets/dist/wpcc-variant.umd.js', dirname( dirname( __FILE__ ) ) ), array(), wpcc_VERSION );
         }
 
         wp_enqueue_style(
             'wpcc-blocks-editor',
             plugins_url( 'assets/css/blocks-editor.css', dirname( dirname( __FILE__ ) ) ),
             array(),
-            '1.0.0'
+            wpcc_VERSION
         );
 
         // 兼容层：为编辑器注册旧占位文本的 deprecated 版本，避免校验失败
@@ -51,7 +51,7 @@ class WPCC_Blocks {
             'wpcc-block-compat',
             plugins_url( 'assets/js/wpcc-block-compat.js', dirname( dirname( __FILE__ ) ) ),
             array( 'wp-blocks', 'wp-element', 'wp-block-editor', 'wp-hooks' ),
-            '1.0.0',
+wpcc_VERSION,
             true
         );
 
@@ -85,7 +85,7 @@ class WPCC_Blocks {
     public function enqueue_frontend_assets() {
         // 确保wpcc-variant脚本已加载
         if ( ! wp_script_is( 'wpcc-variant', 'registered' ) ) {
-            wp_register_script( 'wpcc-variant', plugins_url( 'assets/dist/wpcc-variant.umd.js', dirname( dirname( __FILE__ ) ) ), array(), '1.1.0' );
+            wp_register_script( 'wpcc-variant', plugins_url( 'assets/dist/wpcc-variant.umd.js', dirname( dirname( __FILE__ ) ) ), array(), wpcc_VERSION );
         }
 
         // 为前端状态指示器的 dashicons 图标提供样式支持
@@ -95,14 +95,17 @@ class WPCC_Blocks {
             'wpcc-blocks-frontend',
             plugins_url( 'assets/css/blocks-frontend.css', dirname( dirname( __FILE__ ) ) ),
             array(),
-            '1.0.0'
+            wpcc_VERSION
         );
 
+        // 使用文件修改时间作为版本号，避免浏览器缓存导致逻辑不更新
+        $blocks_front_js = plugin_dir_path( dirname( __FILE__ ) ) . 'assets/js/blocks-frontend.js';
+        $blocks_front_ver = file_exists( $blocks_front_js ) ? filemtime( $blocks_front_js ) : wpcc_VERSION;
         wp_enqueue_script(
             'wpcc-blocks-frontend',
             plugins_url( 'assets/js/blocks-frontend.js', dirname( dirname( __FILE__ ) ) ),
             array( 'wpcc-variant' ),
-            '1.0.0',
+            $blocks_front_ver,
             true
         );
         

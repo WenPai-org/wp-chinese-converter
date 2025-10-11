@@ -317,6 +317,29 @@
     max-width: 120px;
 }
 
+/* Disabled state styling for network-controlled or engine-restricted options */
+.wpcc-disabled,
+.wpcc-disabled * {
+    opacity: 0.6 !important;
+    cursor: not-allowed !important;
+}
+
+.wpcc-disabled .wpcc-slider {
+    background-color: #e0e0e0 !important;
+}
+
+.wpcc-disabled .wpcc-slider:before {
+    background-color: #f5f5f5 !important;
+}
+
+input[disabled] + .wpcc-slider {
+    background-color: #e0e0e0 !important;
+}
+
+input[disabled] + .wpcc-slider:before {
+    background-color: #f5f5f5 !important;
+}
+
 @media (max-width: 768px) {
     .wpcc-sync-tabs {
         flex-direction: column;
@@ -556,3 +579,193 @@
     text-decoration: none;
 }
 
+/* 网络管理提示样式 */
+.wpcc-network-notice {
+    margin: 10px 0 20px 0;
+    padding: 12px 15px;
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    border-radius: 4px;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.wpcc-network-notice p {
+    margin: 0;
+    color: #856404;
+}
+
+.wpcc-network-notice p:not(:last-child) {
+    margin-bottom: 8px;
+}
+
+.wpcc-network-notice .dashicons {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    vertical-align: text-top;
+    margin-right: 4px;
+    color: #856404;
+}
+
+.wpcc-network-notice a {
+    color: #856404;
+    text-decoration: underline;
+}
+
+.wpcc-network-notice a:hover {
+    color: #533f03;
+    text-decoration: none;
+}
+
+.wpcc-network-notice strong {
+    font-weight: 600;
+    color: #533f03;
+}
+
+.wpcc-network-notice em {
+    font-style: normal;
+    opacity: 0.9;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .wpcc-network-notice {
+        margin: 15px 0;
+        padding: 10px 12px;
+        font-size: 12px;
+    }
+    
+    .wpcc-network-notice .dashicons {
+        font-size: 12px;
+        width: 12px;
+        height: 12px;
+    }
+}
+
+/* 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+    .wpcc-network-notice {
+        background: #2c2611;
+        border-left-color: #d4a017;
+    }
+    
+    .wpcc-network-notice p,
+    .wpcc-network-notice .dashicons {
+        color: #f4d03f;
+    }
+    
+    .wpcc-network-notice strong {
+        color: #f7dc6f;
+    }
+    
+    .wpcc-network-notice a {
+        color: #f4d03f;
+    }
+    
+    .wpcc-network-notice a:hover {
+        color: #f7dc6f;
+    }
+}/* Disab
+led 字段样式 */
+.wpcc-switch.wpcc-disabled {
+    opacity: 0.6;
+    pointer-events: none;
+    cursor: not-allowed;
+}
+
+.wpcc-switch.wpcc-disabled .wpcc-slider {
+    background-color: #ddd;
+    cursor: not-allowed;
+}
+
+.wpcc-switch.wpcc-disabled .wpcc-switch-label {
+    color: #999;
+    cursor: not-allowed;
+}
+
+.wpcc-radio input[disabled] + .wpcc-radio-label {
+    color: #999;
+    cursor: not-allowed;
+}
+
+input[disabled].wpcc-input,
+select[disabled].wpcc-select,
+textarea[disabled].wpcc-textarea {
+    background-color: #f5f5f5;
+    color: #999;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+
+
+/* 网络控
+制禁用状态样式 */
+.wpcc-switch.wpcc-disabled {
+    opacity: 0.6;
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+}
+
+.wpcc-switch.wpcc-disabled input[type="checkbox"] {
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+}
+
+.wpcc-switch.wpcc-disabled .wpcc-slider {
+    background-color: #ddd !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+}
+
+.wpcc-switch.wpcc-disabled .wpcc-switch-label {
+    color: #999 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+}
+
+.wpcc-switch.wpcc-disabled input[type="checkbox"]:checked + .wpcc-slider {
+    background-color: #ccc !important;
+}
+
+.wpcc-switch.wpcc-disabled input[type="checkbox"]:checked + .wpcc-slider:before {
+    background-color: #f0f0f0 !important;
+}
+
+/* 网络控制区域样式 */
+.wpcc-network-controlled {
+    opacity: 0.6;
+    pointer-events: none !important;
+}
+
+.wpcc-network-controlled select,
+.wpcc-network-controlled input,
+.wpcc-network-controlled textarea {
+    background-color: #f5f5f5 !important;
+    color: #999 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+}
+
+/* 网络控制提示样式 */
+.wpcc-network-notice {
+    margin: 10px 0;
+    padding: 10px 12px;
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    border-radius: 4px;
+}
+
+.wpcc-network-notice p {
+    margin: 0;
+    color: #856404;
+}
+
+.wpcc-network-notice .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    vertical-align: text-top;
+}

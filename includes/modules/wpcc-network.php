@@ -10,14 +10,15 @@ class WPCC_Network extends WPCC_Abstract_Module {
 	
 	public function init() {
 		$this->name = 'Network Multisite';
-		$this->version = '1.0.0';
+		$this->version = '1.4';
 		$this->description = '多站点网络支持模块';
 		$this->dependencies = array(
 			array( 'type' => 'function', 'name' => 'is_multisite' )
 		);
 		
 		if ( $this->is_enabled() && is_multisite() ) {
-			add_action( 'network_admin_menu', array( $this, 'add_network_admin_menu' ) );
+			// 移除重复的网络管理菜单注册，使用主要的wp-chinese-converter菜单
+			// add_action( 'network_admin_menu', array( $this, 'add_network_admin_menu' ) );
 			add_action( 'wpmu_new_blog', array( $this, 'setup_new_site' ), 10, 6 );
 			add_action( 'wp_initialize_site', array( $this, 'initialize_site_settings' ) );
 		}
@@ -138,7 +139,7 @@ class WPCC_Network extends WPCC_Abstract_Module {
 		$this->setup_new_site( $new_site->blog_id, 0, '', '', 0, array() );
 	}
 	
-	private function display_sites_status() {
+	public function display_sites_status() {
 		$sites = get_sites( array( 'number' => 50 ) );
 		
 		echo '<table class="wp-list-table widefat fixed striped">';
@@ -166,19 +167,10 @@ class WPCC_Network extends WPCC_Abstract_Module {
 		echo '</tbody></table>';
 	}
 	
-	public function sync_settings_to_all_sites( $settings ) {
-		$sites = get_sites();
-		
-		foreach ( $sites as $site ) {
-			switch_to_blog( $site->blog_id );
-			
-			$current_options = get_option( 'wpcc_options', array() );
-			$updated_options = array_merge( $current_options, $settings );
-			update_option( 'wpcc_options', $updated_options );
-			
-			restore_current_blog();
-		}
-	}
+	// 同步功能已移至网络设置统一管理
+	// public function sync_settings_to_all_sites( $settings ) {
+	//     // 此功能已由网络管理模块统一处理
+	// }
 	
 	public function get_network_statistics() {
 		$sites = get_sites();

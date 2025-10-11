@@ -1,13 +1,100 @@
 <?php
 
 /**
- * WP Chinese Converter - Admin Functions
+ * WP Chinese Converter Admin Panel Functions
  *
- * 包含所有后台管理相关功能
+ * 管理后台相关功能
  *
  * @package WPChineseConverter
- * @version 1.2.0
+ * @version 1.4
  */
+
+// 添加管理员功能：手动刷新重写规则
+add_action( 'wp_ajax_wpcc_flush_rewrite_rules', 'wpcc_ajax_flush_rewrite_rules' );
+function wpcc_ajax_flush_rewrite_rules() {
+    // 权限检查
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_die( '无权限操作' );
+    }
+    
+    // 验证nonce
+    if ( ! wp_verify_nonce( $_POST['nonce'], 'wpcc_admin_nonce' ) ) {
+        wp_die( '安全验证失败' );
+    }
+    
+    // 刷新重写规则
+    flush_rewrite_rules( false );
+    update_option( 'wpcc_rewrite_autoflush_ts', time() );
+    
+    wp_send_json_success( '重写规则已刷新' );
+}
+
+// 添加管理面板提示
+add_action( 'admin_notices', 'wpcc_rewrite_rules_notice' );
+function wpcc_rewrite_rules_notice() {
+    // 仅在WPCC设置页面显示
+    $screen = get_current_screen();
+    if ( ! $screen || strpos( $screen->id, 'wpcc' ) === false ) {
+        return;
+    }
+    
+    global $wpcc_options;
+    if ( empty( $wpcc_options['wpcc_use_permalink'] ) ) {
+        return;
+    }
+    
+    // 检查是否存在语言规则
+    $rules = get_option( 'rewrite_rules', [] );
+    $enabled_langs = $wpcc_options['wpcc_used_langs'] ?? [];
+    if ( empty( $enabled_langs ) ) {
+        return;
+    }
+    
+    $reg = implode( '|', $enabled_langs );
+    $expected = '^(' . $reg . '|zh|zh-reset)/?$';
+    $has_rule = false;
+    
+    foreach ( $rules as $regex => $query ) {
+        if ( $regex === $expected && strpos( $query, 'variant=' ) !== false ) {
+            $has_rule = true;
+            break;
+        }
+    }
+    
+    if ( ! $has_rule ) {
+        echo '<div class="notice notice-warning is-dismissible">';
+        echo '<p><strong>WP Chinese Converter:</strong> 检测到语言重写规则可能未正确配置，这可能导致语言主页404错误。 ';
+        echo '<a href="#" id="wpcc-flush-rules" class="button button-secondary">刷新重写规则</a></p>';
+        echo '</div>';
+        
+        // 添加JavaScript
+        echo '<script type="text/javascript">
+jQuery(document).ready(function($) {
+    $("#wpcc-flush-rules").on("click", function(e) {
+        e.preventDefault();
+        var button = $(this);
+        button.prop("disabled", true).text("刷新中...");
+        
+        $.post(ajaxurl, {
+            action: "wpcc_flush_rewrite_rules",
+            nonce: "' . wp_create_nonce( 'wpcc_admin_nonce' ) . '"
+        }, function(response) {
+            if (response.success) {
+                button.closest(".notice").fadeOut();
+                $(".wrap h1").after("<div class=\"notice notice-success is-dismissible\"><p>重写规则已成功刷新！请测试语言主页是否能正常访问。</p></div>");
+            } else {
+                alert("刷新失败：" + response.data);
+                button.prop("disabled", false).text("刷新重写规则");
+            }
+        }).fail(function() {
+            alert("请求失败，请稍后再试");
+            button.prop("disabled", false).text("刷新重写规则");
+        });
+    });
+});
+</script>';
+    }
+}
 
 // 防止直接访问
 if ( ! defined( 'ABSPATH' ) ) {
@@ -19,7 +106,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 function wpcc_admin_init() {
 	global $wpcc_admin;
-	require_once __DIR__ . '/admin/wp-chinese-converter-admin.php';
+	require_once __DIR__ . '/admin/class-wpcc-admin.php';
 	$wpcc_admin = new wpcc_Admin();
 	add_filter( 'plugin_action_links', array( $wpcc_admin, 'action_links' ), 10, 2 );
 }
@@ -86,11 +173,11 @@ function wpcc_appthemes_add_quicktags() {
             //<![CDATA[
             jQuery(document).ready(function($) {
                 if (typeof QTags !== 'undefined' && QTags.addButton) {
-QTags.addButton('eg_wpcc_nc', 'wpcc_NC', '[wpcc_nc]', '[/wpcc_nc]', null, 'WP Chinese Converter: Insert no-convert markers', 120);
+                    QTags.addButton('eg_wpcc_nc', 'wpcc_NC', '[wpcc_nc]', '[/wpcc_nc]', null, 'WP Chinese Converter: Insert no-convert markers', 120);
                 } else {
                     setTimeout(function() {
                         if (typeof QTags !== 'undefined' && QTags.addButton) {
-                            QTags.addButton('eg_wpcc_nc', 'wpcc_NC', '<!--wpcc_NC_START-->', '<!--wpcc_NC_END-->', null, 'WP Chinese Converter: Insert no-convert markers', 120);
+                            QTags.addButton('eg_wpcc_nc', 'wpcc_NC', '[wpcc_nc]', '[/wpcc_nc]', null, 'WP Chinese Converter: Insert no-convert markers', 120);
                         }
                     }, 100);
                 }
@@ -211,31 +298,13 @@ function wpcc_add_conversion_meta_box() {
 
 /**
  * 获取语言模块配置
+ * 使用中心化的语言配置管理
  */
 function wpcc_get_language_config() {
 	global $wpcc_options;
 	
-	$default_names = array(
-		'zh-cn' => '中国大陆',
-		'zh-tw' => '台湾正体',
-		'zh-hk' => '港澳繁体',
-		'zh-hans' => '简体中文',
-		'zh-hant' => '繁体中文',
-		'zh-sg' => '马新简体',
-		'zh-jp' => '日式汉字'
-	);
-	
-	$custom_names = array(
-		'zh-cn' => $wpcc_options['cntip'] ?? $default_names['zh-cn'],
-		'zh-tw' => $wpcc_options['twtip'] ?? $default_names['zh-tw'],
-		'zh-hk' => $wpcc_options['hktip'] ?? $default_names['zh-hk'],
-		'zh-hans' => $wpcc_options['hanstip'] ?? $default_names['zh-hans'],
-		'zh-hant' => $wpcc_options['hanttip'] ?? $default_names['zh-hant'],
-		'zh-sg' => $wpcc_options['sgtip'] ?? $default_names['zh-sg'],
-		'zh-jp' => $wpcc_options['jptip'] ?? $default_names['zh-jp']
-	);
-	
-	return $custom_names;
+	// 使用中心化的语言配置
+	return WPCC_Language_Config::get_custom_names( $wpcc_options );
 }
 
 /**
@@ -361,8 +430,10 @@ function my_ajax_clear_cache_handler() {
 
 
 // 注册管理钩子
+// 注意：网络管理菜单现在由 wpcc-network-settings.php 处理
 if ( is_multisite() && wpcc_mobile_exist( 'network' ) ) {
-	add_action( 'network_admin_menu', 'wpcc_admin_init' );
+	// add_action( 'network_admin_menu', 'wpcc_admin_init' ); // 已被新的网络设置模块替代
+	add_action( 'admin_menu', 'wpcc_admin_init' );
 } else {
 	add_action( 'admin_menu', 'wpcc_admin_init' );
 }
@@ -372,6 +443,31 @@ register_activation_hook( dirname( __DIR__ ) . '/wp-chinese-converter.php', 'wpc
 
 // 注册编辑器增强钩子
 add_action( 'admin_print_footer_scripts', 'wpcc_appthemes_add_quicktags' );
+
+// TinyMCE 可视化编辑器按钮（仅在开启“快速标签”选项时添加按钮；短代码始终可用）
+function wpcc_register_tinymce_plugin( $plugins ) {
+    global $wpcc_options;
+    if ( empty( $wpcc_options ) ) {
+        $wpcc_options = get_wpcc_option( 'wpcc_options' );
+    }
+    // 仅当设置开启时添加按钮脚本
+    if ( ! empty( $wpcc_options['wpcc_no_conversion_qtag'] ) ) {
+        $plugins['wpcc_nc'] = wpcc_DIR_URL . 'assets/js/tinymce-wpcc-nc.js';
+    }
+    return $plugins;
+}
+function wpcc_add_tinymce_button( $buttons ) {
+    global $wpcc_options;
+    if ( empty( $wpcc_options ) ) {
+        $wpcc_options = get_wpcc_option( 'wpcc_options' );
+    }
+    if ( ! empty( $wpcc_options['wpcc_no_conversion_qtag'] ) ) {
+        $buttons[] = 'wpcc_nc';
+    }
+    return $buttons;
+}
+add_filter( 'mce_external_plugins', 'wpcc_register_tinymce_plugin' );
+add_filter( 'mce_buttons', 'wpcc_add_tinymce_button' );
 
 // 注册文章转换钩子
 add_action( 'init', 'wpcc_init_post_conversion' );

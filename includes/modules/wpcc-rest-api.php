@@ -5,7 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 require_once dirname( dirname( __FILE__ ) ) . '/core/abstract-module.php';
-require_once dirname( dirname( __FILE__ ) ) . '/core/class-converter-factory.php';
+require_once dirname( dirname( __FILE__ ) ) . '/core/class-wpcc-converter-factory.php';
 
 class WPCC_Rest_Api extends WPCC_Abstract_Module {
 	
@@ -13,7 +13,7 @@ class WPCC_Rest_Api extends WPCC_Abstract_Module {
 	
 	public function init() {
 		$this->name = 'REST API';
-		$this->version = '1.0.0';
+		$this->version = '1.4';
 		$this->description = 'REST API 接口模块，提供转换服务的 API 端点';
 		$this->dependencies = array(
 			array( 'type' => 'class', 'name' => 'WP_REST_Server' ),

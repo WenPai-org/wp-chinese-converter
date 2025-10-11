@@ -24,11 +24,12 @@
 
 .wpcc-lang-item .wpcc-link {
     display: inline-block;
-    padding: 4px 8px;
+    padding: 4px 10px;
     background: #f0f0f0;
     color: #333;
     text-decoration: none;
     border: 1px solid #ddd;
+    border-radius: 5px;
     font-size: 12px;
 }
 

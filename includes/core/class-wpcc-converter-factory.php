@@ -25,16 +25,16 @@ class WPCC_Converter_Factory {
 	}
 	
 	private static function create_converter( $engine ) {
-		switch ( $engine ) {
-			case 'opencc':
-				require_once dirname( __FILE__ ) . '/class-opencc-converter.php';
-				return new WPCC_OpenCC_Converter();
-				
-			case 'mediawiki':
-			default:
-				require_once dirname( __FILE__ ) . '/class-mediawiki-converter.php';
-				return new WPCC_MediaWiki_Converter();
-		}
+			switch ( $engine ) {
+				case 'opencc':
+					require_once dirname( __FILE__ ) . '/class-wpcc-opencc-converter.php';
+					return new WPCC_OpenCC_Converter();
+					
+				case 'mediawiki':
+				default:
+					require_once dirname( __FILE__ ) . '/class-wpcc-mediawiki-converter.php';
+					return new WPCC_MediaWiki_Converter();
+			}
 	}
 	
 	public static function get_available_engines() {

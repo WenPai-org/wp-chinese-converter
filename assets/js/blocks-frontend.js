@@ -86,8 +86,10 @@ function renderLanguageSwitcher(
 
     if (showNoConversion) {
       const isActive = !currentLang || currentLang === "";
+      const noConvUrl = getNoConversionUrl();
+      const relForNoConv = buildRelAttribute(noConvUrl, openInNewWindow);
       html += `<span class="wpcc-lang-item wpcc-no-conversion ${isActive ? "wpcc-current" : ""}">
-                <a href="${getLanguageUrl("")}" class="wpcc-link"${target}${rel}>${noConversionText}</a>
+                <a href="${noConvUrl}" class="wpcc-link"${target}${relForNoConv}>${noConversionText}</a>
             </span>`;
     }
 
@@ -284,27 +286,117 @@ function getLanguageUrl(langCode) {
   // 优先使用服务端注入的 URL 映射（如可用）
   try {
     if (typeof wpcc_langs_urls === "object" && wpcc_langs_urls) {
+      if (langCode && wpcc_langs_urls[langCode]) {
+        return wpcc_langs_urls[langCode];
+      }
       if (!langCode || langCode === "") {
         if (typeof wpcc_noconversion_url === "string" && wpcc_noconversion_url) {
           return wpcc_noconversion_url;
         }
-      } else if (wpcc_langs_urls[langCode]) {
-        return wpcc_langs_urls[langCode];
       }
     }
   } catch (e) {
     // 忽略映射读取错误，回退到查询参数模式
   }
 
-  // 回退：使用查询参数模式
+  // 回退：使用查询参数模式（并避免重复：/zh-xx/ 与 ?variant=zh-xx 共存）
   const currentUrl = new URL(window.location.href);
+  const pathMatch = currentUrl.pathname.match(/^\/(zh-[a-z]+)(\b|\/)/i);
+
   if (langCode) {
+    // 若当前已处于同一变体路径，则仅移除冗余的 variant 参数，返回干净的漂亮链接
+    if (pathMatch && pathMatch[1].toLowerCase() === langCode.toLowerCase()) {
+      currentUrl.searchParams.delete("variant");
+      return currentUrl.toString();
+    }
     currentUrl.searchParams.set("variant", langCode);
+    return currentUrl.toString();
   } else {
+    // 不转换：尽量去除语言段与冗余参数
     currentUrl.searchParams.delete("variant");
+    if (pathMatch) {
+      // 去掉开头的 /zh-xx 段，回到原始路径
+      currentUrl.pathname = currentUrl.pathname.replace(/^\/(zh-[a-z]+)(\/?)/i, "/");
+    }
+    return currentUrl.toString();
+  }
+}
+
+// 构建“不转换”链接：在变体页面时注入 zh 哨兵以覆盖浏览器/Cookie 策略
+function getNoConversionUrl() {
+  // 基于服务端注入的原始 URL 获取基础地址
+  let baseUrl = (typeof wpcc_noconversion_url === "string" && wpcc_noconversion_url)
+    ? wpcc_noconversion_url
+    : (function() {
+        const u = new URL(window.location.href);
+        // 去除 variant 查询与路径前缀
+        u.searchParams.delete("variant");
+        u.pathname = u.pathname.replace(/^\/(zh-[a-z]+)(\/?)/i, "/");
+        return u.toString();
+      })();
+
+  const currentLang = getCurrentLanguage();
+  if (!currentLang) {
+    return baseUrl; // 已经是不转换
   }
 
-  return currentUrl.toString();
+  // 检测站点使用的链接风格：查询参数 / 后缀 / 前缀
+  const detectStyle = () => {
+    try {
+      if (typeof wpcc_langs_urls === 'object' && wpcc_langs_urls) {
+        for (const k in wpcc_langs_urls) {
+          if (!Object.prototype.hasOwnProperty.call(wpcc_langs_urls, k)) continue;
+          const href = String(wpcc_langs_urls[k] || '');
+          if (/([?&])variant=zh-[a-z]+/i.test(href)) return 'query';
+          const u = new URL(href, window.location.origin);
+          const path = u.pathname;
+          // 前缀: /zh-xx/...  后缀: .../zh-xx/
+          if (/^\/(zh-[a-z]+)(\/|$)/i.test(path)) return 'prefix';
+          if (/(\/)(zh-[a-z]+)\/?$/i.test(path)) return 'suffix';
+        }
+      }
+    } catch (e) {}
+    return 'query';
+  };
+
+  const style = detectStyle();
+  try {
+    const u = new URL(baseUrl);
+    if (style === 'query') {
+      u.searchParams.set('variant', 'zh');
+      return u.toString();
+    }
+    if (style === 'suffix') {
+      // 确保末尾带 /zh/
+      u.pathname = u.pathname.replace(/\/$/, '') + '/zh/';
+      return u.toString();
+    }
+    // prefix
+    // 将路径改为 /zh/ + 原路径
+    u.pathname = u.pathname.replace(/^\/+/, '/');
+    u.pathname = '/zh' + (u.pathname.startsWith('/') ? '' : '/') + u.pathname;
+    // 合并多余斜杠
+    u.pathname = u.pathname.replace(/\/{2,}/g, '/');
+    return u.toString();
+  } catch (e) {
+    // 回退：总是可用的查询参数
+    try {
+      const u2 = new URL(baseUrl);
+      u2.searchParams.set('variant', 'zh');
+      return u2.toString();
+    } catch (_e) {
+      return baseUrl;
+    }
+  }
+}
+
+// 根据链接是否包含 zh 哨兵决定 rel，且兼容新窗口的 noopener noreferrer
+function buildRelAttribute(url, openInNewWindow) {
+  const hasZhSentinel = /\/(?:zh)(?:\b|\/)/i.test(url) || /(?:[?&])variant=zh(?:&|$)/i.test(url);
+  let relParts = [];
+  if (hasZhSentinel) relParts.push('nofollow');
+  if (openInNewWindow) relParts.push('noopener', 'noreferrer');
+  return relParts.length ? ` rel="${Array.from(new Set(relParts)).join(' ')}"` : '';
 }
 
 function handleLanguageChange(langCode, selectElement) {

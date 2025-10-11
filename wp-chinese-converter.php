@@ -6,7 +6,7 @@
  * Author URI: https://wpcc.net
  * Text Domain: wp-chinese-converter
  * Domain Path: /languages
- * Version: 1.3.0
+ * Version: 1.4
  * License: GPLv3 or later
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
  */
@@ -25,7 +25,7 @@
 
 // 基础常量定义
 define("wpcc_DEBUG", false);
-define("wpcc_VERSION", "1.3.0");
+define("wpcc_VERSION", "1.4");
 
 // 插件URL常量
 if (defined("WP_PLUGIN_URL")) {
@@ -60,11 +60,14 @@ use Overtrue\PHPOpenCC\OpenCC;
 use Overtrue\PHPOpenCC\Strategy;
 
 // 载入核心依赖
-require_once dirname(__FILE__) . "/includes/core/class-wpcc-exception-handler.php";
+require_once dirname(__FILE__) .
+    "/includes/core/class-wpcc-exception-handler.php";
 require_once dirname(__FILE__) . "/includes/core/class-wpcc-utils.php";
-require_once dirname(__FILE__) . "/includes/core/class-converter-factory.php";
-require_once dirname(__FILE__) . "/includes/core/class-module-manager.php";
-require_once dirname(__FILE__) . "/includes/core/class-conversion-cache.php";
+require_once dirname(__FILE__) .
+    "/includes/core/class-wpcc-language-config.php";
+require_once dirname(__FILE__) . "/includes/core/class-wpcc-converter-factory.php";
+require_once dirname(__FILE__) . "/includes/core/class-wpcc-module-manager.php";
+require_once dirname(__FILE__) . "/includes/core/class-wpcc-conversion-cache.php";
 require_once dirname(__FILE__) . "/includes/core/class-wpcc-config.php";
 require_once dirname(__FILE__) . "/includes/core/class-wpcc-presets.php";
 require_once dirname(__FILE__) . "/includes/core/class-wpcc-main.php";
@@ -79,18 +82,22 @@ function wpcc_add_global_js()
         "wpcc-variant",
         plugins_url("/assets/dist/wpcc-variant.umd.js", __FILE__),
         [],
-        "1.1.0",
+        wpcc_VERSION,
     );
     wp_register_script(
         "wpcc-block-script-ok",
         plugins_url("/assets/js/wpcc-block-script-ok.js", __FILE__),
         ["wp-blocks", "wp-element", "wpcc-variant"],
-        "1.3.0",
+        wpcc_VERSION,
     );
 
     wp_enqueue_script(["wpcc-variant", "wpcc-block-script-ok"]);
+    $use_permalink_type = 0;
+    if (is_array($wpcc_options) && isset($wpcc_options["wpcc_use_permalink"])) {
+        $use_permalink_type = (int) $wpcc_options["wpcc_use_permalink"];
+    }
     wp_localize_script("wpcc-block-script-ok", "wpc_switcher_use_permalink", [
-        "type" => $wpcc_options["wpcc_use_permalink"],
+        "type" => $use_permalink_type,
     ]);
 }
 
@@ -107,6 +114,16 @@ if (file_exists($modules_dir . "wpcc-sitemap.php")) {
     require_once $modules_dir . "wpcc-sitemap.php";
 }
 
+// 加载网络设置模块
+if (
+    is_multisite() &&
+    file_exists(__DIR__ . "/includes/network/wpcc-network-settings.php")
+) {
+    require_once __DIR__ . "/includes/network/wpcc-network-settings.php";
+    add_action("init", ["WPCC_Network_Settings", "init"]);
+}
+
+
 // 容错处理 - 只有配置正确时才加载功能
 if (
     $wpcc_options != false &&
@@ -116,13 +133,16 @@ if (
     // 加载遗留的核心功能模块（为了向后兼容）
     require_once dirname(__FILE__) . "/includes/wpcc-core.php";
 
+    // 确保核心初始化与查询变量已注册（保证变体参数与重写规则生效）
+    if (!has_action("init", "wpcc_init")) {
+        add_action("init", "wpcc_init");
+    }
+    add_filter("query_vars", "wpcc_insert_query_vars");
+
     // 加载管理后台模块（仅在后台时加载）
     if (is_admin()) {
         require_once dirname(__FILE__) . "/includes/wpcc-admin.php";
     }
-
-    // 新架构已经处理了大部分初始化；移除旧版全局脚本入列以避免重复/冲突
-    // add_action("wp_enqueue_scripts", "wpcc_add_global_js");
 }
 
 /**
@@ -139,11 +159,18 @@ function wpcc_mobile_exist($name)
  */
 function get_wpcc_option($option_name, $default = false)
 {
-    if (is_multisite() && wpcc_mobile_exist("network")) {
-        return get_site_option($option_name, $default);
-    } else {
-        return get_option($option_name, $default);
+    // 使用现代化的配置管理器
+    global $wpcc_main;
+    if ($wpcc_main && method_exists($wpcc_main, "get_config")) {
+        $config = $wpcc_main->get_config();
+        if ($option_name === "wpcc_options") {
+            return $config->get_all_options();
+        }
+        return $config->get_option($option_name, $default);
     }
+
+    // 向后兼容
+    return get_option($option_name, $default);
 }
 
 /**
@@ -151,9 +178,7 @@ function get_wpcc_option($option_name, $default = false)
  */
 function update_wpcc_option($option_name, $option_value)
 {
-    if (is_multisite() && wpcc_mobile_exist("network")) {
-        return update_site_option($option_name, $option_value);
-    } else {
-        return update_option($option_name, $option_value);
-    }
+    // 始终将站点级设置保存到当前站点的 options；
+    // 网络级设置在网络设置模块中使用 update_site_option 专门处理。
+    return update_option($option_name, $option_value);
 }
