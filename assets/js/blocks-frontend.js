@@ -263,7 +263,7 @@ function getCurrentLanguage() {
     return variant;
   }
 
-  const pathMatch = window.location.pathname.match(/\/(zh-[a-z]+)\//);
+  const pathMatch = window.location.pathname.match(/\/(zh(?:-[a-z]+)?)\//i);
   if (pathMatch) {
     return pathMatch[1];
   }
@@ -301,7 +301,7 @@ function getLanguageUrl(langCode) {
 
   // 回退：使用查询参数模式（并避免重复：/zh-xx/ 与 ?variant=zh-xx 共存）
   const currentUrl = new URL(window.location.href);
-  const pathMatch = currentUrl.pathname.match(/^\/(zh-[a-z]+)(\b|\/)/i);
+  const pathMatch = currentUrl.pathname.match(/^\/(zh(?:-[a-z]+)?)(\b|\/)/i);
 
   if (langCode) {
     // 若当前已处于同一变体路径，则仅移除冗余的 variant 参数，返回干净的漂亮链接
@@ -331,7 +331,7 @@ function getNoConversionUrl() {
         const u = new URL(window.location.href);
         // 去除 variant 查询与路径前缀
         u.searchParams.delete("variant");
-        u.pathname = u.pathname.replace(/^\/(zh-[a-z]+)(\/?)/i, "/");
+        u.pathname = u.pathname.replace(/^\/(zh(?:-[a-z]+)?)(\/?)/i, "/");
         return u.toString();
       })();
 
@@ -351,8 +351,8 @@ function getNoConversionUrl() {
           const u = new URL(href, window.location.origin);
           const path = u.pathname;
           // 前缀: /zh-xx/...  后缀: .../zh-xx/
-          if (/^\/(zh-[a-z]+)(\/|$)/i.test(path)) return 'prefix';
-          if (/(\/)(zh-[a-z]+)\/?$/i.test(path)) return 'suffix';
+          if (/^\/(zh(?:-[a-z]+)?)(\/|$)/i.test(path)) return 'prefix';
+          if (/(\/)(zh(?:-[a-z]+)?)\/?$/i.test(path)) return 'suffix';
         }
       }
     } catch (e) {}
@@ -373,8 +373,11 @@ function getNoConversionUrl() {
     }
     // prefix
     // 将路径改为 /zh/ + 原路径
-    u.pathname = u.pathname.replace(/^\/+/, '/');
-    u.pathname = '/zh' + (u.pathname.startsWith('/') ? '' : '/') + u.pathname;
+      u.pathname = u.pathname.replace(/^\/+/, '/');
+      // 避免在已是 /zh/ 的情况下重复添加 /zh
+      if (!/^\/(zh)(\/|$)/i.test(u.pathname)) {
+        u.pathname = '/zh' + (u.pathname.startsWith('/') ? '' : '/') + u.pathname;
+      }
     // 合并多余斜杠
     u.pathname = u.pathname.replace(/\/{2,}/g, '/');
     return u.toString();

@@ -462,7 +462,9 @@ class wpcc_Admin
         // 文本字段和下拉选择框
         $text_fields = [
             "wpcc_translate_type" => "wpcc_translate_type",
+            // 同时兼容两种命名（历史与现用）：wpcco_no_conversion_tag 与 wpcc_no_conversion_tag
             "wpcco_no_conversion_tag" => "wpcc_no_conversion_tag",
+            "wpcc_no_conversion_tag" => "wpcc_no_conversion_tag",
             "wpcco_no_conversion_tip" => "nctip",
             "wpcc_engine" => "wpcc_engine",
             "wpcco_search_conversion" => "wpcc_search_conversion",
@@ -480,7 +482,7 @@ class wpcc_Admin
 
         foreach ($text_fields as $post_field => $option_field) {
             if (isset($_POST[$post_field])) {
-                if ($post_field === "wpcco_no_conversion_tag") {
+                if ($post_field === "wpcco_no_conversion_tag" || $post_field === "wpcc_no_conversion_tag") {
                     $options[$option_field] = trim(
                         $_POST[$post_field],
                         " \t\n\r\0\x0B,|",

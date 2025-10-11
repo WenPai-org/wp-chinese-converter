@@ -200,6 +200,21 @@ class WPCC_Main {
         // 向后兼容：同步全局变量
         $GLOBALS['wpcc_target_lang'] = $target_lang;
         
+        // 若首页为静态页面且请求为根级变体路径，则直接映射到首页，避免 404
+        if ( get_option( 'show_on_front' ) === 'page' && get_option( 'page_on_front' ) ) {
+            $req_path = isset( $wp->request ) ? trim( (string) $wp->request, '/' ) : '';
+            if ( $req_path !== '' ) {
+                $enabled = $this->config->get_enabled_languages();
+                if ( ! empty( $enabled ) ) {
+                    $pattern = '/^(?:' . implode( '|', array_map( 'preg_quote', $enabled ) ) . '|zh|zh-reset)$/i';
+                    if ( preg_match( $pattern, $req_path ) ) {
+                        $wp->query_vars['page_id'] = (int) get_option( 'page_on_front' );
+                        unset( $wp->query_vars['pagename'], $wp->query_vars['name'] );
+                    }
+                }
+            }
+        }
+
         // 处理搜索转换
         $this->handle_search_conversion();
         
@@ -323,15 +338,21 @@ class WPCC_Main {
                 $enabled = $this->config->get_enabled_languages();
                 $pattern = '/^(?:' . implode( '|', array_map( 'preg_quote', $enabled ) ) . '|zh|zh-reset)$/i';
                 if ( preg_match( $pattern, $req ) ) {
+                    // 禁用本次自动重定向（避免将根级变体再次重定向到其它 URL）
+                    if ( method_exists( $this->config, 'set_redirect_to' ) ) {
+                        $this->config->set_redirect_to( false );
+                    }
                     $v = strtolower( $req );
-                    // zh 哨兵：回到不转换首页（并设置 zh 偏好）
+
+                    // 仅 zh/zh-reset 使用哨兵重定向到不转换首页；其它根级变体在当前 URL 下渲染（避免缓存都命中 /）
                     if ( $v === 'zh' || $v === 'zh-reset' ) {
                         $this->handle_zh_redirect();
-                        return; // handle_zh_redirect 内部会 exit
+                        return;
                     }
-                    // 其他语言：统一跳转到站点首页，避免首页 404 或重复内容
-                    wp_redirect( home_url( '/' ), 302 );
-                    exit;
+
+                    // 在根级变体 URL 下渲染首页：由下游 pre_get_posts/filter_request_vars 修正查询为首页
+                    // 注入头部脚本供前端使用
+                    add_action( 'wp_head', [ $this, 'output_header' ] );
                 }
             }
         }
@@ -942,14 +963,28 @@ class WPCC_Main {
      */
     public function cancel_incorrect_redirect( $redirect_to, $redirect_from ) {
         if ( ! is_string( $redirect_to ) || ! is_string( $redirect_from ) ) { return $redirect_to; }
-        if ( preg_match( '/^.*\/(zh-tw|zh-cn|zh-sg|zh-hant|zh-hans|zh-my|zh-mo|zh-hk|zh|zh-reset)\/?.+$/i', $redirect_to ) ) {
+
+        // 如果来源是变体路径（根级或包含变体段），阻止将其规范化到非变体路径（例如首页 /）
+        if ( preg_match( '/\/(zh-tw|zh-cn|zh-sg|zh-hant|zh-hans|zh-my|zh-mo|zh-hk|zh|zh-reset)(\/|$)/i', $redirect_from ) ) {
+            // 允许仅修正末尾斜杠
             global $wp_rewrite;
             if ( ( $wp_rewrite && $wp_rewrite->use_trailing_slashes && substr( $redirect_from, -1 ) != '/' ) ||
                  ( $wp_rewrite && ! $wp_rewrite->use_trailing_slashes && substr( $redirect_from, -1 ) == '/' ) ) {
                 return user_trailingslashit( $redirect_from );
             }
-            return false; // 阻止错误跳转
+            return false; // 阻止从变体路径跳到非变体路径
         }
+
+        // 如果目标是变体路径，确保不因斜杠规范导致错误跳转
+        if ( preg_match( '/\/(zh-tw|zh-cn|zh-sg|zh-hant|zh-hans|zh-my|zh-mo|zh-hk|zh|zh-reset)(\/|$)/i', $redirect_to ) ) {
+            global $wp_rewrite;
+            if ( ( $wp_rewrite && $wp_rewrite->use_trailing_slashes && substr( $redirect_from, -1 ) != '/' ) ||
+                 ( $wp_rewrite && ! $wp_rewrite->use_trailing_slashes && substr( $redirect_from, -1 ) == '/' ) ) {
+                return user_trailingslashit( $redirect_from );
+            }
+            return false; // 阻止多余跳转
+        }
+
         return $redirect_to;
     }
     
