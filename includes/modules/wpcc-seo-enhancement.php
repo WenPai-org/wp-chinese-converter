@@ -13,7 +13,7 @@ class WPCC_SEO_Enhancement extends WPCC_Abstract_Module {
 	
 	public function init() {
 		$this->name = 'SEO Enhancement';
-		$this->version = '1.4';
+$this->version = '1.5';
 		$this->description = 'SEO插件增强模块，支持Yoast SEO、RankMath、AIOSEO等主流SEO插件';
 		$this->dependencies = array();
 		

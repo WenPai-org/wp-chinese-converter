@@ -10,7 +10,7 @@ class WPCC_Network extends WPCC_Abstract_Module {
 	
 	public function init() {
 		$this->name = 'Network Multisite';
-		$this->version = '1.4';
+$this->version = '1.5';
 		$this->description = '多站点网络支持模块';
 		$this->dependencies = array(
 			array( 'type' => 'function', 'name' => 'is_multisite' )

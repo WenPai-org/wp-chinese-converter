@@ -6,7 +6,7 @@
  * Author URI: https://wpcc.net
  * Text Domain: wp-chinese-converter
  * Domain Path: /languages
- * Version: 1.4
+* Version: 1.5
  * License: GPLv3 or later
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
  */
@@ -25,7 +25,7 @@
 
 // 基础常量定义
 define("wpcc_DEBUG", false);
-define("wpcc_VERSION", "1.4");
+define("wpcc_VERSION", "1.5");
 
 // 插件URL常量
 if (defined("WP_PLUGIN_URL")) {

@@ -18,7 +18,7 @@ abstract class WPCC_Extension extends WPCC_Abstract_Module {
 	protected $update_server_url;
 	protected $extension_slug;
 	protected $is_premium = true;
-protected $required_core_version = '1.4';
+protected $required_core_version = '1.5';
 	protected $pricing_tier = 'pro'; // free, pro, enterprise, ultimate
 	
 	public function __construct() {

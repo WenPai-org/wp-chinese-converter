@@ -13,7 +13,7 @@ class WPCC_Rest_Api extends WPCC_Abstract_Module {
 	
 	public function init() {
 		$this->name = 'REST API';
-		$this->version = '1.4';
+$this->version = '1.5';
 		$this->description = 'REST API 接口模块，提供转换服务的 API 端点';
 		$this->dependencies = array(
 			array( 'type' => 'class', 'name' => 'WP_REST_Server' ),

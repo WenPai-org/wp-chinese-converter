@@ -13,7 +13,7 @@ class WPCC_Modern_Cache extends WPCC_Abstract_Module {
 	
 	public function init() {
 		$this->name = 'Modern Cache';
-		$this->version = '1.4';
+$this->version = '1.5';
 		$this->description = '现代缓存模块，支持对象缓存、Redis、Memcached';
 		$this->dependencies = array();
 		
