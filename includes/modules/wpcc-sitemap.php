@@ -28,15 +28,21 @@ function wpcc_sitemap_setup() {
 
 function wpcc_sitemap_rewrite_rules( $rules ) {
     global $wpcc_options;
-    $langs = isset($wpcc_options['wpcc_used_langs']) && is_array($wpcc_options['wpcc_used_langs']) ? $wpcc_options['wpcc_used_langs'] : array('zh-cn','zh-tw');
+    $langs = isset($wpcc_options['wpcc_used_langs']) && is_array($wpcc_options['wpcc_used_langs']) ? $wpcc_options['wpcc_used_langs'] : array('zh-cn','zh-tw','zh-hk');
     $langs = array_values(array_unique(array_filter($langs)));
     $pattern = implode('|', array_map('preg_quote', $langs));
 
     $new_rules = array();
     if ( $pattern !== '' ) {
+        // 主网站地图索引
         $new_rules['^(' . $pattern . ')/wp-sitemap\.xml/?$'] = 'index.php?wpcc_sitemap_lang=$matches[1]';
         $new_rules['^(' . $pattern . ')/sitemap\.xml/?$'] = 'index.php?wpcc_sitemap_lang=$matches[1]';
+        
+        // 文章网站地图
         $new_rules['^sitemap-(' . $pattern . ')-(\d+)\.xml/?$'] = 'index.php?wpcc_sitemap_lang=$matches[1]&wpcc_sitemap_page=$matches[2]';
+        
+        // 分类网站地图
+        $new_rules['^sitemap-taxonomy-([a-zA-Z0-9_]+)-(' . $pattern . ')-(\d+)\.xml/?$'] = 'index.php?wpcc_sitemap_lang=$matches[2]&wpcc_sitemap_taxonomy=$matches[1]&wpcc_sitemap_page=$matches[3]';
     }
     return array_merge( $new_rules, $rules );
 }
@@ -44,6 +50,7 @@ function wpcc_sitemap_rewrite_rules( $rules ) {
 function custom_sitemap_query_vars( $vars ) {
     $vars[] = 'wpcc_sitemap_lang';
     $vars[] = 'wpcc_sitemap_page';
+    $vars[] = 'wpcc_sitemap_taxonomy';
     return $vars;
 }
 
@@ -149,7 +156,7 @@ function custom_sitemap_template_redirect() {
     $uri = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
 
     // 动态语言模式：仅允许已启用语言
-    $enabled = isset($GLOBALS['wpcc_options']['wpcc_used_langs']) && is_array($GLOBALS['wpcc_options']['wpcc_used_langs']) ? $GLOBALS['wpcc_options']['wpcc_used_langs'] : array('zh-cn','zh-tw');
+    $enabled = isset($GLOBALS['wpcc_options']['wpcc_used_langs']) && is_array($GLOBALS['wpcc_options']['wpcc_used_langs']) ? $GLOBALS['wpcc_options']['wpcc_used_langs'] : array('zh-cn','zh-tw','zh-hk');
     $enabled = array_values(array_unique(array_filter($enabled)));
     $pat = implode('|', array_map('preg_quote', $enabled));
 
@@ -173,6 +180,7 @@ function custom_sitemap_template_redirect() {
         exit;
     }
 
+    // 处理文章网站地图
     if ( $pat !== '' && preg_match( '#/sitemap-(' . $pat . ')-(\d+)\.xml/?$#i', $uri, $matches ) ) {
         $lang = strtolower($matches[1]);
         $page = (int) $matches[2];
@@ -183,6 +191,29 @@ function custom_sitemap_template_redirect() {
         header( 'Content-Type: application/xml; charset=utf-8' );
         header( 'HTTP/1.1 200 OK' );
         echo generate_paged_sitemap_content( $lang, $page );
+        exit;
+    }
+
+    // 处理分类网站地图
+    if ( $pat !== '' && preg_match( '#/sitemap-taxonomy-([a-zA-Z0-9_]+)-(' . $pat . ')-(\d+)\.xml/?$#i', $uri, $matches ) ) {
+        $taxonomy = sanitize_key($matches[1]);
+        $lang = strtolower($matches[2]);
+        $page = (int) $matches[3];
+        
+        if ( ! in_array( $lang, $enabled, true ) ) {
+            status_header( 404 );
+            exit;
+        }
+        
+        // 验证分类法是否存在且公开
+        if ( ! taxonomy_exists( $taxonomy ) || ! is_taxonomy_viewable( $taxonomy ) ) {
+            status_header( 404 );
+            exit;
+        }
+        
+        header( 'Content-Type: application/xml; charset=utf-8' );
+        header( 'HTTP/1.1 200 OK' );
+        echo generate_taxonomy_sitemap_content( $taxonomy, $lang, $page );
         exit;
     }
 
@@ -226,11 +257,41 @@ function generate_sitemap_index( string $lang ) {
     $sitemap .= '<?xml-stylesheet type="text/xsl" href="' . site_url( '/sitemap-style.xsl' ) . '"?>';
     $sitemap .= '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
     
+    // 添加文章网站地图
     for ( $i = 1; $i <= $total_sitemaps; $i ++ ) {
         $sitemap .= '<sitemap>';
         $sitemap .= '<loc>' . site_url( "/sitemap-{$lang}-{$i}.xml" ) . '</loc>';
         $sitemap .= '<lastmod>' . date( 'Y-m-d' ) . '</lastmod>';
         $sitemap .= '</sitemap>';
+    }
+    
+    // 添加分类网站地图
+    $taxonomies = get_taxonomies( array( 'public' => true ), 'objects' );
+    foreach ( $taxonomies as $taxonomy ) {
+        // 跳过不需要的分类法
+        if ( in_array( $taxonomy->name, array( 'post_format', 'nav_menu' ), true ) ) {
+            continue;
+        }
+        
+        // 获取该分类法的条目数量
+        $term_count = wp_count_terms( array(
+            'taxonomy' => $taxonomy->name,
+            'hide_empty' => true,
+        ) );
+        
+        if ( is_wp_error( $term_count ) || $term_count === 0 ) {
+            continue;
+        }
+        
+        // 计算需要的分页数
+        $taxonomy_sitemaps = ceil( $term_count / $max_urls_per_sitemap );
+        
+        for ( $i = 1; $i <= $taxonomy_sitemaps; $i ++ ) {
+            $sitemap .= '<sitemap>';
+            $sitemap .= '<loc>' . site_url( "/sitemap-taxonomy-{$taxonomy->name}-{$lang}-{$i}.xml" ) . '</loc>';
+            $sitemap .= '<lastmod>' . date( 'Y-m-d' ) . '</lastmod>';
+            $sitemap .= '</sitemap>';
+        }
     }
     
     $sitemap .= '</sitemapindex>';
@@ -432,6 +493,95 @@ function generate_sitemap_styles() {
 </xsl:template>
 </xsl:stylesheet>
 XSL;
+}
+
+/**
+ * 生成分类网站地图内容
+ *
+ * @param string $taxonomy 分类法名称
+ * @param string $lang 语言代码
+ * @param int $page 页码
+ * @return string XML内容
+ */
+function generate_taxonomy_sitemap_content( string $taxonomy, string $lang, int $page ) {
+    global $wpcc_options;
+
+    // 仅允许启用语言
+    $enabled = isset($wpcc_options['wpcc_used_langs']) && is_array($wpcc_options['wpcc_used_langs']) ? $wpcc_options['wpcc_used_langs'] : array('zh-cn','zh-tw');
+    if ( ! in_array( $lang, $enabled, true ) ) {
+        return '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" />';
+    }
+
+    // 验证分类法
+    if ( ! taxonomy_exists( $taxonomy ) || ! is_taxonomy_viewable( $taxonomy ) ) {
+        return '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" />';
+    }
+
+    $max_urls_per_sitemap = 1000;
+    $offset = ( $page - 1 ) * $max_urls_per_sitemap;
+    
+    // 获取分类条目
+    $terms = get_terms( array(
+        'taxonomy' => $taxonomy,
+        'hide_empty' => true,
+        'number' => $max_urls_per_sitemap,
+        'offset' => $offset,
+        'orderby' => 'count',
+        'order' => 'DESC',
+    ) );
+    
+    if ( is_wp_error( $terms ) || empty( $terms ) ) {
+        return '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" />';
+    }
+    
+    $sitemap = '<?xml version="1.0" encoding="UTF-8"?>';
+    $sitemap .= '<?xml-stylesheet type="text/xsl" href="' . site_url( '/sitemap-style.xsl' ) . '"?>';
+    $sitemap .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
+    
+    foreach ( $terms as $term ) {
+        // 检查是否应该索引此条目
+        if ( ! wpcc_should_index_term( $term ) ) {
+            continue;
+        }
+        
+        $term_link = get_term_link( $term, $taxonomy );
+        if ( is_wp_error( $term_link ) ) {
+            continue;
+        }
+        
+        // 转换链接到指定语言
+        $converted_link = wpcc_sitemap_link_conversion( $term_link, $lang );
+        
+        $sitemap .= '<url>';
+        $sitemap .= '<loc>' . esc_url( $converted_link ) . '</loc>';
+        $sitemap .= '<lastmod>' . date( 'Y-m-d' ) . '</lastmod>';
+        $sitemap .= '<changefreq>weekly</changefreq>';
+        $sitemap .= '<priority>0.5</priority>';
+        $sitemap .= '</url>';
+    }
+    
+    $sitemap .= '</urlset>';
+    
+    return $sitemap;
+}
+
+/**
+ * 检查是否应该索引分类条目
+ *
+ * @param WP_Term $term 分类条目
+ * @return bool
+ */
+function wpcc_should_index_term( $term ) {
+    // 可以在这里添加更多的检查逻辑
+    // 例如检查条目的元数据中是否有 noindex 标记
+    
+    // 基本检查：确保条目有内容
+    if ( $term->count === 0 ) {
+        return false;
+    }
+    
+    // 可以添加自定义过滤器让其他插件或主题控制
+    return apply_filters( 'wpcc_should_index_term', true, $term );
 }
 
 ?>
