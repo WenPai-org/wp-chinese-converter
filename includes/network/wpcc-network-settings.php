@@ -35,6 +35,7 @@ class WPCC_Network_Settings
         "wpcc_browser_redirect",
         "wpcc_auto_language_recong",
         "wpcc_use_cookie_variant",
+        "wpcc_first_visit_default",
         // 过滤
         "wpcc_no_conversion_tag",
         "wpcc_no_conversion_ja",
@@ -95,8 +96,8 @@ class WPCC_Network_Settings
     {
         add_submenu_page(
             "settings.php",
-            "WP Chinese Converter 网络设置",
-            "WP Chinese Converter",
+            "文派译词 网络设置",
+            "文派译词",
             "manage_network_options",
             "wpcc-network",
             [__CLASS__, "render_network_page"],
@@ -370,6 +371,8 @@ class WPCC_Network_Settings
                                             "语系内通用",
                                         "wpcc_use_cookie_variant" =>
                                             "Cookie偏好记忆",
+                                        "wpcc_first_visit_default" =>
+                                            "首次访问不转换",
                                         "wpcc_no_conversion_tag" => "标签排除",
                                         "wpcc_no_conversion_ja" =>
                                             "日语内容排除",
@@ -432,10 +435,11 @@ class WPCC_Network_Settings
                                         ],
                                         "detection" => [
                                             "title" => "智能检测",
-                                            "options" => [
+                                        "options" => [
                                                 "wpcc_browser_redirect",
                                                 "wpcc_auto_language_recong",
                                                 "wpcc_use_cookie_variant",
+                                                "wpcc_first_visit_default",
                                             ],
                                         ],
                                         "filter" => [
@@ -998,7 +1002,12 @@ class WPCC_Network_Settings
                                         <span class="wpcc-switch-label">启用多语言网站地图</span>
                                     </label>
                                     <?php $wpcc_network_base2 = esc_html( rtrim( network_home_url(), '/' ) ); ?>
-                                    <p class="description">网站地图访问地址：<?php echo $wpcc_network_base2; ?>/zh-tw/sitemap.xml/</p>
+<?php 
+                                        $default_langs = get_site_option('wpcc_default_used_langs', array('zh-cn','zh-tw'));
+                                        if (!is_array($default_langs)) { $default_langs = array('zh-cn','zh-tw'); }
+                                        $sample_lang = !empty($default_langs) ? $default_langs[0] : 'zh-cn';
+                                    ?>
+                                    <p class="description">网站地图访问地址：<?php echo $wpcc_network_base2; ?>/<?php echo esc_html($sample_lang); ?>/sitemap.xml/</p>
                                 </td>
                             </tr>
                         </table>
@@ -1009,14 +1018,14 @@ class WPCC_Network_Settings
                                 <th>浏览器语言 <a href="https://wpcc.net/document/browser-language" target="_blank" class="wpcc-doc-link" title="查看详细说明">↗</a></th>
                                 <td>
                                     <select name="wpcc_default_browser_redirect" class="regular-text">
-                                        <option value="1" <?php selected(
+                                        <option value="2" <?php selected(
                                             get_site_option(
                                                 "wpcc_default_browser_redirect",
                                                 0,
                                             ),
                                             1,
                                         ); ?>>显示为对应繁简版本</option>
-                                        <option value="2" <?php selected(
+                                        <option value="1" <?php selected(
                                             get_site_option(
                                                 "wpcc_default_browser_redirect",
                                                 0,
@@ -1035,17 +1044,31 @@ class WPCC_Network_Settings
                                 </td>
                             </tr>
                             <tr>
+                                <th>首次访问</th>
+                                <td>
+                                    <label class="wpcc-switch">
+                                        <input type="checkbox" name="wpcc_default_first_visit_default" value="1" <?php checked(
+                                            get_site_option('wpcc_default_first_visit_default', 0),
+                                            1
+                                        ); ?> />
+                                        <span class="wpcc-slider"></span>
+                                        <span class="wpcc-switch-label">首次访问不转换（保持站点默认语言）</span>
+                                    </label>
+                                    <p class="description">开启后，首次访问根路径时不根据浏览器语言自动转换，避免首页内容与默认语言不一致；用户选择语言后仍按其它策略生效。</p>
+                                </td>
+                            </tr>
+                            <tr>
                                 <th>Cookie偏好 <a href="https://wpcc.net/document/cookie-preference" target="_blank" class="wpcc-doc-link" title="查看详细说明">↗</a></th>
                                 <td>
                                     <select name="wpcc_default_use_cookie_variant" class="regular-text">
-                                        <option value="1" <?php selected(
+                                        <option value="2" <?php selected(
                                             get_site_option(
                                                 "wpcc_default_use_cookie_variant",
                                                 0,
                                             ),
                                             1,
                                         ); ?>>显示为对应繁简版本</option>
-                                        <option value="2" <?php selected(
+                                        <option value="1" <?php selected(
                                             get_site_option(
                                                 "wpcc_default_use_cookie_variant",
                                                 0,
@@ -2301,6 +2324,10 @@ class WPCC_Network_Settings
                 intval($_POST["wpcc_default_use_cookie_variant"] ?? 0),
             );
             update_site_option(
+                "wpcc_default_first_visit_default",
+                isset($_POST["wpcc_default_first_visit_default"]) ? 1 : 0,
+            );
+            update_site_option(
                 "wpcc_default_auto_language_recong",
                 isset($_POST["wpcc_default_auto_language_recong"]) ? 1 : 0,
             );
@@ -2399,6 +2426,8 @@ class WPCC_Network_Settings
                         "wpcc_default_auto_language_recong",
                     "wpcc_use_cookie_variant" =>
                         "wpcc_default_use_cookie_variant",
+                    "wpcc_first_visit_default" =>
+                        "wpcc_default_first_visit_default",
                     "wpcc_no_conversion_tag" =>
                         "wpcc_default_no_conversion_tag",
                     "wpcc_no_conversion_ja" => "wpcc_default_no_conversion_ja",
@@ -2515,8 +2544,8 @@ class WPCC_Network_Settings
         }
 
         if (isset($_POST["export_basic_settings"])) {
-            $export_data["basic_settings"] = [
-                "wpcc_default_used_langs" => get_site_option(
+                $export_data["basic_settings"] = [
+                    "wpcc_default_used_langs" => get_site_option(
                     "wpcc_default_used_langs",
                     ["zh-cn", "zh-tw"],
                 ),
@@ -2596,10 +2625,14 @@ class WPCC_Network_Settings
                     "wpcc_default_browser_redirect",
                     0,
                 ),
-                "wpcc_default_use_cookie_variant" => get_site_option(
-                    "wpcc_default_use_cookie_variant",
-                    0,
-                ),
+                    "wpcc_default_use_cookie_variant" => get_site_option(
+                        "wpcc_default_use_cookie_variant",
+                        0,
+                    ),
+                    "wpcc_default_first_visit_default" => get_site_option(
+                        "wpcc_default_first_visit_default",
+                        0,
+                    ),
                 "wpcc_default_no_conversion_tag" => get_site_option(
                     "wpcc_default_no_conversion_tag",
                     "",
@@ -2883,6 +2916,10 @@ class WPCC_Network_Settings
             if (isset($settings["wpcc_default_use_cookie_variant"])) {
                 $current_options["wpcc_use_cookie_variant"] =
                     $settings["wpcc_default_use_cookie_variant"];
+            }
+            if (isset($settings["wpcc_default_first_visit_default"])) {
+                $current_options["wpcc_first_visit_default"] =
+                    $settings["wpcc_default_first_visit_default"] ? 1 : 0;
             }
             if (isset($settings["wpcc_default_auto_language_recong"])) {
                 $current_options["wpcc_auto_language_recong"] =

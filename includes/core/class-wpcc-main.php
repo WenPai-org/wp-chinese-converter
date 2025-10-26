@@ -270,9 +270,23 @@ class WPCC_Main {
         $cookie_key = 'wpcc_variant_' . COOKIEHASH;
         
         if ( $this->config->is_feature_enabled( 'wpcc_use_cookie_variant' ) ) {
-            setcookie( $cookie_key, 'zh', time() + 30000000, COOKIEPATH, COOKIE_DOMAIN );
+            setcookie( $cookie_key, 'zh', [
+                'expires'  => time() + 30000000,
+                'path'     => COOKIEPATH,
+                'domain'   => COOKIE_DOMAIN,
+                'secure'   => is_ssl(),
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ] );
         } else {
-            setcookie( 'wpcc_is_redirect_' . COOKIEHASH, '1', 0, COOKIEPATH, COOKIE_DOMAIN );
+            setcookie( 'wpcc_is_redirect_' . COOKIEHASH, '1', [
+                'expires'  => 0,
+                'path'     => COOKIEPATH,
+                'domain'   => COOKIE_DOMAIN,
+                'secure'   => is_ssl(),
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ] );
         }
         
         wp_redirect( $this->config->get_noconversion_url() );
@@ -307,7 +321,14 @@ class WPCC_Main {
         $current_cookie = $_COOKIE[$cookie_key] ?? '';
         
         if ( $current_cookie !== $target_lang ) {
-            setcookie( $cookie_key, $target_lang, time() + 30000000, COOKIEPATH, COOKIE_DOMAIN );
+            setcookie( $cookie_key, $target_lang, [
+                'expires'  => time() + 30000000,
+                'path'     => COOKIEPATH,
+                'domain'   => COOKIE_DOMAIN,
+                'secure'   => is_ssl(),
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ] );
         }
     }
     
@@ -360,7 +381,14 @@ class WPCC_Main {
         // 处理重定向
         if ( ! is_404() && $this->config->get_redirect_to() && ! is_admin() ) {
             $redirect_url = $this->config->get_langs_urls()[ $this->config->get_redirect_to() ];
-            setcookie( 'wpcc_is_redirect_' . COOKIEHASH, '1', 0, COOKIEPATH, COOKIE_DOMAIN );
+            setcookie( 'wpcc_is_redirect_' . COOKIEHASH, '1', [
+                'expires'  => 0,
+                'path'     => COOKIEPATH,
+                'domain'   => COOKIE_DOMAIN,
+                'secure'   => is_ssl(),
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ] );
             wp_redirect( $redirect_url, 302 );
             exit;
         }
@@ -964,8 +992,12 @@ class WPCC_Main {
     public function cancel_incorrect_redirect( $redirect_to, $redirect_from ) {
         if ( ! is_string( $redirect_to ) || ! is_string( $redirect_from ) ) { return $redirect_to; }
 
+        // 动态构建允许的语言前缀集合
+        $langs = method_exists( 'WPCC_Language_Config', 'get_valid_language_codes' ) ? WPCC_Language_Config::get_valid_language_codes() : [ 'zh-cn','zh-tw','zh-hk','zh-hans','zh-hant','zh-sg','zh-jp' ];
+        $reg = implode( '|', array_map( 'preg_quote', $langs ) );
+
         // 如果来源是变体路径（根级或包含变体段），阻止将其规范化到非变体路径（例如首页 /）
-        if ( preg_match( '/\/(zh-tw|zh-cn|zh-sg|zh-hant|zh-hans|zh-my|zh-mo|zh-hk|zh|zh-reset)(\/|$)/i', $redirect_from ) ) {
+        if ( preg_match( '/\/(' . $reg . '|zh|zh-reset)(\/|$)/i', $redirect_from ) ) {
             // 允许仅修正末尾斜杠
             global $wp_rewrite;
             if ( ( $wp_rewrite && $wp_rewrite->use_trailing_slashes && substr( $redirect_from, -1 ) != '/' ) ||
@@ -976,7 +1008,7 @@ class WPCC_Main {
         }
 
         // 如果目标是变体路径，确保不因斜杠规范导致错误跳转
-        if ( preg_match( '/\/(zh-tw|zh-cn|zh-sg|zh-hant|zh-hans|zh-my|zh-mo|zh-hk|zh|zh-reset)(\/|$)/i', $redirect_to ) ) {
+        if ( preg_match( '/\/(' . $reg . '|zh|zh-reset)(\/|$)/i', $redirect_to ) ) {
             global $wp_rewrite;
             if ( ( $wp_rewrite && $wp_rewrite->use_trailing_slashes && substr( $redirect_from, -1 ) != '/' ) ||
                  ( $wp_rewrite && ! $wp_rewrite->use_trailing_slashes && substr( $redirect_from, -1 ) == '/' ) ) {
@@ -1079,7 +1111,7 @@ class WPCC_Main {
         if ( $target_lang && ! $this->config->get_direct_conversion_flag() ) {
             $home_url = $this->convert_link( home_url( '/' ), $target_lang );
             $home_pattern = preg_quote( esc_url( home_url( '' ) ), '|' );
-            $buffer = preg_replace( '|(<a\s(?!class="wpcc_link")[^<>]*?href=([\'"]]))' . $home_pattern . '/?(\2[^<>]*?>)|', '${1}' . esc_url( $home_url ) . '${3}', $buffer );
+            $buffer = preg_replace( '|(<a\s(?!class=\"wpcc_link\")[^<>]*?href=([\'\"]))' . $home_pattern . '/?(\2[^<>]*?>)|', '${1}' . esc_url( $home_url ) . '${3}', $buffer );
         }
         return zhconversion2( $buffer ) . "\n" . '<!-- WP Chinese Converter Full Page Converted. Target Lang: ' . $target_lang . ' -->';
     }

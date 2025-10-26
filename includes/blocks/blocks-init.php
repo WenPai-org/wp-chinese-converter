@@ -59,7 +59,7 @@ wpcc_VERSION,
         $enabled_languages = $wpcc_options['wpcc_used_langs'] ?? array();
 
         wp_localize_script(
-            'wp-blocks',
+            'wpcc-block-compat',
             'wpccBlockSettings',
             array(
                 'enabledLanguages' => $enabled_languages,

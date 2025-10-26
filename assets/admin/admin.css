@@ -322,6 +322,7 @@
 .wpcc-disabled * {
     opacity: 0.6 !important;
     cursor: not-allowed !important;
+    pointer-events: none !important;
 }
 
 .wpcc-disabled .wpcc-slider {

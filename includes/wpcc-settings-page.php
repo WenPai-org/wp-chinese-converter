@@ -57,6 +57,7 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
             "wpcc_browser_redirect" => "浏览器语言检测",
             "wpcc_auto_language_recong" => "语系内通用",
             "wpcc_use_cookie_variant" => "Cookie偏好记忆",
+            "wpcc_first_visit_default" => "首次访问不转换",
             "wpcc_no_conversion_tag" => "标签排除",
             "wpcc_no_conversion_ja" => "日语内容排除",
             "wpcc_hreflang_x_default" => "SEO默认语言",
@@ -534,7 +535,7 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                                                ? 'checked="checked"'
                                                : ""; ?>
                                            <?php echo $get_field_attributes(
-                                               "wpcc_translate_type",
+                                               "wpcc_flag_option",
                                            ); ?> />
                                     <span class="wpcc-radio-label"><?php _e(
                                         "平铺",
@@ -547,7 +548,7 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                                                ? 'checked="checked"'
                                                : ""; ?>
                                            <?php echo $get_field_attributes(
-                                               "wpcc_translate_type",
+                                               "wpcc_flag_option",
                                            ); ?> />
                                     <span class="wpcc-radio-label"><?php _e(
                                         "下拉列表",
@@ -838,8 +839,10 @@ $post_conv_disabled =
     $is_network_controlled("wpcc_enable_post_conversion") ||
     $is_network_controlled("wpcc_post_conversion_target");
 $disabled_class = $post_conv_disabled ? "wpcc-disabled" : "";
+// 定义调试用变量，避免未定义警告
+$is_post_conversion_controlled = $post_conv_disabled;
 ?>
-                                <label class="wpcc-switch <?php echo $disabled_class; ?>">
+                                <label class="wpcc-switch <?php echo $disabled_class; ?>" <?php echo $post_conv_disabled ? 'aria-disabled="true"' : ''; ?>>
                                     <input type="checkbox" name="wpcc_enable_post_conversion"
                                            <?php checked(
                                                isset(
@@ -875,14 +878,14 @@ $disabled_class = $post_conv_disabled ? "wpcc-disabled" : "";
     ? ""
     : "display: none;"; ?>" id="post-conversion-options" class="<?php echo $post_conv_disabled
     ? "wpcc-disabled"
-    : ""; ?>">
+    : ""; ?>" <?php echo $post_conv_disabled ? 'aria-disabled="true"' : ''; ?>>
                                     <label for="wpcc_post_conversion_target"><?php _e(
                                         "转换目标语言:",
                                         "wp-chinese-converter",
                                     ); ?></label>
 <select name="wpcc_post_conversion_target" id="wpcc_post_conversion_target" class="wpcc-select" style="margin-left: 10px;" <?php echo $get_field_attributes(
     "wpcc_post_conversion_target",
-) . ($post_conv_disabled ? ' disabled="disabled"' : ""); ?>>
+) . ($post_conv_disabled ? ' disabled="disabled" aria-disabled="true"' : ""); ?>>
                                         <?php
                                         $enabled_langs =
                                             $this->options["wpcc_used_langs"] ??
@@ -1154,13 +1157,15 @@ $disabled_class = $post_conv_disabled ? "wpcc-disabled" : "";
                                     ); ?></span>
                                 </label>
                                 <p class="description">
-                                    <?php printf(
-                                        __(
-                                            "网站地图访问地址：%s/zh-tw/sitemap.xml/",
-                                            "wp-chinese-converter",
-                                        ),
-                                        esc_html(home_url()),
-                                    ); ?>
+<?php 
+                                        $enabled_langs = $this->options['wpcc_used_langs'] ?? array('zh-cn','zh-tw');
+                                        $sample_lang = is_array($enabled_langs) && !empty($enabled_langs) ? $enabled_langs[0] : 'zh-cn';
+                                        printf(
+                                            __("网站地图访问地址：%s/%s/sitemap.xml/", "wp-chinese-converter"),
+                                            esc_html(home_url()),
+                                            esc_html($sample_lang)
+                                        );
+                                    ?>
                                 </p>
                             </td>
                         </tr>
@@ -1174,6 +1179,7 @@ $disabled_class = $post_conv_disabled ? "wpcc-disabled" : "";
                     "wpcc_browser_redirect",
                     "wpcc_auto_language_recong",
                     "wpcc_use_cookie_variant",
+                    "wpcc_first_visit_default",
                 ];
                 echo $get_network_notice($detection_section_options);
                 ?>
@@ -1227,19 +1233,17 @@ $disabled_class = $post_conv_disabled ? "wpcc-disabled" : "";
                                         ); ?>
                                     </option>
                                 </select>
-                                <div class="browser-redirect-dependent <?php echo $is_network_controlled(
-                                    "wpcc_browser_redirect",
-                                ) ||
-                                $is_network_controlled(
-                                    "wpcc_auto_language_recong",
-                                )
-                                    ? "wpcc-network-controlled"
-                                    : ""; ?>" style="margin-top: 10px; <?php echo ($this
-    ->options["wpcc_browser_redirect"] ??
-    0) ==
-0
-    ? "display: none;"
-    : ""; ?>">
+                                <div style="margin-top: 8px;">
+                                    <label class="wpcc-switch <?php echo $is_network_controlled("wpcc_first_visit_default") ? 'wpcc-disabled' : ''; ?>">
+                                        <input type="checkbox" name="wpcc_first_visit_default" value="1" <?php checked(
+                                            $this->options["wpcc_first_visit_default"] ?? 0,
+                                            1
+                                        ); ?> <?php echo $get_field_attributes("wpcc_first_visit_default"); ?> />
+                                        <span class="wpcc-slider"></span>
+                                        <span class="wpcc-switch-label"><?php _e("首次访问不转换（保持站点默认语言）", "wp-chinese-converter"); ?></span>
+                                    </label>
+                                </div>
+                                <div class="browser-redirect-dependent <?php echo $is_network_controlled('wpcc_browser_redirect') || $is_network_controlled('wpcc_auto_language_recong') ? 'wpcc-network-controlled' : ''; ?>" style="margin-top: 10px; <?php echo (($this->options['wpcc_browser_redirect'] ?? 0) == 0) ? 'display: none;' : ''; ?>">
                                     <label class="wpcc-switch <?php echo $is_network_controlled(
                                         "wpcc_auto_language_recong",
                                     )

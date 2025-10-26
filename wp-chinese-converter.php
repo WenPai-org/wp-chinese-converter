@@ -137,7 +137,9 @@ if (
     if (!has_action("init", "wpcc_init")) {
         add_action("init", "wpcc_init");
     }
-    add_filter("query_vars", "wpcc_insert_query_vars");
+    if ( ! class_exists( 'WPCC_Main' ) ) {
+        add_filter("query_vars", "wpcc_insert_query_vars");
+    }
 
     // 加载管理后台模块（仅在后台时加载）
     if (is_admin()) {

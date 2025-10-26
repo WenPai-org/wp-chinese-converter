@@ -194,8 +194,14 @@ final class WPCC_Exception_Handler {
 			return;
 		}
 		
-		$error_key = get_class( $exception );
-		self::$error_counts[ $error_key ] = ( self::$error_counts[ $error_key ] ?? 0 ) + 1;
+		// 统一异常计数键，保证与 should_suppress_error 使用的键一致
+		if ( $exception instanceof WPCC_Exception ) {
+			$ekey = 'wpcc_error_' . $exception->get_error_code();
+			self::$error_counts[ $ekey ] = ( self::$error_counts[ $ekey ] ?? 0 ) + 1;
+		} else {
+			$ekey = get_class( $exception );
+			self::$error_counts[ $ekey ] = ( self::$error_counts[ $ekey ] ?? 0 ) + 1;
+		}
 		
 		$log_message = sprintf(
 			'WPCC Error in %s: %s [%s:%d] Context: %s',

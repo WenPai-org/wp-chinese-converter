@@ -122,8 +122,8 @@ class wpcc_Admin
             // 网络管理界面菜单（实际网络设置页面由 WPCC_Network_Settings 提供，此处保持入口一致）
             add_submenu_page(
                 "settings.php",
-                "WP Chinese Converter",
-                "WP Chinese Converter",
+                "文派译词",
+                "文派译词",
                 "manage_network_options",
                 $page_slug,
                 [&$this, "display_options"],
@@ -133,8 +133,8 @@ class wpcc_Admin
             $network_enforced = is_multisite() ? (int) get_site_option('wpcc_network_enforce', 0) : 0;
             if (!$network_enforced) {
                 add_options_page(
-                    "WP Chinese Converter",
-                    "WP Chinese Converter",
+                    "文派译词",
+                    "译词",
                     "manage_options",
                     $page_slug,
                     [&$this, "display_options"],
@@ -453,6 +453,7 @@ class wpcc_Admin
             "wpcc_no_conversion_qtag" => "wpcc_no_conversion_qtag",
             "wpcc_no_conversion_ja" => "wpcc_no_conversion_ja",
             "wpcc_enable_post_conversion" => "wpcc_enable_post_conversion",
+            "wpcc_first_visit_default" => "wpcc_first_visit_default",
         ];
 
         foreach ($checkbox_fields as $post_field => $option_field) {
