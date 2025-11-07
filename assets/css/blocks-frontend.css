@@ -26,46 +26,62 @@
 
 .wpcc-lang-item .wpcc-link {
     display: inline-block;
-    padding: 4px 8px;
-    background: #0073aa;
-    color: #fff;
+    padding: 4px 10px;
+    background: #f0f0f0;
+    color: #333;
     text-decoration: none;
-    border: 1px solid #0073aa;
-    font-size: 13px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 12px;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .wpcc-lang-item .wpcc-link:hover {
+    background: #e0e0e0;
+    border-color: #ccc;
+}
+
+.wpcc-lang-item.wpcc-current .wpcc-link {
+    background: #0073aa;
+    color: #fff;
+    border-color: #0073aa;
+}
+
+.wpcc-lang-item.wpcc-current .wpcc-link:hover {
     background: #005a87;
     border-color: #005a87;
 }
 
-.wpcc-lang-item.wpcc-current .wpcc-link {
-    background: #00a32a;
-    border-color: #00a32a;
-}
-
 .wpcc-lang-item.wpcc-no-conversion .wpcc-link {
-    background: #666;
-    border-color: #666;
+    background: #f9f9f9;
+    color: #666;
+    border-color: #ddd;
 }
 
 .wpcc-lang-item.wpcc-no-conversion .wpcc-link:hover {
-    background: #555;
-    border-color: #555;
+    background: #f0f0f0;
+    border-color: #ccc;
 }
 
 .wpcc-dropdown-switcher {
     padding: 6px 8px;
     border: 1px solid #ddd;
     background: #fff;
-    font-size: 13px;
+    font-size: 12px;
     cursor: pointer;
     min-width: 150px;
+    border-radius: 5px;
+    transition: border-color 0.2s ease;
+}
+
+.wpcc-dropdown-switcher:hover {
+    border-color: #bbb;
 }
 
 .wpcc-dropdown-switcher:focus {
-    outline: 1px solid #0073aa;
-    outline-offset: 1px;
+    outline: 2px solid #0073aa;
+    outline-offset: 0;
+    border-color: #0073aa;
 }
 
 .wpcc-conversion-status {
@@ -76,11 +92,12 @@
 .wpcc-status-container {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
 }
 
 .wpcc-status-text {
-    font-size: 13px;
+    font-size: 12px;
+    color: #333;
 }
 
 .wpcc-conversion-status.wpcc-format-badge .wpcc-status-text {
@@ -93,7 +110,7 @@
 
 .wpcc-conversion-status.wpcc-format-text .wpcc-status-text {
     color: #333;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 .wpcc-conversion-status.wpcc-format-minimal .wpcc-status-text {
@@ -101,12 +118,21 @@
     color: #666;
 }
 
+/* 不转换区块在前台不显示任何视觉样式 */
 .wpcc-no-conversion-wrapper {
-    position: relative;
+    /* 仅保留功能性标记，无视觉样式 */
+}
+
+.wpcc-no-conversion-header {
+    display: none; /* 前台隐藏标题 */
+}
+
+.wpcc-label {
+    display: none; /* 前台隐藏标签 */
 }
 
 .wpcc-no-conversion-content {
-    position: relative;
+    /* 内容正常显示，无额外样式 */
 }
 
 @media (max-width: 768px) {
@@ -160,13 +186,14 @@
     min-width: 180px;
 }
 
-.wpcc-no-conversion-wrapper.wpcc-border-solid {
-    border-style: solid;
-}
-
+/* 前台所有不转换区块的边框变体都不显示 */
+.wpcc-no-conversion-wrapper.wpcc-border-solid,
+.wpcc-no-conversion-wrapper.wpcc-border-dashed,
 .wpcc-no-conversion-wrapper.wpcc-border-none {
     border: none;
     background: transparent;
+    padding: 0;
+    margin: 0;
 }
 
 .wpcc-conversion-status.wpcc-clickable {

@@ -8,8 +8,26 @@ class WPCC_Blocks {
     
     public function __construct() {
         add_action( 'init', array( $this, 'register_blocks' ) );
+        add_action( 'init', array( $this, 'register_block_styles' ) );
         add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_block_editor_assets' ) );
         add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_frontend_assets' ) );
+    }
+
+    public function register_block_styles() {
+        // 在 init 阶段注册样式句柄，供 block.json 中的 editorStyle 和 style 字段使用
+        wp_register_style(
+            'wpcc-blocks-editor',
+            plugins_url( 'assets/css/blocks-editor.css', dirname( dirname( __FILE__ ) ) ),
+            array(),
+            wpcc_VERSION
+        );
+
+        wp_register_style(
+            'wpcc-blocks-frontend',
+            plugins_url( 'assets/css/blocks-frontend.css', dirname( dirname( __FILE__ ) ) ),
+            array(),
+            wpcc_VERSION
+        );
     }
 
     public function register_blocks() {
@@ -39,12 +57,8 @@ class WPCC_Blocks {
             wp_register_script( 'wpcc-variant', plugins_url( 'assets/dist/wpcc-variant.umd.js', dirname( dirname( __FILE__ ) ) ), array(), wpcc_VERSION );
         }
 
-        wp_enqueue_style(
-            'wpcc-blocks-editor',
-            plugins_url( 'assets/css/blocks-editor.css', dirname( dirname( __FILE__ ) ) ),
-            array(),
-            wpcc_VERSION
-        );
+        // 样式已在 init 阶段注册，这里只需要加载即可
+        wp_enqueue_style( 'wpcc-blocks-editor' );
 
         // 兼容层：为编辑器注册旧占位文本的 deprecated 版本，避免校验失败
         wp_enqueue_script(
@@ -91,12 +105,8 @@ wpcc_VERSION,
         // 为前端状态指示器的 dashicons 图标提供样式支持
         wp_enqueue_style( 'dashicons' );
 
-        wp_enqueue_style(
-            'wpcc-blocks-frontend',
-            plugins_url( 'assets/css/blocks-frontend.css', dirname( dirname( __FILE__ ) ) ),
-            array(),
-            wpcc_VERSION
-        );
+        // 样式已在 init 阶段注册，这里只需要加载即可
+        wp_enqueue_style( 'wpcc-blocks-frontend' );
 
         // 使用文件修改时间作为版本号，避免浏览器缓存导致逻辑不更新
         $blocks_front_js = plugin_dir_path( dirname( __FILE__ ) ) . 'assets/js/blocks-frontend.js';
