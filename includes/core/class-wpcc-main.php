@@ -65,6 +65,12 @@ class WPCC_Main {
             $this->handle_config_errors( $config_errors );
             return;
         }
+    
+        // 标记 AJAX/REST/wc-ajax 请求为"直接输出"，跳过页面级转换
+        $is_ajax = function_exists('wp_doing_ajax') ? wp_doing_ajax() : ( defined('DOING_AJAX') && DOING_AJAX );
+        $is_rest = defined('REST_REQUEST') && REST_REQUEST;
+        $is_wc_ajax = isset($_REQUEST['wc-ajax']) && is_string($_REQUEST['wc-ajax']) && $_REQUEST['wc-ajax'] !== '';
+        $this->config->set_direct_conversion_flag( (bool) ( $is_ajax || $is_rest || $is_wc_ajax ) );
         
         // 初始化模块
         $this->init_modules();
@@ -349,6 +355,17 @@ class WPCC_Main {
      * 模板重定向处理
      */
     public function template_redirect(): void {
+        // 排除 WooCommerce 关键页面（结算、购物车、我的账户等），避免转换影响功能
+        if ( function_exists( 'is_checkout' ) && is_checkout() ) {
+            return;
+        }
+        if ( function_exists( 'is_cart' ) && is_cart() ) {
+            return;
+        }
+        if ( function_exists( 'is_account_page' ) && is_account_page() ) {
+            return;
+        }
+        
         $this->set_language_urls();
         
         // 处理“根级语言前缀”访问：/zh-xx/ 或 /zh/
@@ -438,6 +455,11 @@ class WPCC_Main {
      * 执行转换
      */
     private function do_conversion(): void {
+        // 若是 AJAX/REST/wc-ajax 等非 HTML 响应，直接跳过所有转换，避免破坏 JSON/片段
+        if ( $this->config->get_direct_conversion_flag() ) {
+            return;
+        }
+        
         // 加载转换表
         $this->load_conversion_table();
         

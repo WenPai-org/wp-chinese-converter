@@ -139,6 +139,12 @@ function wpcc_parse_query( $query ) {
 
 	global $wpcc_target_lang, $wpcc_redirect_to, $wpcc_noconversion_url, $wpcc_options, $wpcc_direct_conversion_flag;
 
+	// 标记 AJAX/REST/wc-ajax 请求，跳过转换避免干扰 JSON 响应
+	$is_ajax = function_exists('wp_doing_ajax') ? wp_doing_ajax() : ( defined('DOING_AJAX') && DOING_AJAX );
+	$is_rest = defined('REST_REQUEST') && REST_REQUEST;
+	$is_wc_ajax = isset($_REQUEST['wc-ajax']) && is_string($_REQUEST['wc-ajax']) && $_REQUEST['wc-ajax'] !== '';
+	$wpcc_direct_conversion_flag = (bool) ( $is_ajax || $is_rest || $is_wc_ajax );
+
 	if ( ! is_404() ) {
 		$wpcc_noconversion_url = wpcc_get_noconversion_url();
 	} else {
@@ -209,7 +215,12 @@ function wpcc_parse_query( $query ) {
  * 模板重定向处理 - 核心转换逻辑
  */
 function wpcc_template_redirect() {
-	global $wpcc_noconversion_url, $wpcc_langs_urls, $wpcc_options, $wpcc_target_lang, $wpcc_redirect_to;
+	global $wpcc_noconversion_url, $wpcc_langs_urls, $wpcc_options, $wpcc_target_lang, $wpcc_redirect_to, $wpcc_direct_conversion_flag;
+
+	// 若是 AJAX/REST/wc-ajax 等非 HTML 响应，直接跳过所有转换，避免破坏 JSON/片段
+	if ( $wpcc_direct_conversion_flag ) {
+		return;
+	}
 
 	set_wpcc_langs_urls();
 
@@ -1001,6 +1012,12 @@ function wpcc_do_conversion() {
 		return;
 	}
 	global $wpcc_direct_conversion_flag, $wpcc_options;
+	
+	// 若是 AJAX/REST/wc-ajax 等非 HTML 响应，直接跳过所有转换，避免破坏 JSON/片段
+	if ( $wpcc_direct_conversion_flag ) {
+		return;
+	}
+	
 	wpcc_load_conversion_table();
 
 	add_action( 'wp_head', 'wpcc_header' );
