@@ -65,31 +65,25 @@ class WPCC_Main {
             $this->handle_config_errors( $config_errors );
             return;
         }
-    
-        // 标记 AJAX/REST/wc-ajax 请求为“直接输出”，跳过页面级转换
-        $is_ajax = function_exists('wp_doing_ajax') ? wp_doing_ajax() : ( defined('DOING_AJAX') && DOING_AJAX );
-        $is_rest = defined('REST_REQUEST') && REST_REQUEST;
-        $is_wc_ajax = isset($_REQUEST['wc-ajax']) && is_string($_REQUEST['wc-ajax']) && $_REQUEST['wc-ajax'] !== '';
-        $this->config->set_direct_conversion_flag( (bool) ( $is_ajax || $is_rest || $is_wc_ajax ) );
-    
+        
         // 初始化模块
         $this->init_modules();
-    
+        
         // 设置重写规则
         if ( $this->config->is_feature_enabled( 'wpcc_use_permalink' ) ) {
             $this->setup_rewrite_rules();
             // 自愈：在启用固定链接模式但尚未生成 WPCC 语言规则时，尝试一次性刷新重写规则，避免 /zh-xx/ 访问 404
             $this->maybe_autoflush_rewrite_rules();
         }
-    
+        
         // 处理评论提交
         $this->handle_comment_submission();
-    
+        
         // 修复首页显示问题
         if ( 'page' === get_option( 'show_on_front' ) && get_option( 'page_on_front' ) ) {
             add_action( 'parse_query', [ $this, 'fix_homepage_query' ] );
         }
-    
+        
         // 注册区块渲染过滤器
         add_filter( 'render_block', [ $this, 'render_no_conversion_block' ], 5, 2 );
     }
@@ -444,11 +438,6 @@ class WPCC_Main {
      * 执行转换
      */
     private function do_conversion(): void {
-        // 若是 AJAX/REST/wc-ajax 等非 HTML 响应，直接跳过所有转换，避免破坏 JSON/片段
-        if ( $this->config->get_direct_conversion_flag() ) {
-            return;
-        }
-        
         // 加载转换表
         $this->load_conversion_table();
         
@@ -529,20 +518,299 @@ class WPCC_Main {
     }
     
     /**
-     * 添加评论表单隐藏字段：variant
+     * 刷新重写规则（调试模式）
+     */
+    public function flush_rewrite_rules(): void {
+        global $wp_rewrite;
+        $wp_rewrite->flush_rules();
+    }
+    
+    // 这里添加其他必要的私有方法...
+    
+    /**
+     * 检查 WordPress 是否启用了固定链接
+     */
+    private function is_permalinks_enabled(): bool {
+        $structure = get_option( 'permalink_structure' );
+        return is_string( $structure ) && $structure !== '';
+    }
+    
+    /**
+     * 获取无转换URL
+     */
+    private function get_noconversion_url(): string {
+        $enabled_langs = $this->config->get_enabled_languages();
+        $reg = implode( '|', array_map( 'preg_quote', $enabled_langs ) );
+        
+        $protocol = is_ssl() ? 'https://' : 'http://';
+        $host = isset( $_SERVER['HTTP_HOST'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ) ) : '';
+        $uri = isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+        
+        $tmp = trim( strtolower( remove_query_arg( 'variant', $protocol . $host . $uri ) ) );
+        
+        if ( preg_match( '/^(.*)\\/(' . $reg . '|zh|zh-reset)(\\/.*)?$/', $tmp, $matches ) ) {
+            $tmp = user_trailingslashit( trailingslashit( $matches[1] ) . ltrim( $matches[3] ?? '', '/' ) );
+            if ( $tmp === home_url() ) {
+                $tmp .= '/';
+            }
+        }
+        
+        return $tmp;
+    }
+    
+    /**
+     * 设置重写规则
+     */
+    private function setup_rewrite_rules(): void {
+        // 仅在 WP 启用了固定链接 且 插件启用了固定链接格式时设置重写规则
+        if ( ! $this->is_permalinks_enabled() || ! $this->config->is_feature_enabled( 'wpcc_use_permalink' ) ) {
+            return;
+        }
+        add_filter( 'rewrite_rules_array', [ $this, 'modify_rewrite_rules' ] );
+
+        // 显式在规则顶端加入"根级变体"规则，确保 /zh-xx/ 能优先匹配到首页
+        $enabled = $this->config->get_enabled_languages();
+        if ( ! empty( $enabled ) && function_exists( 'add_rewrite_rule' ) ) {
+            $reg = implode( '|', array_map( 'preg_quote', $enabled ) );
+            add_rewrite_rule( '^(' . $reg . '|zh|zh-reset)/?$', 'index.php?variant=$matches[1]', 'top' );
+            
+            // 强制在init钩子中添加根级规则，确保优先级
+            add_action( 'init', function() use ( $reg ) {
+                add_rewrite_rule( '^(' . $reg . '|zh|zh-reset)/?$', 'index.php?variant=$matches[1]', 'top' );
+            }, 5 ); // 优先级5，早于大部分其他规则
+        }
+    }
+
+    /**
+     * 如有必要，自动刷新一次重写规则，避免未刷新导致的 404
+     */
+    private function maybe_autoflush_rewrite_rules(): void {
+        // 仅在启用了固定链接模式且 WP 启用了固定链接时尝试
+        if ( ! $this->config->is_feature_enabled( 'wpcc_use_permalink' ) || ! $this->is_permalinks_enabled() ) {
+            return;
+        }
+        
+        // 延迟执行，确保所有规则都已加载
+        add_action( 'wp_loaded', [ $this, 'check_and_flush_rules' ], 10 );
+    }
+    
+    /**
+     * 检查并刷新规则
+     */
+    public function check_and_flush_rules(): void {
+        // 6 小时内最多尝试一次
+        $last = (int) get_option( 'wpcc_rewrite_autoflush_ts', 0 );
+        if ( $last && ( time() - $last ) < 6 * 3600 ) {
+            return;
+        }
+        
+        // 检查当前规则中是否已经包含根级的语言捕获规则
+        $rules = get_option( 'rewrite_rules' );
+        if ( ! is_array( $rules ) ) {
+            $rules = [];
+        }
+        
+        $enabled_langs = $this->config->get_enabled_languages();
+        if ( empty( $enabled_langs ) ) {
+            return;
+        }
+        
+        $reg = implode( '|', $enabled_langs );
+        $expected = '^(' . $reg . '|zh|zh-reset)/?$';
+        $has_expected = false;
+        
+        foreach ( $rules as $regex => $query ) {
+            if ( $regex === $expected && strpos( $query, 'variant=' ) !== false ) {
+                $has_expected = true;
+                break;
+            }
+        }
+        
+        if ( ! $has_expected && function_exists( 'flush_rewrite_rules' ) ) {
+            // 刷新一次规则
+            flush_rewrite_rules( false );
+            update_option( 'wpcc_rewrite_autoflush_ts', time() );
+            
+            // 记录日志
+            if ( defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+                error_log( 'WPCC: Auto-flushed rewrite rules for language variants' );
+            }
+        }
+    }
+    
+    /**
+     * 修改重写规则
+     */
+    public function modify_rewrite_rules( array $rules ): array {
+        $enabled_langs = $this->config->get_enabled_languages();
+        $reg = implode( '|', $enabled_langs );
+        $rules2 = [];
+        
+        $use_permalink = $this->config->get_option( 'wpcc_use_permalink', 0 );
+        
+        // 首先添加根级语言规则，确保最高优先级
+        $root_rule_key = '^(' . $reg . '|zh|zh-reset)/?$';
+        $rules2[ $root_rule_key ] = 'index.php?variant=$matches[1]';
+        
+        if ( $use_permalink == 1 ) {
+            foreach ( $rules as $key => $value ) {
+                if ( strpos( $key, 'trackback' ) !== false || strpos( $key, 'print' ) !== false || strpos( $value, 'lang=' ) !== false ) {
+                    continue;
+                }
+                if ( substr( $key, -3 ) == '/?$' ) {
+                    if ( ! preg_match_all( '/\\$matches\\[(\\d+)\\]/', $value, $matches, PREG_PATTERN_ORDER ) ) {
+                        continue;
+                    }
+                    $number = count( $matches[0] ) + 1;
+                    $rules2[ substr( $key, 0, -3 ) . '/(' . $reg . '|zh|zh-reset)/?$' ] = $value . '&variant=$matches[' . $number . ']';
+                }
+            }
+        } else {
+            foreach ( $rules as $key => $value ) {
+                if ( strpos( $key, 'trackback' ) !== false || strpos( $key, 'print' ) !== false || strpos( $value, 'lang=' ) !== false ) {
+                    continue;
+                }
+                if ( substr( $key, -3 ) == '/?$' ) {
+                    $rules2[ '(' . $reg . '|zh|zh-reset)/' . $key ] = preg_replace_callback( '/\\$matches\\[(\\d+)\\]/', [ $this, 'permalink_preg_callback' ], $value ) . '&variant=$matches[1]';
+                }
+            }
+        }
+        
+        return array_merge( $rules2, $rules );
+    }
+    
+    /**
+     * URL重写回调函数
+     */
+    private function permalink_preg_callback( array $matches ): string {
+        return '$matches[' . ( intval( $matches[1] ) + 1 ) . ']';
+    }
+    
+    /**
+     * 处理评论提交
+     */
+    private function handle_comment_submission(): void {
+        $php_self = isset( $_SERVER['PHP_SELF'] ) ? sanitize_text_field( wp_unslash( $_SERVER['PHP_SELF'] ) ) : '';
+        $request_method = isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : '';
+        
+        if ( ( $php_self && ( strpos( $php_self, 'wp-comments-post.php' ) !== false
+           || strpos( $php_self, 'ajax-comments.php' ) !== false
+           || strpos( $php_self, 'comments-ajax.php' ) !== false )
+         ) &&
+         $request_method === 'POST' &&
+         isset( $_POST['variant'] ) && ! empty( $_POST['variant'] )
+        ) {
+            $variant = sanitize_text_field( wp_unslash( $_POST['variant'] ) );
+            if ( $this->config->is_language_enabled( $variant ) ) {
+                $this->config->set_target_lang( $variant );
+                $this->do_conversion();
+            }
+        }
+    }
+    
+    /**
+     * 修复首页查询
+     */
+    public function fix_homepage_query( $wp_query ) {
+        $qv = &$wp_query->query_vars;
+        
+        if ( $wp_query->is_home && 'page' == get_option( 'show_on_front' ) && get_option( 'page_on_front' ) ) {
+            $_query = wp_parse_args( $wp_query->query );
+            if ( isset( $_query['pagename'] ) && '' == $_query['pagename'] ) {
+                unset( $_query['pagename'] );
+            }
+            if ( empty( $_query ) || ! array_diff( array_keys( $_query ), [
+                    'preview', 'page', 'paged', 'cpage', 'variant'
+                ] ) ) {
+                $wp_query->is_page = true;
+                $wp_query->is_home = false;
+                $qv['page_id'] = get_option( 'page_on_front' );
+                if ( ! empty( $qv['paged'] ) ) {
+                    $qv['page'] = $qv['paged'];
+                    unset( $qv['paged'] );
+                }
+            }
+        }
+        
+        return $wp_query;
+    }
+    
+    /**
+     * 渲染不转换区块
+     */
+    public function render_no_conversion_block( string $block_content, array $block ): string {
+        if ( isset( $block['blockName'] ) && $block['blockName'] === 'wpcc/no-conversion' ) {
+            $unique_id = uniqid();
+            return '<!--wpcc_NC' . $unique_id . '_START-->' . $block_content . '<!--wpcc_NC' . $unique_id . '_END-->';
+        }
+        return $block_content;
+    }
+    
+    /**
+     * 添加评论表单语言参数
      */
     public function add_comment_form_variant(): void {
         $target_lang = $this->config->get_target_lang();
-        if ( ! $target_lang ) {
-            return;
+        if ( $target_lang ) {
+            echo '<input type="hidden" name="variant" value="' . esc_attr( $target_lang ) . '" />';
         }
-        echo '<input type="hidden" name="variant" value="' . esc_attr( $target_lang ) . '" />';
+    }
+    
+    /**
+     * 转换链接
+     */
+    private function convert_link( string $link, string $variant ): string {
+        static $wp_home;
+        if ( empty( $wp_home ) ) {
+            $wp_home = home_url();
+        }
+
+        if ( empty( $variant ) ) {
+            return $link;
+        }
+
+        // 仅当路径段或查询参数中已包含有效变体时，认为“已包含”
+        $enabled = $this->config->get_enabled_languages();
+        $enabled = is_array( $enabled ) ? $enabled : [];
+        $variant_regex = '#/(?:' . implode( '|', array_map( 'preg_quote', $enabled ) ) . '|zh|zh-reset)(/|$)#i';
+
+        $qpos = strpos( $link, '?' );
+        $path = $qpos !== false ? substr( $link, 0, $qpos ) : $link;
+        $qs   = $qpos !== false ? substr( $link, $qpos ) : '';
+        $path_only = parse_url( $path, PHP_URL_PATH );
+        if ( $path_only === null ) { $path_only = $path; }
+
+        // 如路径中已有变体，仅清理冗余的 variant 查询参数然后返回
+        if ( preg_match( $variant_regex, (string) $path_only ) ) {
+            if ( $qpos !== false ) {
+                $qs = preg_replace( '/([?&])variant=[^&]*(&|$)/', '$1', $qs );
+                $qs = rtrim( $qs, '?&' );
+                if ( $qs && $qs[0] !== '?' ) { $qs = '?' . ltrim( $qs, '?' ); }
+            }
+            return $path . $qs;
+        }
+
+        $style = (int) $this->config->get_option( 'wpcc_use_permalink', 0 );
+
+        // 查询字符串模式或未启用固定链接（WP未启用固定链接时也回退到查询参数）
+        if ( $style === 0 || ! $this->config->is_feature_enabled( 'wpcc_use_permalink' ) || ! $this->is_permalinks_enabled() ) {
+            return add_query_arg( 'variant', $variant, $link );
+        }
+
+        if ( $style === 1 ) {
+            // 后缀模式: .../permalink/.../zh-xx/
+            return user_trailingslashit( trailingslashit( $path ) . $variant ) . $qs;
+        }
+
+        // 前缀模式 (style 2): .../zh-xx/permalink/...
+        return str_replace( $wp_home, "$wp_home/$variant", $path ) . $qs;
     }
     
     /**
      * 加载转换表
      */
     private function load_conversion_table(): void {
+        // 这个方法会调用原有的全局函数来保持兼容性
         if ( function_exists( 'wpcc_load_conversion_table' ) ) {
             wpcc_load_conversion_table();
         }
@@ -552,99 +820,223 @@ class WPCC_Main {
      * 添加链接转换过滤器
      */
     private function add_link_conversion_filters(): void {
-        add_filter( 'home_url', [ $this, 'filter_home_url' ], 10, 4 );
-        add_filter( 'post_link', [ $this, 'filter_link_conversion' ], 10, 3 );
-        add_filter( 'post_type_link', [ $this, 'filter_link_conversion' ], 10, 3 );
-        add_filter( 'page_link', [ $this, 'filter_link_conversion' ], 10, 3 );
-        add_filter( 'term_link', [ $this, 'filter_link_conversion' ], 10, 3 );
-        add_filter( 'attachment_link', [ $this, 'filter_link_conversion' ], 10, 3 );
-        add_filter( 'category_link', [ $this, 'filter_link_conversion' ], 10, 2 );
-        add_filter( 'tag_link', [ $this, 'filter_link_conversion' ], 10, 2 );
-        add_filter( 'author_link', [ $this, 'filter_link_conversion' ], 10, 2 );
-        add_filter( 'day_link', [ $this, 'filter_link_conversion' ], 10, 2 );
-        add_filter( 'month_link', [ $this, 'filter_link_conversion' ], 10, 2 );
-        add_filter( 'year_link', [ $this, 'filter_link_conversion' ], 10, 2 );
-        add_filter( 'get_pagenum_link', [ $this, 'filter_link_conversion' ], 10, 1 );
+        add_filter( 'post_link', [ $this, 'filter_link_conversion' ] );
+        add_filter( 'month_link', [ $this, 'filter_link_conversion' ] );
+        add_filter( 'day_link', [ $this, 'filter_link_conversion' ] );
+        add_filter( 'year_link', [ $this, 'filter_link_conversion' ] );
+        add_filter( 'page_link', [ $this, 'filter_link_conversion' ] );
+        add_filter( 'tag_link', [ $this, 'filter_link_conversion' ] );
+        add_filter( 'author_link', [ $this, 'filter_link_conversion' ] );
+        add_filter( 'category_link', [ $this, 'filter_link_conversion' ] );
+        add_filter( 'feed_link', [ $this, 'filter_link_conversion' ] );
+        add_filter( 'attachment_link', [ $this, 'filter_link_conversion' ] );
+        add_filter( 'search_feed_link', [ $this, 'filter_link_conversion' ] );
+
+        // 添加链接修复过滤器（重要！）
+        if ( function_exists( 'wpcc_fix_link_conversion' ) ) {
+            add_filter( 'category_feed_link', 'wpcc_fix_link_conversion' );
+            add_filter( 'tag_feed_link', 'wpcc_fix_link_conversion' );
+            add_filter( 'author_feed_link', 'wpcc_fix_link_conversion' );
+            add_filter( 'post_comments_feed_link', 'wpcc_fix_link_conversion' );
+            add_filter( 'get_comments_pagenum_link', 'wpcc_fix_link_conversion' );
+            add_filter( 'get_comment_link', 'wpcc_fix_link_conversion' );
+        }
+
+        // 添加取消转换过滤器
+        if ( function_exists( 'wpcc_cancel_link_conversion' ) ) {
+            add_filter( 'attachment_link', 'wpcc_cancel_link_conversion' );
+            add_filter( 'trackback_url', 'wpcc_cancel_link_conversion' );
+        }
+
+        // 添加分页链接修复
+        if ( function_exists( 'wpcc_pagenum_link_fix' ) ) {
+            add_filter( 'get_pagenum_link', 'wpcc_pagenum_link_fix' );
+        }
     }
     
     /**
      * 过滤链接转换
      */
     public function filter_link_conversion( string $link ): string {
-        $target_lang = $this->config->get_target_lang();
-        if ( ! $target_lang || $this->config->get_direct_conversion_flag() ) {
-            return $link;
+        // 使用全局函数以保持一致性
+        if ( function_exists( 'wpcc_link_conversion' ) ) {
+            return wpcc_link_conversion( $link, $this->config->get_target_lang() );
         }
-        return $this->convert_link( $link, $target_lang );
+        return $this->convert_link( $link, $this->config->get_target_lang() );
     }
-    
+
     /**
-     * 过滤home_url
+     * 过滤 request 阶段的 query_vars：
+     * - 当 pagename 等于语言前缀（zh-xx|zh|zh-reset）时，注入 variant 并指向首页，避免 404
      */
-    public function filter_home_url( string $url, string $path, $orig_scheme, $blog_id ): string {
-        $target_lang = $this->config->get_target_lang();
-        if ( ! $target_lang || $this->config->get_direct_conversion_flag() ) {
-            return $url;
+    public function filter_request_vars( array $qv ): array {
+        if ( is_admin() ) { return $qv; }
+        $enabled = $this->config->get_enabled_languages();
+        if ( empty( $enabled ) ) { return $qv; }
+        $candidate = '';
+        if ( isset( $qv['pagename'] ) && is_string( $qv['pagename'] ) ) {
+            $candidate = trim( $qv['pagename'], '/' );
+        } elseif ( isset( $qv['name'] ) && is_string( $qv['name'] ) ) {
+            $candidate = trim( $qv['name'], '/' );
         }
-        return $this->convert_link( $url, $target_lang );
+        if ( $candidate === '' ) { return $qv; }
+        $langs = array_map( 'strtolower', $enabled );
+        $candidate_l = strtolower( $candidate );
+        if ( in_array( $candidate_l, $langs, true ) || $candidate_l === 'zh' || $candidate_l === 'zh-reset' ) {
+            // 注入 variant
+            $qv['variant'] = $candidate_l;
+            // 指向首页
+            if ( 'page' === get_option( 'show_on_front' ) && get_option( 'page_on_front' ) ) {
+                $qv['page_id'] = (int) get_option( 'page_on_front' );
+                if ( ! empty( $qv['paged'] ) ) { $qv['page'] = $qv['paged']; unset( $qv['paged'] ); }
+            } else {
+                // 文章作为首页：移除 pagename/name，交由 is_home 处理
+                unset( $qv['pagename'], $qv['name'] );
+            }
+        }
+        return $qv;
     }
-    
+
     /**
-     * 过滤自定义Logo HTML，加入语言变体链接
+     * 过滤 home_url，使首页链接带上变体（仅前台且存在目标语言时）
+     */
+    public function filter_home_url( string $url, string $path, ?string $orig_scheme, ?int $blog_id ): string {
+        if ( is_admin() ) { return $url; }
+        $target = $this->config->get_target_lang();
+        if ( ! $target ) { return $url; }
+        return $this->convert_link( $url, $target );
+    }
+
+    /**
+     * 调整自定义 Logo 的链接 href（仅前台且存在目标语言时）
      */
     public function filter_custom_logo( string $html ): string {
-        $target_lang = $this->config->get_target_lang();
-        if ( ! $target_lang || $this->config->get_direct_conversion_flag() ) {
-            return $html;
-        }
-        $home = esc_url( $this->convert_link( home_url( '/' ), $target_lang ) );
-        return preg_replace( '/(<a\s[^>]*?href=[\"\'])([^\"\']+)([\"\'][^>]*?>)/i', '$1' . $home . '$3', $html );
+        if ( is_admin() ) { return $html; }
+        $target = $this->config->get_target_lang();
+        if ( ! $target ) { return $html; }
+        $home = home_url();
+        $that = $this;
+        $out = preg_replace_callback('/href=(\"|\')(.*?)(\1)/i', function($m) use ($home, $target, $that) {
+            $href = $m[2];
+            if ( strpos( $href, $home ) === 0 ) {
+                $new = $that->convert_link( $href, $target );
+                return 'href=' . $m[1] . esc_url( $new ) . $m[1];
+            }
+            return $m[0];
+        }, $html );
+        return $out ?: $html;
     }
-    
+
     /**
-     * 过滤菜单HTML，加入语言变体链接
+     * 调整经典菜单（wp_nav_menu）输出中的 href（仅前台且存在目标语言时）
      */
     public function filter_wp_nav_menu( string $nav_menu, $args ): string {
-        $target_lang = $this->config->get_target_lang();
-        if ( ! $target_lang || $this->config->get_direct_conversion_flag() ) {
-            return $nav_menu;
-        }
-        $home = esc_url( $this->convert_link( home_url( '/' ), $target_lang ) );
-        return preg_replace( '/(<a\s[^>]*?href=[\"\'])(?:' . preg_quote( esc_url( home_url( '' ) ), '/' ) . '\/)?([\"\'][^>]*?>)/i', '$1' . $home . '$2', $nav_menu );
+        if ( is_admin() ) { return $nav_menu; }
+        $target = $this->config->get_target_lang();
+        if ( ! $target ) { return $nav_menu; }
+        $home = home_url();
+        $that = $this;
+        $out = preg_replace_callback('/href=(\"|\')(.*?)(\1)/i', function($m) use ($home, $target, $that) {
+            $href = html_entity_decode( $m[2] );
+            // 仅转换本站链接
+            if ( strpos( $href, $home ) === 0 ) {
+                $new = $that->convert_link( $href, $target );
+                return 'href=' . $m[1] . esc_url( $new ) . $m[1];
+            }
+            return $m[0];
+        }, $nav_menu );
+        return $out ?: $nav_menu;
     }
-    
+
     /**
-     * 过滤请求变量
+     * pre_get_posts 兜底：当请求仅为语言前缀时，强制首页查询，避免 404。
      */
-    public function filter_request_vars( array $request ): array {
-        // 当访问根级语言前缀时将查询修正为首页
-        $enabled = $this->config->get_enabled_languages();
-        $reg = implode( '|', array_map( 'preg_quote', $enabled ) );
-        if ( isset( $request['pagename'] ) && preg_match( '/^(' . $reg . '|zh|zh-reset)$/i', (string) $request['pagename'] ) ) {
-            unset( $request['pagename'], $request['name'] );
-            $request['page_id'] = (int) get_option( 'page_on_front' );
+    public function pre_get_posts_fix( $q ): void {
+        if ( is_admin() || ! $q || ! method_exists( $q, 'is_main_query' ) || ! $q->is_main_query() ) {
+            return;
         }
-        return $request;
+        $enabled = $this->config->get_enabled_languages();
+        if ( empty( $enabled ) ) { return; }
+        $path = isset( $_SERVER['REQUEST_URI'] ) ? (string) $_SERVER['REQUEST_URI'] : '';
+        if ( $path === '' ) { return; }
+        $path = trim( $path, '/' );
+        $candidate = $path;
+        // 仅当整个路径就是语言前缀（忽略末尾斜杠和查询串）
+        if ( strpos( $candidate, '/' ) !== false ) {
+            // 含有更多段，忽略
+            return;
+        }
+        $langs = array_map( 'strtolower', $enabled );
+        $candidate_l = strtolower( $candidate );
+        if ( in_array( $candidate_l, $langs, true ) || $candidate_l === 'zh' || $candidate_l === 'zh-reset' ) {
+            // 注入 variant
+            $q->set( 'variant', $candidate_l );
+            // 修正首页查询
+            if ( 'page' === get_option( 'show_on_front' ) && get_option( 'page_on_front' ) ) {
+                $q->set( 'page_id', (int) get_option( 'page_on_front' ) );
+                if ( $q->get( 'paged' ) ) { $q->set( 'page', $q->get( 'paged' ) ); $q->set( 'paged', 0 ); }
+            } else {
+                $q->set( 'pagename', '' );
+                $q->set( 'name', '' );
+            }
+            // 避免被错误判为 404
+            if ( method_exists( $q, 'is_404' ) ) {
+                $q->is_404 = false;
+            }
+        }
+    }
+
+    /**
+     * 取消错误 canonical 跳转，参考旧版逻辑
+     */
+    public function cancel_incorrect_redirect( $redirect_to, $redirect_from ) {
+        if ( ! is_string( $redirect_to ) || ! is_string( $redirect_from ) ) { return $redirect_to; }
+
+        // 动态构建允许的语言前缀集合
+        $langs = method_exists( 'WPCC_Language_Config', 'get_valid_language_codes' ) ? WPCC_Language_Config::get_valid_language_codes() : [ 'zh-cn','zh-tw','zh-hk','zh-hans','zh-hant','zh-sg','zh-jp' ];
+        $reg = implode( '|', array_map( 'preg_quote', $langs ) );
+
+        // 如果来源是变体路径（根级或包含变体段），阻止将其规范化到非变体路径（例如首页 /）
+        if ( preg_match( '/\/(' . $reg . '|zh|zh-reset)(\/|$)/i', $redirect_from ) ) {
+            // 允许仅修正末尾斜杠
+            global $wp_rewrite;
+            if ( ( $wp_rewrite && $wp_rewrite->use_trailing_slashes && substr( $redirect_from, -1 ) != '/' ) ||
+                 ( $wp_rewrite && ! $wp_rewrite->use_trailing_slashes && substr( $redirect_from, -1 ) == '/' ) ) {
+                return user_trailingslashit( $redirect_from );
+            }
+            return false; // 阻止从变体路径跳到非变体路径
+        }
+
+        // 如果目标是变体路径，确保不因斜杠规范导致错误跳转
+        if ( preg_match( '/\/(' . $reg . '|zh|zh-reset)(\/|$)/i', $redirect_to ) ) {
+            global $wp_rewrite;
+            if ( ( $wp_rewrite && $wp_rewrite->use_trailing_slashes && substr( $redirect_from, -1 ) != '/' ) ||
+                 ( $wp_rewrite && ! $wp_rewrite->use_trailing_slashes && substr( $redirect_from, -1 ) == '/' ) ) {
+                return user_trailingslashit( $redirect_from );
+            }
+            return false; // 阻止多余跳转
+        }
+
+        return $redirect_to;
     }
     
     /**
      * 添加内容转换过滤器
      */
     private function add_content_conversion_filters(): void {
-        add_filter( 'the_content', 'zhconversion2' );
-        add_filter( 'the_excerpt', 'zhconversion2' );
+        add_filter( 'the_content', 'zhconversion2', 20 );
+        add_filter( 'the_content_rss', 'zhconversion2', 20 );
+        add_filter( 'the_excerpt', 'zhconversion2', 20 );
+        add_filter( 'the_excerpt_rss', 'zhconversion2', 20 );
         add_filter( 'the_title', 'zhconversion' );
-        add_filter( 'list_cats', 'zhconversion' );
-        add_filter( 'widget_title', 'zhconversion' );
+        add_filter( 'comment_text', 'zhconversion' );
         add_filter( 'bloginfo', 'zhconversion' );
-        add_filter( 'wp_title', 'zhconversion' );
+        add_filter( 'the_tags', 'zhconversion_deep' );
+        add_filter( 'term_links-post_tag', 'zhconversion_deep' );
+        add_filter( 'wp_tag_cloud', 'zhconversion' );
+        add_filter( 'the_category', 'zhconversion' );
+        add_filter( 'list_cats', 'zhconversion' );
         add_filter( 'category_description', 'zhconversion' );
-        add_filter( 'comment_author', 'zhconversion' );
-        add_filter( 'comment_text', 'zhconversion2' );
-        add_filter( 'link_name', 'zhconversion' );
-        add_filter( 'link_description', 'zhconversion' );
-        add_filter( 'link_notes', 'zhconversion' );
-        add_filter( 'post_type_archive_title', 'zhconversion' );
         add_filter( 'single_cat_title', 'zhconversion' );
         add_filter( 'single_post_title', 'zhconversion' );
         add_filter( 'bloginfo_rss', 'zhconversion' );
@@ -715,10 +1107,6 @@ class WPCC_Main {
      * 全页面转换回调
      */
     public function full_page_conversion_callback( string $buffer ): string {
-        // 若已标记为直接输出（AJAX/REST等），不做任何处理，避免破坏响应
-        if ( $this->config->get_direct_conversion_flag() ) {
-            return $buffer;
-        }
         $target_lang = $this->config->get_target_lang();
         if ( $target_lang && ! $this->config->get_direct_conversion_flag() ) {
             $home_url = $this->convert_link( home_url( '/' ), $target_lang );
@@ -737,178 +1125,5 @@ class WPCC_Main {
             return wpcc_filter_search_rule( $where );
         }
         return $where;
-    }
-
-    // ====== 新增：核心支撑方法 ======
-
-    private function is_permalinks_enabled(): bool {
-        global $wp_rewrite;
-        return ! empty( $wp_rewrite ) && ! empty( $wp_rewrite->permalink_structure );
-    }
-
-    private function get_noconversion_url(): string {
-        $uri = isset($_SERVER['REQUEST_URI']) ? (string) wp_unslash($_SERVER['REQUEST_URI']) : '/';
-        $parsed = wp_parse_url( home_url( $uri ) );
-        $path = isset($parsed['path']) ? $parsed['path'] : '/';
-        $query = isset($parsed['query']) ? $parsed['query'] : '';
-
-        // 去掉前缀中的语言变体，例如 /zh-tw/xxx 或 /zh/
-        $enabled = $this->config->get_enabled_languages();
-        $reg = implode('|', array_map('preg_quote', (array) $enabled));
-        $path = preg_replace('#^/(?:' . $reg . '|zh|zh-reset)(?:/|$)#i', '/', $path);
-        if ($path === '') { $path = '/'; }
-
-        // 去除 ?variant=xxx 查询参数
-        $query_args = [];
-        if ($query !== '') {
-            parse_str($query, $query_args);
-            unset($query_args['variant']);
-        }
-        $base = home_url( untrailingslashit( $path ) . '/' );
-        return ! empty($query_args) ? add_query_arg( $query_args, $base ) : $base;
-    }
-
-    private function setup_rewrite_rules(): void {
-        global $wp_rewrite;
-        if ( ! $this->is_permalinks_enabled() ) {
-            return;
-        }
-
-        // 给变体添加rewrite tag
-        add_rewrite_tag( '%variant%', '([a-z\-]+)' );
-
-        $enabled = $this->config->get_enabled_languages();
-        if ( empty( $enabled ) || ! is_array( $enabled ) ) {
-            return;
-        }
-        $reg = implode( '|', array_map( 'preg_quote', $enabled ) );
-
-        // 仅语言前缀访问（根级），映射为首页并注入 variant
-        add_rewrite_rule( '^(' . $reg . '|zh|zh-reset)/?$', 'index.php?variant=$matches[1]', 'top' );
-
-        // 常规：语言前缀 + 任何路径，注入 variant 并交给 WP 匹配 pagename
-        add_rewrite_rule( '^(' . $reg . '|zh|zh-reset)/(.*)$', 'index.php?variant=$matches[1]&pagename=$matches[2]', 'top' );
-    }
-
-    private function maybe_autoflush_rewrite_rules(): void {
-        // 限流：12小时最多一次自动刷新
-        $last = (int) get_option( 'wpcc_rewrite_autoflush_ts', 0 );
-        if ( time() - $last < 12 * HOUR_IN_SECONDS ) {
-            return;
-        }
-        flush_rewrite_rules( false );
-        update_option( 'wpcc_rewrite_autoflush_ts', time() );
-    }
-
-    public function flush_rewrite_rules(): void {
-        // 在调试模式下立即刷新重写规则，确保语言前缀规则生效
-        $this->setup_rewrite_rules();
-        flush_rewrite_rules( false );
-        update_option( 'wpcc_rewrite_autoflush_ts', time() );
-    }
-
-    public function pre_get_posts_fix( $query ): void {
-        if ( ! is_admin() && $query && $query->is_main_query() ) {
-            $enabled = $this->config->get_enabled_languages();
-            $reg = implode( '|', array_map( 'preg_quote', (array) $enabled ) );
-            $pagename = isset($query->query_vars['pagename']) ? (string) $query->query_vars['pagename'] : '';
-            if ( $pagename !== '' && preg_match( '/^(' . $reg . '|zh|zh-reset)$/i', $pagename ) ) {
-                $front_id = (int) get_option( 'page_on_front' );
-                if ( $front_id ) {
-                    $query->set( 'page_id', $front_id );
-                    $query->set( 'pagename', '' );
-                    $query->set( 'name', '' );
-                }
-            }
-        }
-    }
-
-    public function fix_homepage_query( $query ): void {
-        if ( ! is_admin() && $query && $query->is_main_query() ) {
-            $variant = get_query_var( 'variant' );
-            if ( $variant ) {
-                $enabled = $this->config->get_enabled_languages();
-                $reg = implode( '|', array_map( 'preg_quote', (array) $enabled ) );
-                $req = isset( $query->query['pagename'] ) ? (string) $query->query['pagename'] : '';
-                if ( $req !== '' && preg_match( '/^(' . $reg . '|zh|zh-reset)$/i', $req ) ) {
-                    $front_id = (int) get_option( 'page_on_front' );
-                    if ( $front_id ) {
-                        $query->set( 'page_id', $front_id );
-                        $query->set( 'pagename', '' );
-                        $query->set( 'name', '' );
-                    }
-                }
-            }
-        }
-    }
-
-    public function render_no_conversion_block( string $block_content, array $block ) : string {
-        if ( isset( $block['blockName'] ) && $block['blockName'] === 'wpcc/no-conversion' ) {
-            return '<!--wpcc_NC_START-->' . $block_content . '<!--wpcc_NC_END-->';
-        }
-        return $block_content;
-    }
-
-    private function handle_comment_submission(): void {
-        if ( isset($_POST['variant']) ) {
-            $v = sanitize_text_field( (string) $_POST['variant'] );
-            if ( $this->config->is_language_enabled( $v ) ) {
-                $this->config->set_target_lang( $v );
-            }
-        }
-    }
-
-    public function cancel_incorrect_redirect( $redirect_url, $requested_url ) {
-        // 如果请求路径含有语言前缀，则取消 canonical 重定向，防止丢失语言前缀
-        $enabled = $this->config->get_enabled_languages();
-        $reg = implode( '|', array_map( 'preg_quote', (array) $enabled ) );
-        $path = is_string( $requested_url ) ? (string) $requested_url : '';
-        if ( $path !== '' && preg_match( '#/(?:' . $reg . '|zh|zh-reset)(?:/|$)#i', $path ) ) {
-            return false;
-        }
-        return $redirect_url;
-    }
-
-    private function convert_link( string $url, string $variant ): string {
-        $style = (int) $this->config->get_option( 'wpcc_use_permalink', 0 );
-        $style_effective = $this->is_permalinks_enabled() ? $style : 0;
-
-        // 解析URL
-        $parts = wp_parse_url( $url );
-        if ( ! $parts || ! isset( $parts['scheme'], $parts['host'] ) ) {
-            return $url;
-        }
-        $path = isset( $parts['path'] ) ? $parts['path'] : '/';
-        $query = isset( $parts['query'] ) ? $parts['query'] : '';
-        $frag  = isset( $parts['fragment'] ) ? '#' . $parts['fragment'] : '';
-
-        // 先移除现有语言前缀
-        $enabled = $this->config->get_enabled_languages();
-        $reg = implode( '|', array_map( 'preg_quote', (array) $enabled ) );
-        $path = preg_replace( '#^/(?:' . $reg . '|zh|zh-reset)(?:/|$)#i', '/', $path );
-        if ( $path === '' ) { $path = '/'; }
-
-        if ( $style_effective !== 0 ) {
-            // 前缀模式：插入 /{variant}/
-            $path = '/' . trim( $variant, '/' ) . rtrim( $path, '/' ) . '/';
-            $query_args = [];
-            if ( $query !== '' ) {
-                parse_str( $query, $query_args );
-                unset( $query_args['variant'] );
-            }
-            $base = $parts['scheme'] . '://' . $parts['host'] . ( isset($parts['port']) ? ':' . $parts['port'] : '' ) . rtrim( $path, '/' ) . '/';
-            $url2 = ! empty( $query_args ) ? add_query_arg( $query_args, $base ) : $base;
-            return $url2 . $frag;
-        }
-
-        // 查询参数模式：附加 ?variant=xxx
-        $base = $parts['scheme'] . '://' . $parts['host'] . ( isset($parts['port']) ? ':' . $parts['port'] : '' ) . rtrim( $path, '/' ) . '/';
-        $query_args = [];
-        if ( $query !== '' ) {
-            parse_str( $query, $query_args );
-        }
-        $query_args['variant'] = $variant;
-        $url2 = add_query_arg( $query_args, $base );
-        return $url2 . $frag;
     }
 }

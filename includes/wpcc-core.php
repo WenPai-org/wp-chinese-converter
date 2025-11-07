@@ -1240,7 +1240,9 @@ function wpcc_cancel_link_conversion( $link ) {
 function wpcc_pagenum_link_fix( $link ) {
 	global $wpcc_target_lang, $wpcc_options;
 	global $paged;
-	if ( $wpcc_options['wpcc_use_permalink'] != 1 ) {
+	
+	// 检查配置是否存在
+	if ( ! is_array( $wpcc_options ) || ! isset( $wpcc_options['wpcc_use_permalink'] ) || $wpcc_options['wpcc_use_permalink'] != 1 ) {
 		return $link;
 	}
 
