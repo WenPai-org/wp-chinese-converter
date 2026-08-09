@@ -26,3 +26,4 @@
 - ZIP：401 entries / 1,313,107 bytes；SHA-256 `80e8d419ddbf5fe4e5df56c839cc1a74f6ad51d58c46f4d530e2366654bf70a6`。
 - 发布仍阻断：exact Plugin Check 54 errors/208 warnings（51 output、2 WP compatibility、1 heredoc）；PHPCS 17,266/1,541 旧失败基线；nonce/input/naming/debug warnings；保存恢复 UI/dry-run/diff；Gutenberg 构建源缺失。
 - 详细命令、HTTP 状态、测试环境根因与边界见 `docs/audits/wp-chinese-converter-audit-2026-08-09.md` 第 8 节。
+- [CX] 追加发布阻断：插件头与 `composer.json` 声明 PHP 7.4，但最终 lock/vendor 的 Composer platform check 要求 PHP >= 8.1；未统一元数据或依赖前不能发布。第三轮真实运行矩阵覆盖 multisite 主站与子站，没有另建独立 single-site 拓扑。

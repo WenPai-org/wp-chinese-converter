@@ -170,3 +170,8 @@
 5. PHPCS 仍沿用第二轮的 17,266 errors / 1,541 warnings（exit 2）失败基线；第三轮没有用自动格式化掩盖该债务。
 6. 保存转换虽有受保护快照和程序化恢复，但仍缺管理员恢复 UI、dry-run、逐字段 diff 和多版本历史；该不可逆功能不应在缺少显式操作界面时作为默认启用能力发布。
 7. Gutenberg 构建源仍不完整（缺 `package.json`/block 原始源码），现有构建产物能打包但前端 release 不完全可复现。
+
+### 8.4 [CX] 追加边界
+
+- 版本元数据仍冲突：插件头和根 `composer.json` 声明 PHP 7.4，当前 lock/vendor 生成的 `platform_check.php` 要求 PHP >= 8.1；必须在发布前选择提高 `Requires PHP`，或重新约束并验证兼容 PHP 7.4 的依赖闭包。
+- 第三轮 exact-ZIP 真实运行覆盖 multisite 主站与子站；没有另建独立 single-site 拓扑，因此不能把该轮结果表述为独立单站环境 PASS。
