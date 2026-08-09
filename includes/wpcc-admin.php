@@ -77,7 +77,7 @@ jQuery(document).ready(function($) {
         
         $.post(ajaxurl, {
             action: "wpcc_flush_rewrite_rules",
-            nonce: "' . wp_create_nonce( 'wpcc_admin_nonce' ) . '"
+            nonce: "' . esc_js( wp_create_nonce( 'wpcc_admin_nonce' ) ) . '"
         }, function(response) {
             if (response.success) {
                 button.closest(".notice").fadeOut();
@@ -191,33 +191,33 @@ function wpcc_conversion_meta_box_callback( $post ) {
 	
 	if (!$is_enabled) {
 		echo '<p>发表时自动转换功能已禁用。</p>';
-		echo '<p><a href="' . admin_url('admin.php?page=wp-chinese-converter') . '">前往设置启用</a></p>';
+		echo '<p><a href="' . esc_url( admin_url( 'admin.php?page=wp-chinese-converter' ) ) . '">前往设置启用</a></p>';
 		return;
 	}
 
 	if (empty($enabled_langs)) {
 		echo '<p>未启用任何语言模块。</p>';
-		echo '<p><a href="' . admin_url('admin.php?page=wp-chinese-converter') . '">前往设置启用语言模块</a></p>';
+		echo '<p><a href="' . esc_url( admin_url( 'admin.php?page=wp-chinese-converter' ) ) . '">前往设置启用语言模块</a></p>';
 		return;
 	}
 
 	if (!in_array($target_lang, $enabled_langs)) {
 		echo '<p style="color: #d63638;">当前转换目标语言未启用。</p>';
-		echo '<p><a href="' . admin_url('admin.php?page=wp-chinese-converter') . '">前往设置修改</a></p>';
+		echo '<p><a href="' . esc_url( admin_url( 'admin.php?page=wp-chinese-converter' ) ) . '">前往设置修改</a></p>';
 		return;
 	}
 
 	$target_display_name = isset($default_names[$target_lang]) ? $default_names[$target_lang] . ' (' . $target_lang . ')' : $target_lang;
-	echo '<p><strong>目标：</strong>' . $target_display_name . '</p>';
+	echo '<p><strong>目标：</strong>' . esc_html( $target_display_name ) . '</p>';
 	
 	$engine = $wpcc_options['wpcc_engine'] ?? 'mediawiki';
 	$engine_names = array(
 		'mediawiki' => 'MediaWiki',
 		'opencc' => 'OpenCC'
 	);
-	echo '<p><strong>引擎：</strong>' . ($engine_names[$engine] ?? $engine) . '</p>';
+	echo '<p><strong>引擎：</strong>' . esc_html( $engine_names[ $engine ] ?? $engine ) . '</p>';
 	
-	echo '<p><small>发表时将自动转换标题和内容。<a target="_blank" href="' . admin_url('admin.php?page=wp-chinese-converter') . '">修改设置 ↗</a></small></p>';
+	echo '<p><small>发表时将自动转换标题和内容。<a target="_blank" href="' . esc_url( admin_url( 'admin.php?page=wp-chinese-converter' ) ) . '">修改设置 ↗</a></small></p>';
 }
 
 /**
@@ -344,19 +344,19 @@ if ( defined( 'WP_DEBUG' ) && WP_DEBUG || defined( 'wpcc_DEBUG' ) && wpcc_DEBUG 
 		echo '<!--';
 		echo '<p style="font-size:20px;color:red;">';
 		echo 'WP WP Chinese Converter Plugin Debug Output:<br />';
-		echo '默认URL: <a href="' . $wpcc_noconversion_url . '">' . $wpcc_noconversion_url . '</a><br />';
-		echo '当前语言(空则是不转换): ' . $wpcc_target_lang . "<br />";
-		echo 'Query String: ' . ( isset( $_SERVER['QUERY_STRING'] ) ? $_SERVER['QUERY_STRING'] : '' ) . '<br />';
-		echo 'Request URI: ' . ( isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : '' ) . '<br />';
+		echo '默认URL: <a href="' . esc_url( $wpcc_noconversion_url ) . '">' . esc_html( $wpcc_noconversion_url ) . '</a><br />';
+		echo '当前语言(空则是不转换): ' . esc_html( $wpcc_target_lang ) . "<br />";
+		echo 'Query String: ' . ( isset( $_SERVER['QUERY_STRING'] ) ? esc_html( wp_unslash( $_SERVER['QUERY_STRING'] ) ) : '' ) . '<br />';
+		echo 'Request URI: ' . ( isset( $_SERVER['REQUEST_URI'] ) ? esc_url( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '' ) . '<br />';
 		foreach ( $wpcc_langs_urls as $key => $value ) {
-			echo $key . ' URL: <a href="' . $value . '">' . $value . '</a><br />';
+			echo esc_html( $key ) . ' URL: <a href="' . esc_url( $value ) . '">' . esc_html( $value ) . '</a><br />';
 		}
-		echo 'Category feed link: ' . get_category_feed_link( 1 ) . '<br />';
-		echo 'Search feed link: ' . get_search_feed_link( 'test' );
+		echo 'Category feed link: ' . esc_url( get_category_feed_link( 1 ) ) . '<br />';
+		echo 'Search feed link: ' . esc_url( get_search_feed_link( 'test' ) );
 		echo 'Rewrite Rules: <br />';
-		echo nl2br( htmlspecialchars( var_export( $wp_rewrite->rewrite_rules(), true ) ) ) . '<br />';
+		echo nl2br( esc_html( var_export( $wp_rewrite->rewrite_rules(), true ) ) ) . '<br />';
 		echo 'Debug Data: <br />';
-		echo nl2br( htmlspecialchars( var_export( $wpcc_debug_data, true ) ) );
+		echo nl2br( esc_html( var_export( $wpcc_debug_data, true ) ) );
 		echo '</p>';
 		echo '-->';
 	}

@@ -34,14 +34,7 @@ define("wpcc_DEBUG", false);
 define("wpcc_VERSION", "1.5.1");
 
 // 插件URL常量
-if (defined("WP_PLUGIN_URL")) {
-    define(
-        "wpcc_DIR_URL",
-        WP_PLUGIN_URL .
-            "/" .
-            str_replace(basename(__FILE__), "", plugin_basename(__FILE__)),
-    );
-} elseif (function_exists("plugins_url")) {
+if (function_exists("plugins_url")) {
     define("wpcc_DIR_URL", plugins_url("", __FILE__) . "/");
 } else {
     // 测试环境的fallback

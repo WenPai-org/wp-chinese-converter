@@ -2,3 +2,5 @@ assets/.DS_Store
 .phpunit.result.cache
 .wp-env.json
 dist/
+tests/runtime/__pycache__/
+*.py[cod]

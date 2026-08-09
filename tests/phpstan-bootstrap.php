@@ -17,3 +17,11 @@ if ( ! function_exists( 'wpcc_mobile_exist' ) ) {
 		return is_string( $name );
 	}
 }
+
+// The bundled simple_html_dom implementation is excluded from analysis because
+// it is third-party legacy code; declare the only first-party entry point used.
+if ( ! function_exists( 'str_get_html' ) ) {
+	function str_get_html( $str ) {
+		return false;
+	}
+}

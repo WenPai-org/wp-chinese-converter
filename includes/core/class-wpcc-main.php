@@ -234,6 +234,7 @@ class WPCC_Main {
     private function determine_target_language( $wp ): string {
         $request_lang = isset( $wp->query_vars['variant'] ) ? sanitize_text_field( $wp->query_vars['variant'] ) : '';
         $cookie_lang = isset( $_COOKIE[ 'wpcc_variant_' . COOKIEHASH ] ) ? sanitize_text_field( wp_unslash( $_COOKIE[ 'wpcc_variant_' . COOKIEHASH ] ) ) : '';
+        $redirect_session = isset( $_COOKIE[ 'wpcc_is_redirect_' . COOKIEHASH ] ) ? sanitize_text_field( wp_unslash( $_COOKIE[ 'wpcc_is_redirect_' . COOKIEHASH ] ) ) : '';
         
         // 检查URL参数中的语言
         if ( $request_lang && $this->config->is_language_enabled( $request_lang ) ) {
@@ -251,6 +252,11 @@ class WPCC_Main {
             return '';
         }
         
+        // 未启用持久语言 Cookie 时，显式“不转换”通过会话 Cookie 阻止浏览器检测立即再次转换。
+        if ( $redirect_session === '1' ) {
+            return '';
+        }
+
         // 浏览器语言检测
         if ( $this->config->is_feature_enabled( 'wpcc_browser_redirect' ) ) {
             $browser_lang = $this->detect_browser_language();

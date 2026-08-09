@@ -327,6 +327,7 @@ class wpcc_Admin
             $o = limit_zhconversion($o, $this->langs[$this->admin_lang][0]);
         }
 
+        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Complete admin form HTML is produced by the bundled settings template; fields are escaped at their output contexts.
         echo $o;
     }
 
@@ -334,7 +335,7 @@ class wpcc_Admin
     {
         $variant =
             isset($_GET["variant"]) && !empty($_GET["variant"])
-                ? $_GET["variant"]
+                ? sanitize_key(wp_unslash($_GET["variant"]))
                 : "";
         $str =
             '<span><a title="' .
@@ -452,11 +453,11 @@ class wpcc_Admin
             if (isset($_POST[$post_field])) {
                 if ($post_field === "wpcco_no_conversion_tag" || $post_field === "wpcc_no_conversion_tag") {
                     $options[$option_field] = trim(
-                        wp_unslash($_POST[$post_field]),
+                        sanitize_text_field(wp_unslash($_POST[$post_field])),
                         " \t\n\r\0\x0B,|",
                     );
                 } elseif ($post_field === "wpcco_no_conversion_tip") {
-                    $options[$option_field] = trim(wp_unslash($_POST[$post_field]));
+                    $options[$option_field] = trim(sanitize_text_field(wp_unslash($_POST[$post_field])));
                 } elseif ($post_field === "wpcco_sitemap_post_type") {
                     $post_types = array_filter(array_map("sanitize_key", explode(",", wp_unslash($_POST[$post_field]))));
                     $options[$option_field] = implode(",", array_unique($post_types));
@@ -469,7 +470,7 @@ class wpcc_Admin
                         "wpcco_use_permalink",
                     ])
                 ) {
-                    $options[$option_field] = intval($_POST[$post_field]);
+                    $options[$option_field] = intval(wp_unslash($_POST[$post_field]));
                 } else {
                     $options[$option_field] = sanitize_text_field(
                         wp_unslash($_POST[$post_field]),

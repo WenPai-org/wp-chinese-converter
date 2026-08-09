@@ -17,3 +17,12 @@
 - 验证：PHPUnit 13/33；真实内容保存与恢复；multisite network activation/site override；Yoast canonical/title/description/OG/hreflang；ARM Chromium 简繁切换 E2E；默认保留数据的 uninstall；WordPress 7.0.3/PHP 8.3 network active 转换通过；发布包 1,311,078 bytes/401 entries。
 - 未关闭：正确包 Plugin Check 最后一次完整值 296 errors/225 warnings（主要为 first-party 输出转义）；PHPCS WordPress 标准排除 vendor/历史 bundled 源后仍 17,266/1,541；“不转换”下拉回原文失败；multisite pretty permalink 的核心 sitemap 404；main/legacy/admin PHPStan 债未清零。
 - 详细证据与边界：`docs/audits/wp-chinese-converter-audit-2026-08-09.md` 第 7 节。
+## [CX] 2026-08-09 wp-chinese-converter 第三轮
+
+- 继续 WenPai 隔离分支和 FeiCode PR #4；未部署、未发布、未合并默认分支。
+- 已修：“不转换”精确恢复原 DOM及 browser-only 会话哨兵；Plugin Check 上下文转义/安全输入/安全跳转；network JSON 导入白名单与导出字段闭环；PHPStan main/legacy/admin 真实 bug。
+- 第二轮 multisite core sitemap 404 是 wp-env 缺 `.htaccess` 且 Yoast 禁用 core sitemap造成的测试假失败；标准 multisite rewrite 下主/子站 core 与 WPCC sitemap 均 HTTP 200 XML，插件 sitemap PHP 未做错误补丁。
+- 最终验证：PHPUnit 13/33、expanded full PHPStan 0、41 文件 lint、Composer validate/audit、主/子站 WP7.0.3 exact ZIP runtime、Yoast、REST/XML-RPC/WP-CLI、回滚幂等、两类浏览器 E2E均 exit 0。
+- ZIP：401 entries / 1,313,107 bytes；SHA-256 `80e8d419ddbf5fe4e5df56c839cc1a74f6ad51d58c46f4d530e2366654bf70a6`。
+- 发布仍阻断：exact Plugin Check 54 errors/208 warnings（51 output、2 WP compatibility、1 heredoc）；PHPCS 17,266/1,541 旧失败基线；nonce/input/naming/debug warnings；保存恢复 UI/dry-run/diff；Gutenberg 构建源缺失。
+- 详细命令、HTTP 状态、测试环境根因与边界见 `docs/audits/wp-chinese-converter-audit-2026-08-09.md` 第 8 节。

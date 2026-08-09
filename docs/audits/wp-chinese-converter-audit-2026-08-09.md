@@ -134,3 +134,39 @@
 3. multisite + pretty permalink 下核心 sitemap/rewrite 有 404；WPCC 自定义 sitemap 可用。
 4. 保存转换已有最近快照恢复，但没有管理员 UI、逐字段 diff、dry-run 或多版本选择；仍建议 1.6 拆成显式迁移工具。
 5. vendor 还能通过 fork OpenCC runtime 包去除 Symfony Console/Process，但当前不破坏上游 Composer contract；不把理论 0.95 MB 当成已交付。
+## 8. [CX] 第三轮整治（2026-08-09）
+
+### 8.1 修复与复核
+
+- “不转换”下拉不再只移除 `variant`：Classic 与 Block 路径都优先使用服务端 `zh` 哨兵 URL；服务端在未启用持久语言 Cookie 时会读取 `wpcc_is_redirect_*` 会话 Cookie，阻止浏览器语言识别在 302 后立即再次转换。
+- 第二轮记录的 multisite pretty permalink `/wp-sitemap.xml` 404 被证实为测试环境假失败：disposable wp-env 缺少 multisite `.htaccess`，请求直接由 Apache 返回 404；主站同时启用 Yoast，Yoast 合法关闭 WordPress core sitemap。补齐标准 multisite rewrite、隔离停用 Yoast 后，主站和 `tradtest` 的 core/WPCC sitemap 均为 HTTP 200 XML；没有为测试环境错误修改插件 rewrite。
+- Plugin Check first-party 修复按上下文进行，没有全仓机械格式化：清零 `UnsafePrintingFunction` 167 项、`SafeRedirect` 4 项和 SQL error；设置页、网络页、admin 输出按 text/attribute/URL/JS/可信 HTML 分开处理。
+- 网络 JSON 导入增加权限/nonce 既有门禁之外的 1 MiB 限制、JSON 扩展名、键白名单和值消毒；导出/导入字段闭合，正确覆盖 quicktag、自动语系、发表转换目标，并兼容旧 `wpcc_default_enable_quicktags` 键。
+- PHPStan level 1 正式扩展到主入口、modern main、legacy core、admin/controller/settings include 上下文；移除 legacy 内层命名函数和 `extract()` 未定义变量，修正 widget void callback、评论字段转义与 WordPress URL/AJAX 符号建模。仅对设置模板 include 产生的精确 `$this` 未定义消息做路径级忽略，不使用全局 class/function ignore。
+- 新增 fail-closed runtime runner：只允许指定的 disposable wp-env 容器；覆盖 exact ZIP、主/子站、REST/XML-RPC/WP-CLI、备份幂等/回滚、core/WPCC sitemap、Yoast、标准切换 E2E 和 `cookie=0 + browser_redirect=1` 会话哨兵 E2E。
+
+### 8.2 最终 HEAD 验证
+
+- PHPUnit：13 tests / 33 assertions，exit 0。
+- 非 vendor PHP lint：41 个 PHP 文件，exit 0；Composer validate/audit 均 exit 0。
+- PHPStan 扩展后的完整 `phpstan.neon.dist`：`[OK] No errors`，exit 0。
+- JS/runtime runner 静态检查：Node check、JS reset test、`bash -n`、ShellCheck、Python compile、`git diff --check` 均 exit 0。
+- WordPress 7.0.3 / PHP 8.3 multisite exact ZIP：
+  - 主站 matrix exit 0；`tradtest` 子站 matrix exit 0。
+  - 主站与子站的 WP-CLI、REST、XML-RPC 保存均转换成功，备份数保持 1，重复保存幂等，恢复回原始简体。
+  - REST 匿名请求实际 401；管理员转换 200；REST 文章创建 201；XML-RPC 200，子站使用动态 blog ID 2。
+  - 主站 core/WPCC sitemap 为 200/200（527/418 bytes）；子站为 200/200（572/445 bytes）。
+  - 主站与子站 Yoast 组合均为单一 canonical，title/description 转换和 hreflang 通过。
+  - 标准浏览器 E2E 验证“原文 → zh-tw → 不转换精确恢复原 DOM → zh-tw → zh-cn”；会话 E2E 验证 `wpcc_use_cookie_variant=0`、`wpcc_browser_redirect=1` 时 reload 仍保持原文。两组 Node 退出码均为 0。
+- 发布 ZIP：401 entries / 1,313,107 bytes；包含 `assets/dist/wpcc-variant.umd.js`，不含 dev dependencies，`unzip -t` exit 0。最终磁盘文件 SHA-256 为 `80e8d419ddbf5fe4e5df56c839cc1a74f6ad51d58c46f4d530e2366654bf70a6`。
+- exact final ZIP Plugin Check：进程 exit 0，但报告 54 errors / 208 warnings，按 findings 判定 FAIL。errors 为 51 `OutputNotEscaped`、2 个最低 WordPress 版本兼容、1 个 sitemap heredoc；warnings 仍含 nonce/input/naming/debug 等历史债。
+
+### 8.3 剩余发布阻断项
+
+1. Plugin Check 仍为 54 errors / 208 warnings，不满足发布门禁；51 个输出问题分布在 settings、legacy core、sitemap/XML 和 bundled third-party，必须继续按上下文审查，不能批量 `esc_html()`。
+2. 两个 `wp_cache_flush_group()` 兼容错误需要在“提高 Requires at least 到 WordPress 6.1”与“为 WordPress 6.0 保留兼容实现”之间做明确版本决策。
+3. sitemap heredoc 及完整 XML/HTML 输出需要人工确认后定点抑制或改为结构化生成，不能为过检查破坏 XML。
+4. Plugin Check warnings 中仍有 nonce recommended/missing、输入 unslash/sanitize、debug 输出和历史全局命名；零 error 前不能把安全审计写成 PASS。
+5. PHPCS 仍沿用第二轮的 17,266 errors / 1,541 warnings（exit 2）失败基线；第三轮没有用自动格式化掩盖该债务。
+6. 保存转换虽有受保护快照和程序化恢复，但仍缺管理员恢复 UI、dry-run、逐字段 diff 和多版本历史；该不可逆功能不应在缺少显式操作界面时作为默认启用能力发布。
+7. Gutenberg 构建源仍不完整（缺 `package.json`/block 原始源码），现有构建产物能打包但前端 release 不完全可复现。

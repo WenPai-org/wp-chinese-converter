@@ -3,9 +3,16 @@ includes:
 parameters:
     level: 1
     scanFiles:
+        - includes/core/class-wpcc-exception-handler.php
+        - includes/core/class-wpcc-main.php
+        - includes/core/class-wpcc-module-manager.php
+        - includes/core/class-wpcc-config.php
+    paths:
         - wp-chinese-converter.php
         - includes/wpcc-core.php
-    paths:
+        - includes/wpcc-admin.php
+        - includes/wpcc-settings-page.php
+        - includes/admin/class-wpcc-admin.php
         - includes/core/class-wpcc-conversion-cache.php
         - includes/core/class-wpcc-converter-factory.php
         - includes/core/class-wpcc-language-config.php
@@ -25,5 +32,12 @@ parameters:
         analyse:
             - includes/core/ZhConversion.php
             - includes/core/simple_html_dom.php
+    ignoreErrors:
+        # This settings view is included from WPCC_Admin::settings_page(), so
+        # PHP provides the controller as $this. PHPStan analyzes path entries
+        # as standalone files and cannot model the include-time object scope.
+        -
+            message: '#Variable \$this might not be defined\.#'
+            path: includes/wpcc-settings-page.php
     parallel:
         maximumNumberOfProcesses: 1

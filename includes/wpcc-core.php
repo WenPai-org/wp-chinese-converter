@@ -140,7 +140,7 @@ function wpcc_parse_query( $query ) {
 	global $wpcc_target_lang, $wpcc_redirect_to, $wpcc_noconversion_url, $wpcc_options, $wpcc_direct_conversion_flag;
 
 	// 标记 AJAX/REST/wc-ajax 请求，跳过转换避免干扰 JSON 响应
-	$is_ajax = function_exists('wp_doing_ajax') ? wp_doing_ajax() : ( defined('DOING_AJAX') && DOING_AJAX );
+	$is_ajax = wp_doing_ajax();
 	$is_rest = defined('REST_REQUEST') && REST_REQUEST;
 	$is_wc_ajax = isset($_REQUEST['wc-ajax']) && is_string($_REQUEST['wc-ajax']) && $_REQUEST['wc-ajax'] !== '';
 	$wpcc_direct_conversion_flag = (bool) ( $is_ajax || $is_rest || $is_wc_ajax );
@@ -242,12 +242,16 @@ function wpcc_template_redirect() {
 
 	// 添加评论表单语言参数
 	add_action( 'comment_form', 'wpcc_modify_comment_form' );
-	function wpcc_modify_comment_form() {
-		global $wpcc_target_lang;
-		echo '<input type="hidden" name="variant" value="' . $wpcc_target_lang . '" />';
-	}
 
 	wpcc_do_conversion();
+}
+
+/**
+ * Add the selected language to comment submissions.
+ */
+function wpcc_modify_comment_form() {
+	global $wpcc_target_lang;
+	echo '<input type="hidden" name="variant" value="' . esc_attr( (string) $wpcc_target_lang ) . '" />';
 }
 
 /**
@@ -662,7 +666,9 @@ function wpcc_output_navi( $args = '', $isReturn = false ) {
 	global $wpcc_target_lang, $wpcc_noconversion_url, $wpcc_langs_urls, $wpcc_langs, $wpcc_options;
 	wpcc_init_languages();
 
-	extract( wp_parse_args( $args, array( 'mode' => 'normal', 'echo' => 1 ) ) );
+	$parsed_args = wp_parse_args( $args, array( 'mode' => 'normal', 'echo' => 1 ) );
+	$mode        = $parsed_args['mode'];
+	$echo        = $parsed_args['echo'];
 	if ( $mode == 'wrap' ) {
 		wpcc_output_navi2();
 		return;
@@ -904,10 +910,14 @@ function wpcc_is_robot(): bool {
  */
 function wpcc_apply_filter_search_rule() {
 	add_filter( 'posts_where', 'wpcc_filter_search_rule', 100 );
-	function search_distinct() {
-		return "DISTINCT";
-	}
-	add_filter( 'posts_distinct', 'search_distinct' );
+	add_filter( 'posts_distinct', 'wpcc_search_distinct' );
+}
+
+/**
+ * Prevent duplicated posts when converted search terms are combined.
+ */
+function wpcc_search_distinct() {
+	return 'DISTINCT';
 }
 
 /**
@@ -1469,6 +1479,6 @@ if ( ! class_exists( 'WPCC_Main' ) ) {
 // 初始化小部件
 if ( ! empty( $wpcc_options ) && is_array( $wpcc_options ) && is_array( $wpcc_options['wpcc_used_langs'] ) ) {
 	add_action( 'widgets_init', function () {
-		return register_widget( 'wpcc_Widget' );
+		register_widget( 'wpcc_Widget' );
 	}, 1 );
 }
