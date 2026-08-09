@@ -56,7 +56,21 @@ final class WPCC_Language_Config {
     private static function get_translated_name( string $lang_code ): string {
         // 只在WordPress完全初始化后才使用翻译函数
         if ( function_exists( 'did_action' ) && did_action( 'init' ) && function_exists( '__' ) ) {
-            return __( self::$default_names[ $lang_code ] ?? $lang_code, 'wp-chinese-converter' );
+			switch ( $lang_code ) {
+				case 'zh-cn':
+				case 'zh-hans':
+					return __( '简体中文', 'wp-chinese-converter' );
+				case 'zh-tw':
+					return __( '台灣正體', 'wp-chinese-converter' );
+				case 'zh-hk':
+					return __( '港澳繁體', 'wp-chinese-converter' );
+				case 'zh-hant':
+					return __( '繁体中文', 'wp-chinese-converter' );
+				case 'zh-sg':
+					return __( '马新简体', 'wp-chinese-converter' );
+				case 'zh-jp':
+					return __( '日式汉字', 'wp-chinese-converter' );
+			}
         }
         return self::$default_names[ $lang_code ] ?? $lang_code;
     }

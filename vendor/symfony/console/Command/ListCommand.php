@@ -25,7 +25,10 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class ListCommand extends Command
 {
-    protected function configure(): void
+    /**
+     * @return void
+     */
+    protected function configure()
     {
         $this
             ->setName('list')
@@ -45,7 +48,7 @@ class ListCommand extends Command
 
                   <info>%command.full_name% test</info>
 
-                You can also output the information in other formats by using the <info>--format</info> option:
+                You can also output the information in other formats by using the <comment>--format</comment> option:
 
                   <info>%command.full_name% --format=xml</info>
 

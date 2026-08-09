@@ -467,9 +467,13 @@ class WPCC_Main {
         add_action( 'wp_head', [ $this, 'output_header' ] );
         
         if ( ! $this->config->get_direct_conversion_flag() ) {
-            // 移除默认canonical并添加自定义的
-            remove_action( 'wp_head', 'rel_canonical' );
-            add_action( 'wp_head', [ $this, 'output_canonical' ] );
+			// Let an active SEO plugin own canonical output. Otherwise replace the
+			// WordPress canonical with a variant-aware WPCC canonical.
+			$seo_manages_canonical = defined( 'WPSEO_VERSION' ) || defined( 'RANK_MATH_VERSION' ) || function_exists( 'aioseo' );
+			if ( ! $seo_manages_canonical ) {
+				remove_action( 'wp_head', 'rel_canonical' );
+				add_action( 'wp_head', [ $this, 'output_canonical' ] );
+			}
             
             // 添加链接转换过滤器
             $this->add_link_conversion_filters();
@@ -799,7 +803,7 @@ class WPCC_Main {
         $qpos = strpos( $link, '?' );
         $path = $qpos !== false ? substr( $link, 0, $qpos ) : $link;
         $qs   = $qpos !== false ? substr( $link, $qpos ) : '';
-        $path_only = parse_url( $path, PHP_URL_PATH );
+        $path_only = wp_parse_url( $path, PHP_URL_PATH );
         if ( $path_only === null ) { $path_only = $path; }
 
         // 如路径中已有变体，仅清理冗余的 variant 查询参数然后返回
@@ -1119,10 +1123,12 @@ class WPCC_Main {
         if ( ! $id = $wp_the_query->get_queried_object_id() ) {
             return;
         }
-        $link = get_permalink( $id );
-        // 移除语言参数
-        $link = remove_query_arg( 'variant', $link );
-        echo "<link rel='canonical' href='$link' />\n";
+		$link        = get_permalink( $id );
+		$target_lang = $this->config->get_target_lang();
+		if ( $target_lang ) {
+			$link = $this->convert_link( $link, $target_lang );
+		}
+		echo '<link rel="canonical" href="' . esc_url( $link ) . '" />' . "\n";
     }
     
     /**

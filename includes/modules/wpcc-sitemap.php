@@ -1,4 +1,8 @@
 <?php
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
 add_action( 'init', 'wpcc_sitemap_init', 20 );
 
 function wpcc_sitemap_init() {
@@ -92,7 +96,7 @@ function wpcc_sitemap_link_conversion( $link, $variant ) {
             }
             $path_seg = str_replace( '/', '', $site->path );
             $sub_url = "$site->domain/$path_seg";
-            if ( str_contains( $path, $sub_url ) ) {
+            if ( false !== strpos( $path, $sub_url ) ) {
                 return str_replace( $sub_url, "$sub_url/$variant", $path ) . $qs;
             }
         }
@@ -127,7 +131,7 @@ function wpcc_remove_language_from_url( $url ) {
     $variant_regex = '/\/(' . $reg . '|zh|zh-reset)(\/|$)/i';
     
     // 移除路径中的语言变体
-    $parsed = parse_url( $url );
+    $parsed = wp_parse_url( $url );
     if ( isset( $parsed['path'] ) ) {
         $path = $parsed['path'];
         $path = preg_replace( $variant_regex, '/', $path );
@@ -267,7 +271,7 @@ function generate_sitemap_index( string $lang ) {
     for ( $i = 1; $i <= $total_sitemaps; $i ++ ) {
         $sitemap .= '<sitemap>';
         $sitemap .= '<loc>' . esc_xml( site_url( "/sitemap-{$lang}-{$i}.xml" ) ) . '</loc>';
-        $sitemap .= '<lastmod>' . date( 'Y-m-d' ) . '</lastmod>';
+        $sitemap .= '<lastmod>' . wp_date( 'Y-m-d' ) . '</lastmod>';
         $sitemap .= '</sitemap>';
     }
     
@@ -295,7 +299,7 @@ function generate_sitemap_index( string $lang ) {
         for ( $i = 1; $i <= $taxonomy_sitemaps; $i ++ ) {
             $sitemap .= '<sitemap>';
             $sitemap .= '<loc>' . esc_xml( site_url( "/sitemap-taxonomy-{$taxonomy->name}-{$lang}-{$i}.xml" ) ) . '</loc>';
-            $sitemap .= '<lastmod>' . date( 'Y-m-d' ) . '</lastmod>';
+            $sitemap .= '<lastmod>' . wp_date( 'Y-m-d' ) . '</lastmod>';
             $sitemap .= '</sitemap>';
         }
     }
@@ -557,7 +561,7 @@ function generate_taxonomy_sitemap_content( string $taxonomy, string $lang, int 
         
         $sitemap .= '<url>';
         $sitemap .= '<loc>' . esc_xml( $converted_link ) . '</loc>';
-        $sitemap .= '<lastmod>' . date( 'Y-m-d' ) . '</lastmod>';
+        $sitemap .= '<lastmod>' . wp_date( 'Y-m-d' ) . '</lastmod>';
         $sitemap .= '<changefreq>weekly</changefreq>';
         $sitemap .= '<priority>0.5</priority>';
         $sitemap .= '</url>';

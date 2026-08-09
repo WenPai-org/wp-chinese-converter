@@ -101,3 +101,36 @@
 - 拆出不可逆批量/发表时转换为带备份和撤销的迁移插件或工具。
 - 移除全页面 HTML 字符串转换；旧全局函数进入明确 deprecation 周期。
 - 评估 MediaWiki 引擎是保留为兼容 fallback 还是独立扩展；决定必须基于语料正确率、峰值内存和站点兼容数据，而不是只看包体积。
+
+## 7. [CX] 第二轮整治（2026-08-09）
+
+### 7.1 已修复
+
+- 正确发布包（插件目录名 `wp-chinese-converter`）的 Plugin Check 基线为 332 errors / 229 warnings，不再使用隔离目录名造成 text-domain 误报的 556/260 数字。元数据、block API v3、直接访问保护、`wp_parse_url()`、站点时区日期、翻译占位符、数据库表标识符、跨插件目录写入等确定性问题已修复。剩余主体是设置模板的上下文相关输出转义和历史命名/格式债；第三方 `simple_html_dom.php` 单列，不做批量格式化。
+- 移除向 WP Super Cache 插件目录写入/删除 PHP 文件的旧安装器；缓存兼容改为切换内置 `WPCC_Cache_Addon` 配置，不覆盖其他插件文件。
+- “发表时转换”改成命名两阶段流程：保存前转换并生成请求指纹，`wp_after_insert_post` 写受保护的原文快照；相同输入不重复备份；恢复要求 `edit_post`，恢复期间绕过转换，且当前文章已被后续编辑时拒绝覆盖。该钩子从 admin-only 移到公共入口，REST、XML-RPC、WP-CLI 保存也可获得相同保护。
+- 网络受控配置不再依赖尚未加载的 `WPCC_Network_Settings` 类；真实子站点验证 `local=mediawiki`、网络默认 `opencc` 时解析结果为 `opencc`。
+- SEO 模块不再在已经执行中的 `init` 上延迟注册集成过滤器；Yoast title、description、Open Graph 转换已生效。检测到 Yoast/Rank Math/AIOSEO 时不再额外输出 WPCC canonical；无 SEO 插件时 canonical 保留当前语言变体。
+- OpenCC vendor 锁定到 PHP 8.1 平台可安装的 Symfony 6.4 LTS；PHP 7.4/8.0 不加载可选 OpenCC vendor，并安全回退 MediaWiki 引擎，避免 Composer platform check 让整个插件启动 fatal。
+- 发布脚本的 `--exclude=dist` 原来误排除 `assets/dist/`，导致运行时 JS 丢失；已改为只排除根 `/dist/`。同时仅从 staging 去除 vendor 测试、benchmark、README/CHANGELOG/composer 元数据和 OpenCC 未使用的原始 dictionary，保留 parsed 字典、运行时代码和许可证。
+
+### 7.2 第二轮验证事实
+
+- PHPUnit：13 tests / 33 assertions，exit 0；新增保存备份、权限、幂等、后续编辑冲突和批量缓存跨引擎隔离。
+- 真实 WordPress 内容保存：`网络软件` 保存为 `網路軟體`，备份数 1；再次保存备份仍为 1；恢复后回到原始简体，exit 0。
+- 真实 multisite：转换网络、创建 `tradtest` 子站、network activate 均成功；网络受控 `wpcc_engine` 覆盖子站本地值成功。首次同时激活相同插件的两个 slug 会因全局函数重复 fatal，这是测试布置冲突，不是允许并存的产品场景。
+- 真实 Yoast 组合：变体页 canonical 只剩 1 条且含 `variant=zh-tw`；Yoast title、description、Open Graph 从 `网络软件` 转为 `網路軟體`。hreflang 输出 zh-CN、zh-TW、x-default。自定义多语言 sitemap URL 返回 200 XML；当前 multisite/permalink 组合的核心 `/wp-sitemap.xml` 仍有 404，需要单独修 rewrite 兼容。
+- 浏览器 E2E：WenPai ARM Chromium + Playwright 实际选择 `#wpcc_translate_type`；zh-tw 页面包含 `網路軟體和後臺印表機`，再切 zh-cn 恢复 `网络软件和后台打印机`，exit 0。直接选择“不转换”选项未恢复内容，单独记录为未修 P2。
+- uninstall：隔离 multisite 中 network deactivate 后运行 `wp plugin uninstall --skip-delete` exit 0，站点与网络探针选项都保留；当前政策是默认保留历史数据，不把“删除所有数据”冒充完成。
+- WordPress 7.0.3 / PHP 8.3 multisite：network active，`网络软件和后台打印机 → 網路軟體和後臺印表機`，exit 0；因此 readme `Tested up to: 7.0` 有真实运行样本。
+- 发布包从 469 ZIP entries / 1,813,851 bytes 降至 401 entries / 1,311,078 bytes；包含 `assets/dist/wpcc-variant.umd.js`，不含 dev dependencies，ZIP 完整性通过。
+- PHPStan level 1 的绿色门扩大到 conversion/cache/REST/SEO/sitemap/network/post-backup 12 个 first-party 文件；主入口、现代主类、legacy core、admin 另行跑过并保留真实债务，不用全局 ignore 掩盖缺符号、inner function、`extract()` 与错误 void callback。
+- Plugin Check 正确包第二轮最后一次完整结果为 296 errors / 225 warnings；相对正确基线减少 36 errors / 4 warnings。剩余错误主体是 first-party 输出转义，不能对 XML、完整 HTML 片段和动态 attributes 机械 `esc_html()`；继续按输出上下文分批整治。PHPCS 第一轮 WordPress-Core 全仓历史结果为 16,422 errors / 1,401 warnings；第二轮 WordPress 标准排除 vendor、dist、tests、`simple_html_dom.php`、`ZhConversion.php` 后仍为 17,266 errors / 1,541 warnings（exit 2）。两种标准不可直接横比，均明确为 FAIL。
+
+### 7.3 仍未关闭
+
+1. 设置页、网络页与 legacy core 的输出转义债仍大；应按 text/attribute/URL/JS/XML context 分批修，不接受全文件自动格式化。
+2. “不转换”下拉项从 zh-tw 返回原文的浏览器路径失败；zh-cn/zh-tw 双向切换通过。
+3. multisite + pretty permalink 下核心 sitemap/rewrite 有 404；WPCC 自定义 sitemap 可用。
+4. 保存转换已有最近快照恢复，但没有管理员 UI、逐字段 diff、dry-run 或多版本选择；仍建议 1.6 拆成显式迁移工具。
+5. vendor 还能通过 fork OpenCC runtime 包去除 Symfony Console/Process，但当前不破坏上游 Composer contract；不把理论 0.95 MB 当成已交付。

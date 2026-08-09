@@ -112,7 +112,8 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
     <h1>
         <?php esc_html_e("文派译词设置", "wp-chinese-converter"); ?>
         <span style="font-size: 13px; padding-left: 10px;">
-            <?php printf(
+				<?php printf(
+					/* translators: %s: plugin version. */
                 esc_html__("版本: %s", "wp-chinese-converter"),
                 esc_html(wpcc_VERSION),
             ); ?>
@@ -1002,7 +1003,7 @@ $is_post_conversion_controlled = $post_conv_disabled;
                             <td>
                                 <?php
                                 global $wp_rewrite;
-                                $site_domain = parse_url(
+                                $site_domain = wp_parse_url(
                                     home_url(),
                                     PHP_URL_HOST,
                                 );
@@ -1166,7 +1167,8 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                         $enabled_langs = $this->options['wpcc_used_langs'] ?? array('zh-cn','zh-tw');
                                         $sample_lang = is_array($enabled_langs) && !empty($enabled_langs) ? $enabled_langs[0] : 'zh-cn';
                                         printf(
-                                            __("网站地图访问地址：%s/%s/sitemap.xml/", "wp-chinese-converter"),
+											/* translators: 1: site URL, 2: language code. */
+											esc_html__( '网站地图访问地址：%1$s/%2$s/sitemap.xml/', 'wp-chinese-converter' ),
                                             esc_html(home_url()),
                                             esc_html($sample_lang)
                                         );

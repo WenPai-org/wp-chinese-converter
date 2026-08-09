@@ -325,7 +325,7 @@ function wpcc_link_conversion( $link, $variant = null ) {
 	// Detect existing variant in path; if present, strip duplicate query param if any
 	$enabled = isset( $wpcc_options['wpcc_used_langs'] ) && is_array( $wpcc_options['wpcc_used_langs'] ) ? $wpcc_options['wpcc_used_langs'] : [];
 	$variant_regex = '#/(?:' . implode( '|', array_map( 'preg_quote', $enabled ) ) . '|zh|zh-reset)(/|$)#i';
-	$path_only = parse_url( $path, PHP_URL_PATH );
+	$path_only = wp_parse_url( $path, PHP_URL_PATH );
 	if ( $path_only === null ) { $path_only = $path; }
 	if ( preg_match( $variant_regex, $path_only ) ) {
 		if ( $qpos !== false ) {
@@ -355,7 +355,7 @@ function wpcc_link_conversion( $link, $variant = null ) {
 			}
 			$path_seg = str_replace( '/', '', $site->path );
 			$sub_url = "$site->domain/$path_seg";
-			if ( str_contains( $path, $sub_url ) ) {
+			if ( false !== strpos( $path, $sub_url ) ) {
 				return str_replace( $sub_url, "$sub_url/$variant", $path ) . $qs;
 			}
 		}

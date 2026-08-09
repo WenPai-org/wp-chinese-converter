@@ -1,12 +1,17 @@
 {
     "$schema": "https://schemas.wp.org/trunk/block.json",
-    "apiVersion": 2,
+    "apiVersion": 3,
     "name": "wpcc/conversion-status",
     "title": "转换状态指示器",
     "category": "widgets",
     "icon": "info",
     "description": "显示当前页面的中文转换状态和目标语言。",
-    "keywords": ["状态", "转换", "语言", "指示器"],
+    "keywords": [
+        "状态",
+        "转换",
+        "语言",
+        "指示器"
+    ],
     "textdomain": "wp-chinese-converter",
     "attributes": {
         "showIcon": {
@@ -19,7 +24,11 @@
         }
     },
     "supports": {
-        "align": ["left", "center", "right"],
+        "align": [
+            "left",
+            "center",
+            "right"
+        ],
         "html": false,
         "color": {
             "background": true,

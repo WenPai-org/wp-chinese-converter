@@ -1,12 +1,17 @@
 {
     "$schema": "https://schemas.wp.org/trunk/block.json",
-    "apiVersion": 2,
+    "apiVersion": 3,
     "name": "wpcc/no-conversion",
     "title": "不转换内容",
     "category": "formatting",
     "icon": "lock",
     "description": "包装内容使其不被中文转换功能处理，保持原始文本。",
-    "keywords": ["不转换", "保护", "原始", "内容"],
+    "keywords": [
+        "不转换",
+        "保护",
+        "原始",
+        "内容"
+    ],
     "textdomain": "wp-chinese-converter",
     "attributes": {},
     "supports": {

@@ -1,58 +1,65 @@
 === WP Chinese Converter ===
 Contributors: wpfanyi
-Tags: chinese, 中文, 繁体, 简体, 繁简转换, Chinese Simplified, Chinese Traditional, widget, sidebar
+Tags: chinese, traditional chinese, simplified chinese, localization, converter
 Requires at least: 6.0
-Tested up to: 6.8
+Tested up to: 7.0
+Requires PHP: 7.4
 Stable tag: 1.5.1
 License: GPLv3 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
-Adds the language conversion function between Chinese Simplified and Chinese Traditional to your WP Blog. Released under GPL license.
+Server-side conversion between Simplified Chinese and Traditional Chinese for WordPress content, links, search, and language variants.
 
 == Description ==
 
-这个插件为中文博客设计, 提供完整的基于服务器端的中文繁简转换解决方案. 相比用Javascript进行客户端繁简转换, 本插件提供的转换功能更为专业和可靠, 支持三种中文语言: 简体中文(zh-hans), 台湾正体(zh-tw), 港澳繁体(zh-hk); 并且提供更多其它特性. 插件使用的繁简转换表和核心转换技术均来源于 opencc。
+WP Chinese Converter provides server-side conversion between Simplified Chinese and Traditional Chinese variants. It supports language switcher blocks and shortcodes, query-string or permalink language URLs, OpenCC and MediaWiki conversion engines, hreflang output, search conversion, and optional multisite defaults.
 
-使用方法: 可通过古腾堡区块“繁简转换”或简码 [wp-chinese-converter] 来向页面添加翻译切换按钮，插件的设置页可以在后台“设置”菜单下的"WP Chinese Converter"子菜单中找到。
+Stored-content conversion and full-page conversion are disabled by default. Stored-content conversion changes database content and should only be enabled after a backup has been created.
 
-特性(Features):
+Primary features:
 
-*  繁简转换页面URL支持<code>/permalink/to/your/original/post/?variant=zh-xx</code>, <code>/permalink/to/your/original/post/zh-xx/</code>和<code>/zh-xx/permalink/to/your/original/post/</code>三种形式.(zh-xx为语言代码)
-*  基于词语繁简转换. 如 "网络" 在台湾正体(zh-tw)里会被转换为 "網路".
-*  自动在转换后版本页面加上noindex的meta标签, 避免搜索引擎重复索引.
-*  使用Cookie保存访客语言偏好. 插件将记录浏览者最后一次访问时的页面语言, 在浏览者再次访问显示对应版本. (此功能默认不开启)
-*  自动识别浏览器语言. 插件将识别用户浏览器首选中文语言, 并显示对应版本页面. (此功能默认不开启)
-*  中文搜索关键词简繁体通用. 这将增强Wordpress的搜索功能, 使其同时在数据库里搜索关键词的简繁体版本. 例如, 假如访客在浏览您博客页面时通过表单提交了关键词为 "網路" 的搜索, 如果您的文章里有 "网络" 这个词, 则这篇文章也会被放到搜索结果里返回. (此功能默认不开启)
-*  后台可设置不转换部分HTML标签里中文.
-*  后台可设置翻译按钮展现形式
-
-如果使用缓存插件 (WP Super cache, Hyper Cache, etc), 上面部分功能(识别浏览器语言, 使用Cookie保存访客语言偏好)可能存在兼容性问题。
+* Simplified, Traditional, Taiwan, Hong Kong, Singapore, and generic Hans/Hant variants.
+* OpenCC phrase conversion and a MediaWiki compatibility engine.
+* Gutenberg language switcher, conversion status, and no-conversion blocks.
+* `[wp-chinese-converter]`, `[wpcc_nc]`, and `[wpcs_nc]` shortcodes.
+* Canonical and hreflang integration with query-string and permalink modes.
+* Administrator-only REST conversion endpoints by default.
+* Optional network defaults for WordPress multisite.
 
 == Installation ==
 
-上传插件并激活即可。
+1. Upload the `wp-chinese-converter` directory to `/wp-content/plugins/`.
+2. Activate WP Chinese Converter from the Plugins screen.
+3. Open Settings > WP Chinese Converter and choose the required variants.
+4. Save WordPress permalinks after changing the URL mode.
+
+== Frequently Asked Questions ==
+
+= Does conversion overwrite stored posts? =
+
+Normal front-end conversion does not alter stored content. The separate stored-content conversion option does overwrite titles and content, is disabled by default, and creates a protected backup before a changed save.
+
+= Does the REST API allow anonymous conversion? =
+
+No. REST conversion requires the `manage_options` capability by default. Developers may change the required capability with the `wpcc_rest_api_capability` filter.
+
+= Which conversion engine should I use? =
+
+OpenCC provides phrase and regional vocabulary conversion on PHP 8.1 or later. On PHP 7.4 and 8.0, the plugin safely uses the MediaWiki compatibility engine.
 
 == Changelog ==
 
-## 1.5.1 (unreleased) ###
+= 1.5.1 =
 
-* Add CSRF protection and restrict REST conversion to administrators by default.
-* Fix MediaWiki conversion, engine-aware cache keys, canonical URLs, and sitemap compatibility.
-* Bound REST request sizes and safer opt-in stored-content conversion.
+* Restrict REST conversion to administrators by default and add payload limits.
+* Add CSRF protection to settings, cache compatibility, and uninstall actions.
+* Fix MediaWiki table loading, engine-aware cache keys, canonical URLs, and sitemap compatibility.
+* Add safe defaults, dependency updates, automated tests, and release-package checks.
 
-## 1.1.0 ###
+= 1.1.0 =
 
-* 改为使用 opencc 翻译库
-* 兼容 PHP 8.2
-* 增加古腾堡区块
-* 增加一个名为 [wp-chinese-converter] 的简码
-* 新增支持通过管理后台设置翻译按钮展现样式
-* 新增支持港澳繁体转换
-* 支持国际化翻译
-* 优化管理后台设置界面
+* Added OpenCC conversion, Gutenberg blocks, shortcodes, and Hong Kong Traditional Chinese support.
 
-## 1.0.0 ###
+= 1.0.0 =
 
-* 删除/隐藏多种不常用的中文转换版本
-* 修正多处新版本 PHP 报错
-* 初始版本发布
+* Initial release.

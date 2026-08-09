@@ -34,7 +34,18 @@ final class CompleteCommand extends Command
 {
     public const COMPLETION_API_VERSION = '1';
 
+    /**
+     * @deprecated since Symfony 6.1
+     */
+    protected static $defaultName = '|_complete';
+
+    /**
+     * @deprecated since Symfony 6.1
+     */
+    protected static $defaultDescription = 'Internal command to provide shell completion suggestions';
+
     private array $completionOutputs;
+
     private bool $isDebug = false;
 
     /**
@@ -98,16 +109,17 @@ final class CompleteCommand extends Command
                 '',
                 '<comment>'.date('Y-m-d H:i:s').'</>',
                 '<info>Input:</> <comment>("|" indicates the cursor position)</>',
-                '  '.$completionInput,
+                '  '.(string) $completionInput,
                 '<info>Command:</>',
-                '  '.implode(' ', $_SERVER['argv']),
+                '  '.(string) implode(' ', $_SERVER['argv']),
                 '<info>Messages:</>',
             ]);
 
-            if ($command = $this->findCommand($completionInput)) {
+            if ($command = $this->findCommand($completionInput, $output)) {
                 $command->mergeApplicationDefinition();
                 $completionInput->bind($command->getDefinition());
             }
+
             if (null === $command) {
                 $this->log('  No command found, completing using the Application class.');
 
@@ -190,7 +202,7 @@ final class CompleteCommand extends Command
         return $completionInput;
     }
 
-    private function findCommand(CompletionInput $completionInput): ?Command
+    private function findCommand(CompletionInput $completionInput, OutputInterface $output): ?Command
     {
         try {
             $inputName = $completionInput->getFirstArgument();

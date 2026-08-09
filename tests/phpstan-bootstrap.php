@@ -3,6 +3,11 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	define( 'ABSPATH', __DIR__ . '/' );
 }
+defined( 'wpcc_VERSION' ) || define( 'wpcc_VERSION', 'test' );
+defined( 'wpcc_DIR_URL' ) || define( 'wpcc_DIR_URL', 'https://example.test/wp-content/plugins/wpcc/' );
+defined( 'COOKIEHASH' ) || define( 'COOKIEHASH', 'test' );
+defined( 'COOKIEPATH' ) || define( 'COOKIEPATH', '/' );
+defined( 'COOKIE_DOMAIN' ) || define( 'COOKIE_DOMAIN', '' );
 require_once dirname( __DIR__ ) . '/includes/core/interface-module.php';
 require_once dirname( __DIR__ ) . '/includes/core/abstract-module.php';
 require_once dirname( __DIR__ ) . '/includes/core/interface-converter.php';

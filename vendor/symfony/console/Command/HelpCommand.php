@@ -27,7 +27,10 @@ class HelpCommand extends Command
 {
     private Command $command;
 
-    protected function configure(): void
+    /**
+     * @return void
+     */
+    protected function configure()
     {
         $this->ignoreValidationErrors();
 
@@ -44,7 +47,7 @@ class HelpCommand extends Command
 
                   <info>%command.full_name% list</info>
 
-                You can also output the help in other formats by using the <info>--format</info> option:
+                You can also output the help in other formats by using the <comment>--format</comment> option:
 
                   <info>%command.full_name% --format=xml list</info>
 
@@ -54,7 +57,10 @@ class HelpCommand extends Command
         ;
     }
 
-    public function setCommand(Command $command): void
+    /**
+     * @return void
+     */
+    public function setCommand(Command $command)
     {
         $this->command = $command;
     }

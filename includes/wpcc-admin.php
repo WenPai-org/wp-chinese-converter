@@ -144,100 +144,6 @@ function wpcc_appthemes_add_quicktags() {
 /**
  * 初始化文章转换功能
  */
-function wpcc_init_post_conversion() {
-	global $wpcc_options;
-
-	if ( empty( $wpcc_options ) ) {
-		$wpcc_options = get_wpcc_option( 'wpcc_options' );
-	}
-
-	if ( ! empty( $wpcc_options['wpcc_enable_post_conversion'] ) ) {
-		$target_lang = $wpcc_options['wpcc_post_conversion_target'] ?? 'zh-cn';
-
-		/**
-		 * 在保存时安全地转换块内容：
-		 * - 跳过 WPCC 自有区块（wpcc/*），避免破坏区块占位和结构
-		 * - 仅转换非 WPCC 区块的纯文本片段（innerContent 字符串等）
-		 */
-		add_filter( 'wp_insert_post_data', function ( $data, $postarr ) use ( $target_lang ) {
-			$post_type = isset( $data['post_type'] ) ? sanitize_key( $data['post_type'] ) : '';
-			$allowed_post_types = apply_filters( 'wpcc_post_conversion_post_types', array( 'post', 'page' ) );
-			if ( ! is_array( $allowed_post_types ) || ! in_array( $post_type, $allowed_post_types, true ) ) {
-				return $data;
-			}
-
-			// Never mutate autosaves or revisions. This opt-in feature changes stored content,
-			// so keep it limited to explicit saves of configured content types.
-			if ( $post_type === 'revision' || ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) ) {
-				return $data;
-			}
-
-			try {
-				if ( ! empty( $data['post_content'] ) ) {
-					$data['post_content'] = wpcc_convert_post_content_safely( $data['post_content'], $target_lang );
-				}
-				if ( ! empty( $data['post_title'] ) ) {
-					$data['post_title'] = zhconversion( $data['post_title'], $target_lang );
-				}
-			} catch ( Throwable $e ) {
-				error_log( 'WPCC Post Conversion Error: ' . $e->getMessage() );
-			}
-
-			return $data;
-		}, 10, 2 );
-
-		add_action( 'add_meta_boxes', 'wpcc_add_conversion_meta_box' );
-	}
-}
-
-/**
- * 使用区块解析安全转换文章内容，仅转换非 WPCC 区块的纯文本
- */
-function wpcc_convert_post_content_safely( $content, $target_lang ) {
-	if ( ! function_exists( 'parse_blocks' ) || ! function_exists( 'serialize_blocks' ) ) {
-		// 回退：无法解析区块时，使用整体转换（可能导致占位被转换）
-		return zhconversion( $content, $target_lang );
-	}
-
-	$blocks = parse_blocks( $content );
-	$converted = wpcc_convert_blocks_array_safely( $blocks, $target_lang );
-	return serialize_blocks( $converted );
-}
-
-function wpcc_convert_blocks_array_safely( $blocks, $target_lang ) {
-	foreach ( $blocks as &$block ) {
-		$name = isset( $block['blockName'] ) ? (string) $block['blockName'] : '';
-
-		// 跳过 WPCC 自有区块，避免转换其内部占位与结构
-		if ( substr( $name, 0, 5 ) === 'wpcc/' ) {
-			// 递归处理其子块（如不希望转换子块，也可以直接 continue）
-			if ( ! empty( $block['innerBlocks'] ) && is_array( $block['innerBlocks'] ) ) {
-				$block['innerBlocks'] = wpcc_convert_blocks_array_safely( $block['innerBlocks'], $target_lang );
-			}
-			continue;
-		}
-
-		// 转换非 WPCC 区块的纯文本内容
-		if ( isset( $block['innerContent'] ) && is_array( $block['innerContent'] ) ) {
-			foreach ( $block['innerContent'] as $i => $piece ) {
-				if ( is_string( $piece ) && $piece !== '' ) {
-					$block['innerContent'][ $i ] = zhconversion( $piece, $target_lang );
-				}
-			}
-		}
-
-		if ( isset( $block['innerHTML'] ) && is_string( $block['innerHTML'] ) && $block['innerHTML'] !== '' ) {
-			$block['innerHTML'] = zhconversion( $block['innerHTML'], $target_lang );
-		}
-
-		// 递归处理子块
-		if ( ! empty( $block['innerBlocks'] ) && is_array( $block['innerBlocks'] ) ) {
-			$block['innerBlocks'] = wpcc_convert_blocks_array_safely( $block['innerBlocks'], $target_lang );
-		}
-	}
-	return $blocks;
-}
-
 /**
  * 添加转换设置元框
  */
@@ -421,9 +327,6 @@ function wpcc_add_tinymce_button( $buttons ) {
 }
 add_filter( 'mce_external_plugins', 'wpcc_register_tinymce_plugin' );
 add_filter( 'mce_buttons', 'wpcc_add_tinymce_button' );
-
-// 注册文章转换钩子
-add_action( 'init', 'wpcc_init_post_conversion' );
 
 // 注册防重定向钩子
 add_action( 'template_redirect', 'prevent_home_redirect', 0 );

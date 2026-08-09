@@ -181,48 +181,15 @@ class wpcc_Admin
     public function install_cache_module(): bool
     {
         global $wpcc_options;
-
-        $ret = true;
-
-        $file = file_get_contents(
-            dirname(__FILE__) . "/../modules/wpcc-cache-addon.php",
-        );
-
-        $used_langs = "Array()";
-        if (count($wpcc_options["wpcc_used_langs"]) > 0) {
-            $used_langs =
-                "Array('" .
-                implode("', '", $wpcc_options["wpcc_used_langs"]) .
-                "')";
-        }
-        $file = str_replace(
-            "##wpcc_auto_language_recong##",
-            $wpcc_options["wpcc_auto_language_recong"],
-            $file,
-        );
-        $file = str_replace("##wpcc_used_langs##", $used_langs, $file);
-
-        $fp = @fopen(
-            WP_PLUGIN_DIR .
-                "/wp-super-cache/plugins/wpcc-wp-super-cache-plugin.php",
-            "w",
-        );
-        if ($fp) {
-            @fwrite($fp, $file);
-            @fclose($fp);
-        } else {
-            $ret = false;
-        }
-
-        return $ret;
+		$wpcc_options['wpcc_enable_cache_addon'] = 1;
+		return (bool) update_wpcc_option( 'wpcc_options', $wpcc_options );
     }
 
     public function uninstall_cache_module(): bool
     {
-        return unlink(
-            WP_PLUGIN_DIR .
-                "/wp-super-cache/plugins/wpcc-wp-super-cache-plugin.php",
-        );
+		global $wpcc_options;
+		$wpcc_options['wpcc_enable_cache_addon'] = 0;
+		return (bool) update_wpcc_option( 'wpcc_options', $wpcc_options );
     }
 
     public function get_cache_status(): int
@@ -230,16 +197,8 @@ class wpcc_Admin
         if (!function_exists("wp_cache_is_enabled")) {
             return 0;
         }
-        if (
-            !file_exists(
-                WP_PLUGIN_DIR .
-                    "/wp-super-cache/plugins/wpcc-wp-super-cache-plugin.php",
-            )
-        ) {
-            return 1;
-        }
-
-        return 2;
+		global $wpcc_options;
+		return empty( $wpcc_options['wpcc_enable_cache_addon'] ) ? 1 : 2;
     }
 
     function display_options()
@@ -317,14 +276,14 @@ class wpcc_Admin
                 $result = $this->install_cache_module();
                 if ($result) {
                     echo '<div class="updated fade" style=""><p>' .
-                        _e(
+                        esc_html__(
                             "安装WP Super Cache 兼容成功.",
                             "wp-chinese-converter",
                         ) .
                         "</p></div>";
                 } else {
                     echo '<div class="error" style=""><p>' .
-                        _e(
+                        esc_html__(
                             "错误: 安装WP Super Cache 兼容失败",
                             "wp-chinese-converter",
                         ) .
@@ -334,14 +293,14 @@ class wpcc_Admin
                 $result = $this->uninstall_cache_module();
                 if ($result) {
                     echo '<div class="updated fade" style=""><p>' .
-                        _e(
+                        esc_html__(
                             "卸载WP Super Cache 兼容成功",
                             "wp-chinese-converter",
                         ) .
                         "</p></div>";
                 } else {
                     echo '<div class="error" style=""><p>' .
-                        _e(
+                        esc_html__(
                             "错误: 卸载WP Super Cache 兼容失败",
                             "wp-chinese-converter",
                         ) .
@@ -660,12 +619,18 @@ class wpcc_Admin
         }
 
         global $wpdb;
+		global $wp_version;
+		if ( version_compare( $wp_version, '6.2', '<' ) ) {
+			wp_send_json_error( 'Database optimization requires WordPress 6.2 or later.' );
+			return;
+		}
 
         $tables = [$wpdb->options];
         $optimized = 0;
 
         foreach ($tables as $table) {
-            $result = $wpdb->query("OPTIMIZE TABLE {$table}");
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQLPlaceholders.UnsupportedIdentifierPlaceholder -- Explicit administrator maintenance, runtime-gated to WordPress 6.2.
+			$result = $wpdb->query( $wpdb->prepare( 'OPTIMIZE TABLE %i', $table ) );
             if ($result !== false) {
                 $optimized++;
             }

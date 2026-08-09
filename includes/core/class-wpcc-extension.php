@@ -233,7 +233,7 @@ protected $required_core_version = '1.5';
 					data: {
 						action: extension + '_activate_license',
 						license_key: licenseKey,
-						nonce: '<?php echo wp_create_nonce( $this->extension_slug . '_license_nonce' ); ?>'
+						nonce: <?php echo wp_json_encode( wp_create_nonce( $this->extension_slug . '_license_nonce' ) ); ?>
 					},
 					success: function(response) {
 						if (response.success) {
@@ -261,7 +261,7 @@ protected $required_core_version = '1.5';
 					type: 'POST',
 					data: {
 						action: extension + '_deactivate_license',
-						nonce: '<?php echo wp_create_nonce( $this->extension_slug . '_license_nonce' ); ?>'
+						nonce: <?php echo wp_json_encode( wp_create_nonce( $this->extension_slug . '_license_nonce' ) ); ?>
 					},
 					success: function(response) {
 						location.reload();

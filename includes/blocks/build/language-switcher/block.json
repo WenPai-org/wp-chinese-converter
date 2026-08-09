@@ -1,12 +1,17 @@
 {
     "$schema": "https://schemas.wp.org/trunk/block.json",
-    "apiVersion": 2,
+    "apiVersion": 3,
     "name": "wpcc/language-switcher",
     "title": "中文语言切换器",
     "category": "widgets",
     "icon": "translation",
     "description": "显示中文语言变体切换器，支持简体、繁体等多种显示格式。",
-    "keywords": ["中文", "语言", "切换", "转换"],
+    "keywords": [
+        "中文",
+        "语言",
+        "切换",
+        "转换"
+    ],
     "textdomain": "wp-chinese-converter",
     "attributes": {
         "displayStyle": {
@@ -23,7 +28,12 @@
         },
         "enabledLanguages": {
             "type": "array",
-            "default": ["zh-cn", "zh-tw", "zh-hk", "zh-sg"]
+            "default": [
+                "zh-cn",
+                "zh-tw",
+                "zh-hk",
+                "zh-sg"
+            ]
         },
         "buttonSize": {
             "type": "string",
@@ -55,7 +65,11 @@
         }
     },
     "supports": {
-        "align": ["left", "center", "right"],
+        "align": [
+            "left",
+            "center",
+            "right"
+        ],
         "html": false,
         "color": {
             "background": true,

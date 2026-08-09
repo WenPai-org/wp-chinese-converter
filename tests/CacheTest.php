@@ -29,6 +29,17 @@ final class CacheTest extends TestCase
         self::assertNull(WPCC_Conversion_Cache::get_cached_conversion('后', 'zh-tw', 'mediawiki'));
     }
 
+    public function testBatchCacheSeparatesConversionEngines(): void
+    {
+        WPCC_Conversion_Cache::set_cached_conversions_batch([
+            ['后', 'zh-tw', '後', 'opencc'],
+            ['后', 'zh-tw', '后', 'mediawiki'],
+        ]);
+
+        self::assertSame('後', WPCC_Conversion_Cache::get_cached_conversion('后', 'zh-tw', 'opencc'));
+        self::assertSame('后', WPCC_Conversion_Cache::get_cached_conversion('后', 'zh-tw', 'mediawiki'));
+    }
+
     public function testCoreCacheCanClearWithoutGroupFlushApi(): void
     {
         WPCC_Conversion_Cache::set_cached_conversion('软件', 'zh-tw', '軟體');

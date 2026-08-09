@@ -64,12 +64,7 @@ class WPCC_Config
             return $local_options;
         }
 
-        // 检查网络控制
-        if (! class_exists('WPCC_Network_Settings')) {
-            return $local_options;
-        }
-
-        // 获取网络控制的选项列表
+		// 获取网络控制的选项列表
         $controlled_options = get_site_option('wpcc_network_controlled_options', []);
         if (! is_array($controlled_options)) {
             $controlled_options = explode(',', $controlled_options);

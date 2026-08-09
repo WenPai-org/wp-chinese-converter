@@ -225,7 +225,8 @@ class WPCC_Network_Settings
             <h1>
                 <?php esc_html_e("文派译词网络设置", "wp-chinese-converter"); ?>
                 <span style="font-size: 13px; padding-left: 10px; color: #666;">
-                    <?php printf(
+					<?php printf(
+						/* translators: %s: plugin version. */
                         esc_html__("版本: %s", "wp-chinese-converter"),
                         esc_html(wpcc_VERSION),
                     ); ?>
@@ -1601,6 +1602,7 @@ class WPCC_Network_Settings
                                                 "zh-jp" => "日式",
                                             ];
 
+                                            $sites = get_sites();
                                             foreach ($sites as $site) {
                                                 switch_to_blog($site->blog_id);
                                                 $options = get_option(
@@ -2687,7 +2689,7 @@ class WPCC_Network_Settings
             "site_url" => network_site_url(),
         ];
 
-        $filename = "wpcc-network-settings-" . date("Y-m-d-H-i-s") . ".json";
+		$filename = "wpcc-network-settings-" . current_time("Y-m-d-H-i-s") . ".json";
 
         header("Content-Type: application/json");
         header('Content-Disposition: attachment; filename="' . $filename . '"');

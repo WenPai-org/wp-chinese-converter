@@ -12,6 +12,7 @@
 /phpstan.neon.dist
 /composer.json
 /composer.lock
+/README.md
 /package-lock.json
 /changelog.txt
 /assets/.DS_Store

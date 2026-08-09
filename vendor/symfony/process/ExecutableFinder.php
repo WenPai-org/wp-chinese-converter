@@ -31,19 +31,20 @@ class ExecutableFinder
 
     /**
      * Replaces default suffixes of executable.
+     *
+     * @return void
      */
-    public function setSuffixes(array $suffixes): void
+    public function setSuffixes(array $suffixes)
     {
         $this->suffixes = $suffixes;
     }
 
     /**
-     * Adds new possible suffix to check for executable, including the dot (.).
+     * Adds new possible suffix to check for executable.
      *
-     *     $finder = new ExecutableFinder();
-     *     $finder->addSuffix('.foo');
+     * @return void
      */
-    public function addSuffix(string $suffix): void
+    public function addSuffix(string $suffix)
     {
         $this->suffixes[] = $suffix;
     }
@@ -63,13 +64,14 @@ class ExecutableFinder
         }
 
         $dirs = array_merge(
-            explode(\PATH_SEPARATOR, getenv('PATH') ?: getenv('Path') ?: ''),
+            explode(\PATH_SEPARATOR, getenv('PATH') ?: getenv('Path')),
             $extraDirs
         );
 
-        $suffixes = $this->suffixes;
+        $suffixes = [];
         if ('\\' === \DIRECTORY_SEPARATOR) {
-            $pathExt = getenv('PATHEXT') ?: '';
+            $pathExt = getenv('PATHEXT');
+            $suffixes = $this->suffixes;
             $suffixes = array_merge($suffixes, $pathExt ? explode(\PATH_SEPARATOR, $pathExt) : ['.exe', '.bat', '.cmd', '.com']);
         }
         $suffixes = '' !== pathinfo($name, \PATHINFO_EXTENSION) ? array_merge([''], $suffixes) : array_merge($suffixes, ['']);

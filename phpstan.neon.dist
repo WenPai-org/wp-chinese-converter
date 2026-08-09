@@ -2,14 +2,22 @@ includes:
     - vendor/szepeviktor/phpstan-wordpress/extension.neon
 parameters:
     level: 1
+    scanFiles:
+        - wp-chinese-converter.php
+        - includes/wpcc-core.php
     paths:
         - includes/core/class-wpcc-conversion-cache.php
         - includes/core/class-wpcc-converter-factory.php
+        - includes/core/class-wpcc-language-config.php
         - includes/core/class-wpcc-mediawiki-converter.php
         - includes/core/class-wpcc-opencc-converter.php
+        - includes/core/class-wpcc-post-conversion-backup.php
+        - includes/modules/wpcc-cache-addon.php
         - includes/modules/wpcc-modern-cache.php
         - includes/modules/wpcc-rest-api.php
+        - includes/modules/wpcc-seo-enhancement.php
         - includes/modules/wpcc-sitemap.php
+        - includes/network/wpcc-network-settings.php
     bootstrapFiles:
         - vendor/autoload.php
         - tests/phpstan-bootstrap.php

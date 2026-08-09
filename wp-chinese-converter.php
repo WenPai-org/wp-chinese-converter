@@ -9,10 +9,13 @@
  * Version: 1.5.1
  * Requires at least: 6.0
  * Requires PHP: 7.4
- * Update URI: https://feicode.com/WenPai-org/wp-chinese-converter
  * License: GPLv3 or later
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
  */
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
 
 /**
  * WP Chinese Converter
@@ -56,11 +59,11 @@ $wpcc_direct_conversion_flag = false;
 $wpcc_langs_urls = [];
 $wpcc_target_lang = false;
 
-// 载入OpenCC库
-require __DIR__ . "/vendor/autoload.php";
-
-use Overtrue\PHPOpenCC\OpenCC;
-use Overtrue\PHPOpenCC\Strategy;
+// OpenCC and its locked Symfony dependencies require PHP 8.1. The built-in
+// MediaWiki converter remains available on the plugin's PHP 7.4 baseline.
+if ( PHP_VERSION_ID >= 80100 ) {
+    require __DIR__ . "/vendor/autoload.php";
+}
 
 // 载入核心依赖
 require_once dirname(__FILE__) .
@@ -71,6 +74,7 @@ require_once dirname(__FILE__) .
 require_once dirname(__FILE__) . "/includes/core/class-wpcc-converter-factory.php";
 require_once dirname(__FILE__) . "/includes/core/class-wpcc-module-manager.php";
 require_once dirname(__FILE__) . "/includes/core/class-wpcc-conversion-cache.php";
+require_once dirname(__FILE__) . "/includes/core/class-wpcc-post-conversion-backup.php";
 require_once dirname(__FILE__) . "/includes/core/class-wpcc-config.php";
 require_once dirname(__FILE__) . "/includes/core/class-wpcc-presets.php";
 require_once dirname(__FILE__) . "/includes/core/class-wpcc-main.php";
@@ -153,6 +157,9 @@ if (
     if ( ! class_exists( 'WPCC_Main' ) ) {
         add_filter("query_vars", "wpcc_insert_query_vars");
     }
+
+    // Register stored-content conversion for admin, REST, XML-RPC, and WP-CLI saves.
+    add_action( 'init', 'wpcc_init_post_conversion' );
 
     // 加载管理后台模块（仅在后台时加载）
     if (is_admin()) {

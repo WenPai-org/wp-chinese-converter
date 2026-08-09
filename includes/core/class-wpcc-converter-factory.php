@@ -27,6 +27,10 @@ class WPCC_Converter_Factory {
 	private static function create_converter( $engine ) {
 			switch ( $engine ) {
 				case 'opencc':
+					if ( ! class_exists( 'Overtrue\PHPOpenCC\OpenCC' ) ) {
+						require_once dirname( __FILE__ ) . '/class-wpcc-mediawiki-converter.php';
+						return new WPCC_MediaWiki_Converter();
+					}
 					require_once dirname( __FILE__ ) . '/class-wpcc-opencc-converter.php';
 					return new WPCC_OpenCC_Converter();
 					
