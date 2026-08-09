@@ -233,7 +233,7 @@ function wpcc_template_redirect() {
 			'httponly' => true,
 			'samesite' => 'Lax',
 		] );
-		wp_redirect( $wpcc_langs_urls[ $wpcc_redirect_to ], 302 );
+		wp_safe_redirect( $wpcc_langs_urls[ $wpcc_redirect_to ], 302 );
 	}
 
 	if ( ! $wpcc_target_lang ) {
@@ -430,20 +430,22 @@ function zhconversion( ?string $str, ?string $variant = null ): string {
 		return $str;
 	}
 
-	// 检查缓存
-	$cached_result = WPCC_Conversion_Cache::get_cached_conversion( $str, $variant );
+	$converter = WPCC_Converter_Factory::get_converter();
+	$engine = $converter->get_engine_name();
+
+	// 检查与当前转换引擎绑定的缓存，避免切换引擎后复用旧结果。
+	$cached_result = WPCC_Conversion_Cache::get_cached_conversion( $str, $variant, $engine );
 	if ( $cached_result !== null ) {
 		return $cached_result;
 	}
 
 	return WPCC_Exception_Handler::safe_execute(
-		function() use ( $str, $variant ) {
-			$converter = WPCC_Converter_Factory::get_converter();
+		function() use ( $str, $variant, $converter, $engine ) {
 			$result = $converter->convert( $str, $variant );
 			
 			// 将结果存入缓存
 			if ( $result !== $str ) { // 只缓存真正有变化的转换
-				WPCC_Conversion_Cache::set_cached_conversion( $str, $variant, $result );
+				WPCC_Conversion_Cache::set_cached_conversion( $str, $variant, $result, $engine );
 			}
 			
 			return $result;

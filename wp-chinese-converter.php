@@ -6,7 +6,10 @@
  * Author URI: https://wpcc.net
  * Text Domain: wp-chinese-converter
  * Domain Path: /languages
-* Version: 1.5
+ * Version: 1.5.1
+ * Requires at least: 6.0
+ * Requires PHP: 7.4
+ * Update URI: https://feicode.com/WenPai-org/wp-chinese-converter
  * License: GPLv3 or later
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
  */
@@ -25,7 +28,7 @@
 
 // 基础常量定义
 define("wpcc_DEBUG", false);
-define("wpcc_VERSION", "1.5");
+define("wpcc_VERSION", "1.5.1");
 
 // 插件URL常量
 if (defined("WP_PLUGIN_URL")) {
@@ -107,6 +110,16 @@ $wpcc_config = $wpcc_main->get_config();
 
 // 保持向后兼容性
 $wpcc_options = $wpcc_config->get_all_options();
+
+
+/**
+ * Persist the complete defaults in every activation context, including WP-CLI.
+ */
+function wpcc_activate() {
+    $activation_config = WPCC_Config::get_instance();
+    update_option( 'wpcc_options', $activation_config->get_all_options() );
+}
+register_activation_hook( __FILE__, 'wpcc_activate' );
 
 // 加载站点地图模块
 $modules_dir = __DIR__ . "/includes/modules/";

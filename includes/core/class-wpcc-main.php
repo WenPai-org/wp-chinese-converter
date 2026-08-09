@@ -295,7 +295,7 @@ class WPCC_Main {
             ] );
         }
         
-        wp_redirect( $this->config->get_noconversion_url() );
+        wp_safe_redirect( $this->config->get_noconversion_url() );
         exit;
     }
     
@@ -406,7 +406,7 @@ class WPCC_Main {
                 'httponly' => true,
                 'samesite' => 'Lax',
             ] );
-            wp_redirect( $redirect_url, 302 );
+            wp_safe_redirect( $redirect_url, 302 );
             exit;
         }
         

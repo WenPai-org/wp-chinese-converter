@@ -18,7 +18,7 @@ function wpcc_ajax_flush_rewrite_rules() {
     }
     
     // 验证nonce
-    if ( ! wp_verify_nonce( $_POST['nonce'], 'wpcc_admin_nonce' ) ) {
+    if ( empty( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'wpcc_admin_nonce' ) ) {
         wp_die( '安全验证失败' );
     }
     
@@ -114,53 +114,6 @@ function wpcc_admin_init() {
 /**
  * 插件激活时执行
  */
-function wpcc_activate() {
-	$current_options = (array) get_wpcc_option( 'wpcc_options' );
-	$wpcc_options = array(
-		'wpcc_search_conversion'       => 1,
-		'wpcc_used_langs'              => array( 'zh-hans', 'zh-hant', 'zh-cn', 'zh-hk', 'zh-sg', 'zh-tw' ),
-		'wpcc_browser_redirect'        => 0,
-		'wpcc_auto_language_recong'    => 0,
-		'wpcc_flag_option'             => 1,
-		'wpcc_use_cookie_variant'      => 0,
-		'wpcc_use_fullpage_conversion' => 1,
-		'wpcco_use_sitemap'            => 1,
-		'wpcc_trackback_plugin_author' => 0,
-		'wpcc_add_author_link'         => 0,
-		'wpcc_use_permalink'           => 0,
-		'wpcc_no_conversion_tag'       => '',
-		'wpcc_no_conversion_ja'        => 0,
-		'wpcc_no_conversion_qtag'      => 0,
-		'wpcc_engine'                  => 'mediawiki',
-		'nctip'                        => '',
-	);
-
-	foreach ( $current_options as $key => $value ) {
-		if ( isset( $wpcc_options[ $key ] ) ) {
-			$wpcc_options[ $key ] = $value;
-		}
-	}
-
-	foreach (
-		array(
-			'zh-hans' => "hanstip",
-			'zh-hant' => "hanttip",
-			'zh-cn'   => "cntip",
-			'zh-hk'   => "hktip",
-			'zh-sg'   => "sgtip",
-			'zh-tw'   => "twtip",
-			'zh-my'   => "mytip",
-			'zh-mo'   => "motip",
-			'zh-jp'   => "jptip"
-		) as $lang => $tip
-	) {
-		if ( ! empty( $current_options[ $tip ] ) ) {
-			$wpcc_options[ $tip ] = $current_options[ $tip ];
-		}
-	}
-
-	update_wpcc_option( 'wpcc_options', $wpcc_options );
-}
 
 /**
  * 添加编辑器快速标签
@@ -206,29 +159,32 @@ function wpcc_init_post_conversion() {
 		 * - 跳过 WPCC 自有区块（wpcc/*），避免破坏区块占位和结构
 		 * - 仅转换非 WPCC 区块的纯文本片段（innerContent 字符串等）
 		 */
-		add_filter( 'content_save_pre', function ( $content ) use ( $target_lang ) {
-			if ( empty( $content ) ) {
-				return $content;
+		add_filter( 'wp_insert_post_data', function ( $data, $postarr ) use ( $target_lang ) {
+			$post_type = isset( $data['post_type'] ) ? sanitize_key( $data['post_type'] ) : '';
+			$allowed_post_types = apply_filters( 'wpcc_post_conversion_post_types', array( 'post', 'page' ) );
+			if ( ! is_array( $allowed_post_types ) || ! in_array( $post_type, $allowed_post_types, true ) ) {
+				return $data;
 			}
-			try {
-				return wpcc_convert_post_content_safely( $content, $target_lang );
-			} catch ( Exception $e ) {
-				error_log( 'WPCC Content Conversion Error: ' . $e->getMessage() );
-				return $content;
-			}
-		} );
 
-		add_filter( 'title_save_pre', function ( $title ) use ( $target_lang ) {
-			if ( empty( $title ) ) {
-				return $title;
+			// Never mutate autosaves or revisions. This opt-in feature changes stored content,
+			// so keep it limited to explicit saves of configured content types.
+			if ( $post_type === 'revision' || ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) ) {
+				return $data;
 			}
+
 			try {
-				return zhconversion( $title, $target_lang );
-			} catch ( Exception $e ) {
-				error_log( 'WPCC Title Conversion Error: ' . $e->getMessage() );
-				return $title;
+				if ( ! empty( $data['post_content'] ) ) {
+					$data['post_content'] = wpcc_convert_post_content_safely( $data['post_content'], $target_lang );
+				}
+				if ( ! empty( $data['post_title'] ) ) {
+					$data['post_title'] = zhconversion( $data['post_title'], $target_lang );
+				}
+			} catch ( Throwable $e ) {
+				error_log( 'WPCC Post Conversion Error: ' . $e->getMessage() );
 			}
-		} );
+
+			return $data;
+		}, 10, 2 );
 
 		add_action( 'add_meta_boxes', 'wpcc_add_conversion_meta_box' );
 	}
@@ -437,9 +393,6 @@ if ( is_multisite() && wpcc_mobile_exist( 'network' ) ) {
 } else {
 	add_action( 'admin_menu', 'wpcc_admin_init' );
 }
-
-// 注册激活钩子
-register_activation_hook( dirname( __DIR__ ) . '/wp-chinese-converter.php', 'wpcc_activate' );
 
 // 注册编辑器增强钩子
 add_action( 'admin_print_footer_scripts', 'wpcc_appthemes_add_quicktags' );

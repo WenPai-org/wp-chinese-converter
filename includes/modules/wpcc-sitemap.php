@@ -10,9 +10,6 @@ function wpcc_sitemap_init() {
 }
 
 function wpcc_sitemap_setup() {
-    remove_action( 'init', 'wp_sitemaps_get_server' );
-    add_filter( 'wp_sitemaps_enabled', '__return_false' );
-    
     add_filter( 'rewrite_rules_array', 'wpcc_sitemap_rewrite_rules' );
     add_filter( 'query_vars', 'custom_sitemap_query_vars' );
     
@@ -226,8 +223,24 @@ function custom_sitemap_template_redirect() {
     }
 }
 
+/**
+ * Return only public, registered post types selected for WPCC sitemaps.
+ */
+function wpcc_get_sitemap_post_types() {
+    global $wpcc_options;
+
+    $configured = isset( $wpcc_options['wpcco_sitemap_post_type'] )
+        ? explode( ',', (string) $wpcc_options['wpcco_sitemap_post_type'] )
+        : array( 'post', 'page' );
+    $configured = array_values( array_unique( array_filter( array_map( 'sanitize_key', $configured ) ) ) );
+    $public = get_post_types( array( 'public' => true ), 'names' );
+    $post_types = array_values( array_intersect( $configured, $public ) );
+
+    return $post_types ?: array( 'post', 'page' );
+}
+
 function generate_sitemap_index( string $lang ) {
-    global $wpdb, $wpcc_options;
+    global $wpcc_options;
 
     // 仅允许启用语言
     $enabled = isset($wpcc_options['wpcc_used_langs']) && is_array($wpcc_options['wpcc_used_langs']) ? $wpcc_options['wpcc_used_langs'] : array('zh-cn','zh-tw');
@@ -237,30 +250,23 @@ function generate_sitemap_index( string $lang ) {
 
     $max_urls_per_sitemap = 1000;
 
-    if ( empty( $wpcc_options['wpcco_sitemap_post_type'] ) ) {
-        $post_type = 'post,page';
-    } else {
-        $post_type = isset($wpcc_options['wpcco_sitemap_post_type']) ? $wpcc_options['wpcco_sitemap_post_type'] : 'post,page';
+    $post_types = wpcc_get_sitemap_post_types();
+    $total_posts = 0;
+    foreach ( $post_types as $post_type ) {
+        $counts = wp_count_posts( $post_type );
+        $total_posts += isset( $counts->publish ) ? (int) $counts->publish : 0;
     }
-    
-    $post_type = explode( ',', $post_type );
-    $post_type_sql = '';
-    foreach ( $post_type as $item ) {
-        $post_type_sql .= "'$item',";
-    }
-    $post_type_sql = substr( $post_type_sql, 0, - 1 );
-    $total_posts = $wpdb->get_var( "SELECT COUNT(*) FROM $wpdb->posts WHERE post_type in ($post_type_sql) AND post_status = 'publish'" );
     
     $total_sitemaps = ceil( $total_posts / $max_urls_per_sitemap );
     
     $sitemap = '<?xml version="1.0" encoding="UTF-8"?>';
-    $sitemap .= '<?xml-stylesheet type="text/xsl" href="' . site_url( '/sitemap-style.xsl' ) . '"?>';
+    $sitemap .= '<?xml-stylesheet type="text/xsl" href="' . esc_xml( site_url( '/sitemap-style.xsl' ) ) . '"?>';
     $sitemap .= '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
     
     // 添加文章网站地图
     for ( $i = 1; $i <= $total_sitemaps; $i ++ ) {
         $sitemap .= '<sitemap>';
-        $sitemap .= '<loc>' . site_url( "/sitemap-{$lang}-{$i}.xml" ) . '</loc>';
+        $sitemap .= '<loc>' . esc_xml( site_url( "/sitemap-{$lang}-{$i}.xml" ) ) . '</loc>';
         $sitemap .= '<lastmod>' . date( 'Y-m-d' ) . '</lastmod>';
         $sitemap .= '</sitemap>';
     }
@@ -288,7 +294,7 @@ function generate_sitemap_index( string $lang ) {
         
         for ( $i = 1; $i <= $taxonomy_sitemaps; $i ++ ) {
             $sitemap .= '<sitemap>';
-            $sitemap .= '<loc>' . site_url( "/sitemap-taxonomy-{$taxonomy->name}-{$lang}-{$i}.xml" ) . '</loc>';
+            $sitemap .= '<loc>' . esc_xml( site_url( "/sitemap-taxonomy-{$taxonomy->name}-{$lang}-{$i}.xml" ) ) . '</loc>';
             $sitemap .= '<lastmod>' . date( 'Y-m-d' ) . '</lastmod>';
             $sitemap .= '</sitemap>';
         }
@@ -312,24 +318,20 @@ function generate_paged_sitemap_content( string $lang, int $page ) {
 
     $max_urls_per_sitemap = 1000;
 
-    if ( empty( $wpcc_options['wpcco_sitemap_post_type'] ) ) {
-        $post_type = 'post,page';
-    } else {
-        $post_type = isset($wpcc_options['wpcco_sitemap_post_type']) ? $wpcc_options['wpcco_sitemap_post_type'] : 'post,page';
-    }
-    
+    $post_types = wpcc_get_sitemap_post_types();
+    $page = max( 1, $page );
     $offset = ( $page - 1 ) * $max_urls_per_sitemap;
     
     $postsForSitemap = get_posts( array(
         'numberposts' => $max_urls_per_sitemap,
         'orderby'     => 'modified',
-        'post_type'   => explode( ',', $post_type ),
+        'post_type'   => $post_types,
         'order'       => 'DESC',
         'offset'      => $offset,
     ) );
     
     $sitemap = '<?xml version="1.0" encoding="UTF-8"?>';
-    $sitemap .= '<?xml-stylesheet type="text/xsl" href="' . site_url( '/sitemap-style.xsl' ) . '"?>';
+    $sitemap .= '<?xml-stylesheet type="text/xsl" href="' . esc_xml( site_url( '/sitemap-style.xsl' ) ) . '"?>';
     $sitemap .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
     
     foreach ( $postsForSitemap as $post ) {
@@ -338,7 +340,7 @@ function generate_paged_sitemap_content( string $lang, int $page ) {
         $postdate = explode( " ", $post->post_modified );
         
         $sitemap .= '<url>';
-        $sitemap .= '<loc>' . wpcc_sitemap_link_conversion( get_permalink( $post->ID ), $lang ) . '</loc>';
+        $sitemap .= '<loc>' . esc_xml( wpcc_sitemap_link_conversion( get_permalink( $post->ID ), $lang ) ) . '</loc>';
         $sitemap .= '<lastmod>' . $postdate[0] . '</lastmod>';
         $sitemap .= '<changefreq>weekly</changefreq>';
         $sitemap .= '<priority>0.6</priority>';
@@ -518,6 +520,7 @@ function generate_taxonomy_sitemap_content( string $taxonomy, string $lang, int 
     }
 
     $max_urls_per_sitemap = 1000;
+    $page = max( 1, $page );
     $offset = ( $page - 1 ) * $max_urls_per_sitemap;
     
     // 获取分类条目
@@ -535,7 +538,7 @@ function generate_taxonomy_sitemap_content( string $taxonomy, string $lang, int 
     }
     
     $sitemap = '<?xml version="1.0" encoding="UTF-8"?>';
-    $sitemap .= '<?xml-stylesheet type="text/xsl" href="' . site_url( '/sitemap-style.xsl' ) . '"?>';
+    $sitemap .= '<?xml-stylesheet type="text/xsl" href="' . esc_xml( site_url( '/sitemap-style.xsl' ) ) . '"?>';
     $sitemap .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
     
     foreach ( $terms as $term ) {
@@ -553,7 +556,7 @@ function generate_taxonomy_sitemap_content( string $taxonomy, string $lang, int 
         $converted_link = wpcc_sitemap_link_conversion( $term_link, $lang );
         
         $sitemap .= '<url>';
-        $sitemap .= '<loc>' . esc_url( $converted_link ) . '</loc>';
+        $sitemap .= '<loc>' . esc_xml( $converted_link ) . '</loc>';
         $sitemap .= '<lastmod>' . date( 'Y-m-d' ) . '</lastmod>';
         $sitemap .= '<changefreq>weekly</changefreq>';
         $sitemap .= '<priority>0.5</priority>';

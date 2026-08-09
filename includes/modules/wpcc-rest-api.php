@@ -47,7 +47,8 @@ $this->version = '1.5';
 				'text' => array(
 					'required' => true,
 					'type' => 'string',
-					'description' => '需要转换的文本'
+					'description' => '需要转换的文本',
+					'validate_callback' => array( $this, 'validate_text' )
 				),
 				'target' => array(
 					'required' => true,
@@ -73,7 +74,9 @@ $this->version = '1.5';
 				'texts' => array(
 					'required' => true,
 					'type' => 'array',
-					'description' => '需要转换的文本数组'
+					'description' => '需要转换的文本数组',
+					'items' => array( 'type' => 'string' ),
+					'validate_callback' => array( $this, 'validate_text_batch' )
 				),
 				'target' => array(
 					'required' => true,
@@ -110,17 +113,31 @@ $this->version = '1.5';
 		) );
 	}
 	
-	public function check_permission( $request ) {
-		$public_endpoints = array( 'convert', 'batch-convert', 'engines', 'languages' );
-		$endpoint = $request->get_route();
-		
-		foreach ( $public_endpoints as $public ) {
-			if ( strpos( $endpoint, $public ) !== false ) {
-				return $this->check_api_key( $request ) || current_user_can( 'read' );
+
+	public function validate_text( $value ) {
+		return is_string( $value ) && strlen( $value ) <= 100000;
+	}
+
+	public function validate_text_batch( $value ) {
+		if ( ! is_array( $value ) || count( $value ) > 100 ) {
+			return false;
+		}
+		$total_bytes = 0;
+		foreach ( $value as $text ) {
+			if ( ! is_string( $text ) ) {
+				return false;
+			}
+			$total_bytes += strlen( $text );
+			if ( $total_bytes > 500000 ) {
+				return false;
 			}
 		}
-		
-		return current_user_can( 'manage_options' );
+		return true;
+	}
+
+	public function check_permission( $request ) {
+		$capability = sanitize_key( apply_filters( 'wpcc_rest_api_capability', 'manage_options', $request ) );
+		return $capability !== '' && current_user_can( $capability );
 	}
 	
 	private function check_api_key( $request ) {
@@ -146,7 +163,11 @@ $this->version = '1.5';
 			return false;
 		}
 		
-		list( $username, $password ) = explode( ':', $credentials, 2 );
+		$parts = explode( ':', $credentials, 2 );
+		if ( count( $parts ) !== 2 ) {
+			return false;
+		}
+		list( $username, $password ) = $parts;
 		
 		$user = wp_authenticate_application_password( null, $username, $password );
 		
@@ -154,7 +175,7 @@ $this->version = '1.5';
 			return false;
 		}
 		
-		if ( ! $user || ! user_can( $user, 'read' ) ) {
+		if ( ! $user || ! user_can( $user, 'manage_options' ) ) {
 			return false;
 		}
 		
@@ -166,6 +187,10 @@ $this->version = '1.5';
 		$text = $request->get_param( 'text' );
 		$target = $request->get_param( 'target' );
 		$engine = $request->get_param( 'engine' );
+
+		if ( ! $this->validate_text( $text ) ) {
+			return new WP_Error( 'invalid_text_size', '转换文本不能超过100000字节', array( 'status' => 400 ) );
+		}
 		
 		try {
 			$converter = WPCC_Converter_Factory::get_converter( $engine );
@@ -181,7 +206,7 @@ $this->version = '1.5';
 				)
 			) );
 			
-		} catch ( Exception $e ) {
+		} catch ( Throwable $e ) {
 			return new WP_Error( 'conversion_failed', $e->getMessage(), array( 'status' => 500 ) );
 		}
 	}
@@ -191,7 +216,7 @@ $this->version = '1.5';
 		$target = $request->get_param( 'target' );
 		$engine = $request->get_param( 'engine' );
 		
-		if ( count( $texts ) > 100 ) {
+		if ( ! $this->validate_text_batch( $texts ) ) {
 			return new WP_Error( 'too_many_texts', '批量转换最多支持100个文本', array( 'status' => 400 ) );
 		}
 		
@@ -218,7 +243,7 @@ $this->version = '1.5';
 				)
 			) );
 			
-		} catch ( Exception $e ) {
+		} catch ( Throwable $e ) {
 			return new WP_Error( 'batch_conversion_failed', $e->getMessage(), array( 'status' => 500 ) );
 		}
 	}

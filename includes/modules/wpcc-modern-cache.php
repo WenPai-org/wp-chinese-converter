@@ -47,11 +47,13 @@ $this->version = '1.5';
 		
 		$cache_key = $this->generate_cache_key( $text, $target, $engine );
 		
-		if ( wp_using_ext_object_cache() ) {
-			return wp_cache_get( $cache_key, $this->cache_group );
-		}
+		$cached = wp_using_ext_object_cache()
+			? wp_cache_get( $cache_key, $this->cache_group )
+			: get_transient( $cache_key );
 		
-		return get_transient( $cache_key );
+		return is_array( $cached ) && array_key_exists( 'converted', $cached )
+			? $cached['converted']
+			: null;
 	}
 	
 	public function cache_conversion( $original_text, $converted_text, $target, $engine ) {
@@ -74,6 +76,7 @@ $this->version = '1.5';
 			set_transient( $cache_key, $cache_data, $this->cache_expiry );
 		}
 		
+		$this->add_cache_key( $cache_key );
 		$this->manage_cache_size();
 	}
 	
@@ -101,6 +104,9 @@ $this->version = '1.5';
 					delete_transient( $key );
 				}
 			}
+
+			$remaining_keys = array_slice( $cache_keys, -$this->settings['max_cache_size'] );
+			update_option( 'wpcc_cache_keys', $remaining_keys );
 		}
 	}
 	
@@ -113,14 +119,14 @@ $this->version = '1.5';
 		$keys_option = 'wpcc_cache_keys';
 		$keys = get_option( $keys_option, array() );
 		
-		if ( ! in_array( $key, $keys ) ) {
+		if ( ! in_array( $key, $keys, true ) ) {
 			$keys[] = $key;
 			update_option( $keys_option, $keys );
 		}
 	}
 	
 	public function clear_object_cache() {
-		if ( wp_using_ext_object_cache() ) {
+		if ( wp_using_ext_object_cache() && function_exists( 'wp_cache_flush_group' ) ) {
 			wp_cache_flush_group( $this->cache_group );
 		}
 	}

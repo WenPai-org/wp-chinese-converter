@@ -153,7 +153,7 @@ class WPCC_OpenCC_Converter implements WPCC_Converter_Interface {
 		$uncached_indices = array();
 		
         foreach ( $texts as $index => $text ) {
-            $cached_result = WPCC_Conversion_Cache::get_cached_conversion( $text, $target_variant );
+            $cached_result = WPCC_Conversion_Cache::get_cached_conversion( $text, $target_variant, 'opencc' );
             if ( $cached_result !== null ) {
                 $cached_results[ $index ] = $cached_result;
             } else if ( ! $this->contains_chinese( $text ) ) {
@@ -199,7 +199,7 @@ class WPCC_OpenCC_Converter implements WPCC_Converter_Interface {
 					
 					// 缓存转换结果
 					if ( $converted_text !== $original_text ) {
-						WPCC_Conversion_Cache::set_cached_conversion( $original_text, $target_variant, $converted_text );
+						WPCC_Conversion_Cache::set_cached_conversion( $original_text, $target_variant, $converted_text, 'opencc' );
 					}
 					
 					$uncached_index++;

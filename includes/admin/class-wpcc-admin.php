@@ -244,6 +244,11 @@ class wpcc_Admin
 
     function display_options()
     {
+        $required_capability = is_network_admin() ? "manage_network_options" : "manage_options";
+        if (!current_user_can($required_capability)) {
+            wp_die(esc_html__("您没有权限管理文派译词设置。", "wp-chinese-converter"));
+        }
+
         global $wp_rewrite;
 
         wp_enqueue_style(
@@ -270,7 +275,8 @@ class wpcc_Admin
             "isGutenbergActive" => $this->is_gutenberg_active(),
         ]);
 
-        if (!empty($_POST["wpcco_uninstall_nonce"])) {
+        if (!empty($_POST["wpcco_uninstall_confirm"])) {
+            check_admin_referer("wpcc_uninstall", "wpcc_uninstall_nonce");
             delete_option("wpcc_options");
             update_option("rewrite_rules", "");
             echo '<div class="wrap"><h2>WP Chinese Converter Setting</h2><div class="updated">Uninstall Successfully. 卸载成功, 现在您可以到<a href="plugins.php">插件菜单</a>里禁用本插件.</div></div>';
@@ -306,6 +312,7 @@ class wpcc_Admin
         }
 
         if (!empty($_POST["toggle_cache"])) {
+            check_admin_referer("wpcc_toggle_cache", "wpcc_toggle_cache_nonce");
             if ($this->get_cache_status() == 1) {
                 $result = $this->install_cache_module();
                 if ($result) {
@@ -409,6 +416,7 @@ class wpcc_Admin
 
     function process()
     {
+        check_admin_referer("wpcc_save_settings", "wpcc_settings_nonce");
         global $wp_rewrite, $wpcc_options;
 
         // 获取当前设置作为基础
@@ -485,13 +493,14 @@ class wpcc_Admin
             if (isset($_POST[$post_field])) {
                 if ($post_field === "wpcco_no_conversion_tag" || $post_field === "wpcc_no_conversion_tag") {
                     $options[$option_field] = trim(
-                        $_POST[$post_field],
+                        wp_unslash($_POST[$post_field]),
                         " \t\n\r\0\x0B,|",
                     );
                 } elseif ($post_field === "wpcco_no_conversion_tip") {
-                    $options[$option_field] = trim($_POST[$post_field]);
+                    $options[$option_field] = trim(wp_unslash($_POST[$post_field]));
                 } elseif ($post_field === "wpcco_sitemap_post_type") {
-                    $options[$option_field] = trim($_POST[$post_field]);
+                    $post_types = array_filter(array_map("sanitize_key", explode(",", wp_unslash($_POST[$post_field]))));
+                    $options[$option_field] = implode(",", array_unique($post_types));
                 } elseif (
                     in_array($post_field, [
                         "wpcc_translate_type",
@@ -504,7 +513,7 @@ class wpcc_Admin
                     $options[$option_field] = intval($_POST[$post_field]);
                 } else {
                     $options[$option_field] = sanitize_text_field(
-                        $_POST[$post_field],
+                        wp_unslash($_POST[$post_field]),
                     );
                 }
             }
@@ -523,7 +532,7 @@ class wpcc_Admin
                     isset($_POST[$value[1]]) &&
                     !empty($_POST[$value[1]])
                 ) {
-                    $options[$value[1]] = trim($_POST[$value[1]]);
+                    $options[$value[1]] = sanitize_text_field(wp_unslash($_POST[$value[1]]));
                 }
             }
         }

@@ -1,11 +1,11 @@
 === WP Chinese Converter ===
 Contributors: wpfanyi
 Tags: chinese, 中文, 繁体, 简体, 繁简转换, Chinese Simplified, Chinese Traditional, widget, sidebar
-Requires at least: 4.5
-Tested up to: 8.2
-Stable tag: 1.2.0
-License: GPLv2
-License URI: http://www.gnu.org/licenses/gpl-2.0.html
+Requires at least: 6.0
+Tested up to: 6.8
+Stable tag: 1.5.1
+License: GPLv3 or later
+License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
 Adds the language conversion function between Chinese Simplified and Chinese Traditional to your WP Blog. Released under GPL license.
 
@@ -33,6 +33,12 @@ Adds the language conversion function between Chinese Simplified and Chinese Tra
 上传插件并激活即可。
 
 == Changelog ==
+
+## 1.5.1 (unreleased) ###
+
+* Add CSRF protection and restrict REST conversion to administrators by default.
+* Fix MediaWiki conversion, engine-aware cache keys, canonical URLs, and sitemap compatibility.
+* Bound REST request sizes and safer opt-in stored-content conversion.
 
 ## 1.1.0 ###
 

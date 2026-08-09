@@ -1,0 +1,21 @@
+includes:
+    - vendor/szepeviktor/phpstan-wordpress/extension.neon
+parameters:
+    level: 1
+    paths:
+        - includes/core/class-wpcc-conversion-cache.php
+        - includes/core/class-wpcc-converter-factory.php
+        - includes/core/class-wpcc-mediawiki-converter.php
+        - includes/core/class-wpcc-opencc-converter.php
+        - includes/modules/wpcc-modern-cache.php
+        - includes/modules/wpcc-rest-api.php
+        - includes/modules/wpcc-sitemap.php
+    bootstrapFiles:
+        - vendor/autoload.php
+        - tests/phpstan-bootstrap.php
+    excludePaths:
+        analyse:
+            - includes/core/ZhConversion.php
+            - includes/core/simple_html_dom.php
+    parallel:
+        maximumNumberOfProcesses: 1

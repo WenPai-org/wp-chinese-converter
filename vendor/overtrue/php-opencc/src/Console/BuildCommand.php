@@ -2,24 +2,24 @@
 
 namespace Overtrue\PHPOpenCC\Console;
 
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputDefinition;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Process\Process;
 
+#[AsCommand(
+    name: 'build',
+    description: 'Build OpenCC data files.'
+)]
 class BuildCommand extends Command
 {
-    protected static $defaultName = 'build';
+    public const DICTIONARY_DIR = __DIR__.'/../../data/dictionary';
 
-    protected static $defaultDescription = 'Build OpenCC data files.';
+    public const PARSED_DIR = __DIR__.'/../../data/parsed';
 
-    const DICTIONARY_DIR = __DIR__.'/../../data/dictionary';
-
-    const PARSED_DIR = __DIR__.'/../../data/parsed';
-
-    const FILES = [
+    public const FILES = [
         'HKVariants',
         'HKVariantsRevPhrases',
         'JPShinjitaiCharacters',
@@ -36,7 +36,7 @@ class BuildCommand extends Command
         'TWVariantsRevPhrases',
     ];
 
-    const MERGE_OUTPUT_MAP = [
+    public const MERGE_OUTPUT_MAP = [
         'TWPhrases' => ['TWPhrasesIT', 'TWPhrasesName', 'TWPhrasesOther'],
         'TWVariantsRev' => ['TWVariants'],
         'TWPhrasesRev' => ['TWPhrasesIT', 'TWPhrasesName', 'TWPhrasesOther'],
@@ -44,19 +44,21 @@ class BuildCommand extends Command
         'JPVariantsRev' => ['JPVariants'],
     ];
 
-    const REVERSED_FILES = [
+    public const REVERSED_FILES = [
         'TWVariantsRev',
         'TWPhrasesRev',
         'HKVariantsRev',
         'JPVariantsRev',
     ];
 
+    protected ?string $tempDir = null;
+
     protected function configure(): void
     {
         $this
             ->setDefinition(
                 new InputDefinition([
-                    new InputOption('force', 'f', InputOption::VALUE_OPTIONAL),
+                    new InputOption('force', 'f', InputOption::VALUE_NONE, 'Force rebuild even if local dictionaries are fresh.'),
                 ])
             );
     }
@@ -66,26 +68,25 @@ class BuildCommand extends Command
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        if (! file_exists(self::DICTIONARY_DIR)) {
-            mkdir(self::DICTIONARY_DIR, 0755, true);
-        }
-
-        if (! file_exists(self::PARSED_DIR)) {
-            mkdir(self::PARSED_DIR, 0755, true);
-        }
+        $this->ensureDirectory(self::DICTIONARY_DIR);
+        $this->ensureDirectory(self::PARSED_DIR);
 
         $file = self::DICTIONARY_DIR.'/STCharacters.txt';
 
-        if (file_exists($file) && filemtime($file) > time() - 3600 * 24 && ! $input->hasOption('force')) {
+        if (file_exists($file) && filemtime($file) > time() - 3600 * 24 && ! $input->getOption('force')) {
             $output->writeln('Data files are up to date.');
 
             return Command::SUCCESS;
         }
 
-        $this->download($output);
-        $this->extract($output);
-        $this->copy($output);
-        $this->parse($output);
+        try {
+            $this->download($output);
+            $this->extract($output);
+            $this->copy($output);
+            $this->parse($output);
+        } finally {
+            $this->cleanupTempDir();
+        }
 
         return Command::SUCCESS;
     }
@@ -97,14 +98,44 @@ class BuildCommand extends Command
     {
         $output->writeln('Downloading data files...');
 
-        $zip = 'https://github.com/BYVoid/OpenCC/archive/refs/heads/master.zip';
-        try {
-            $process = Process::fromShellCommandline('curl -L -o /tmp/opencc.zip '.$zip);
-            $process->setTty(Process::isTtySupported());
-            $process->run();
-        } catch (\Exception $e) {
+        $zipUrl = 'https://github.com/BYVoid/OpenCC/archive/refs/heads/master.zip';
+        $target = $this->getZipPath();
+
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'GET',
+                'timeout' => 60,
+                'follow_location' => 1,
+                'header' => [
+                    'User-Agent: php-opencc-builder',
+                ],
+            ],
+            'ssl' => [
+                'verify_peer' => true,
+                'verify_peer_name' => true,
+            ],
+        ]);
+
+        $readStream = fopen($zipUrl, 'rb', false, $context);
+        if ($readStream === false) {
             $output->writeln('Download failed.');
-            throw $e;
+            throw new \RuntimeException('Unable to download dictionary zip.');
+        }
+
+        $writeStream = fopen($target, 'wb');
+        if ($writeStream === false) {
+            fclose($readStream);
+            throw new \RuntimeException("Unable to write zip file to [{$target}].");
+        }
+
+        try {
+            $writtenBytes = stream_copy_to_stream($readStream, $writeStream);
+            if ($writtenBytes === false || $writtenBytes === 0) {
+                throw new \RuntimeException('Unable to download dictionary zip.');
+            }
+        } finally {
+            fclose($readStream);
+            fclose($writeStream);
         }
 
         $output->writeln('Done.');
@@ -113,17 +144,54 @@ class BuildCommand extends Command
     public function copy(OutputInterface $output): void
     {
         $output->write('Copying data files...');
-        $process = Process::fromShellCommandline('cp -rf /tmp/opencc/OpenCC-master/data/dictionary/* '.self::DICTIONARY_DIR);
-        $process->setTty(Process::isTtySupported());
-        $process->run();
+        $srcDir = $this->getExtractedDictionaryPath();
+        $dstDir = self::DICTIONARY_DIR;
+
+        if (! is_dir($srcDir)) {
+            throw new \RuntimeException("Dictionary source directory does not exist: {$srcDir}");
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($srcDir, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            $targetPath = $dstDir.'/'.substr($item->getPathname(), strlen($srcDir) + 1);
+            if ($item->isDir()) {
+                if (! is_dir($targetPath)) {
+                    $this->ensureDirectory($targetPath);
+                }
+            } else {
+                $dir = dirname($targetPath);
+                if (! is_dir($dir)) {
+                    $this->ensureDirectory($dir);
+                }
+                if (! copy($item->getPathname(), $targetPath)) {
+                    throw new \RuntimeException("Unable to copy [{$item->getPathname()}] to [{$targetPath}].");
+                }
+            }
+        }
         $output->writeln('Done.');
     }
 
     public function extract(OutputInterface $output): void
     {
         $output->write('Extracting data files...');
-        $process = Process::fromShellCommandline('unzip -o /tmp/opencc.zip -d /tmp/opencc');
-        $process->run();
+        $zipPath = $this->getZipPath();
+        $dest = $this->getExtractRootPath();
+        $this->ensureDirectory($dest);
+
+        $zip = new \ZipArchive;
+        if ($zip->open($zipPath) !== true) {
+            throw new \RuntimeException('Unable to open downloaded zip.');
+        }
+
+        if ($zip->extractTo($dest) !== true) {
+            $zip->close();
+            throw new \RuntimeException('Unable to extract zip.');
+        }
+        $zip->close();
         $output->writeln('Done.');
     }
 
@@ -138,11 +206,20 @@ class BuildCommand extends Command
             $txt = sprintf('%s/%s.txt', self::DICTIONARY_DIR, $file);
             if (file_exists($txt)) {
                 $lines = file($txt, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+                if ($lines === false) {
+                    throw new \RuntimeException("Unable to read dictionary file [{$txt}].");
+                }
             } else {
                 // merge files
                 $content = '';
                 foreach (self::MERGE_OUTPUT_MAP[$file] as $f) {
-                    $content .= file_get_contents(sprintf('%s/%s.txt', self::DICTIONARY_DIR, $f));
+                    $source = sprintf('%s/%s.txt', self::DICTIONARY_DIR, $f);
+                    $part = file_get_contents($source);
+                    if ($part === false) {
+                        throw new \RuntimeException("Unable to read dictionary file [{$source}].");
+                    }
+
+                    $content .= $part;
                 }
                 $lines = array_filter(explode("\n", $content));
             }
@@ -151,7 +228,14 @@ class BuildCommand extends Command
 
             $words = [];
             foreach ($lines as $line) {
-                [$from, $to] = explode("\t", $line);
+                $parts = explode("\t", $line, 2);
+                if (count($parts) !== 2) {
+                    $output->writeln('Skip malformed line: '.$line);
+
+                    continue;
+                }
+
+                [$from, $to] = $parts;
                 $to = preg_split('/\s+/', $to, -1, PREG_SPLIT_NO_EMPTY)[0] ?? null;
 
                 if (! $to) {
@@ -172,9 +256,78 @@ class BuildCommand extends Command
 
             $target = sprintf('%s/%s.php', self::PARSED_DIR, $file);
 
-            file_put_contents($target, $content);
+            if (file_put_contents($target, $content) === false) {
+                throw new \RuntimeException("Unable to write parsed dictionary [{$target}].");
+            }
         }
 
         $output->writeln('Done.');
+    }
+
+    protected function getZipPath(): string
+    {
+        return $this->getTempDir().'/opencc.zip';
+    }
+
+    protected function getExtractRootPath(): string
+    {
+        return $this->getTempDir().'/extracted';
+    }
+
+    protected function getExtractedDictionaryPath(): string
+    {
+        $candidates = glob($this->getExtractRootPath().'/OpenCC-*', GLOB_ONLYDIR);
+        if ($candidates === false || empty($candidates)) {
+            throw new \RuntimeException('Unable to locate extracted OpenCC directory.');
+        }
+
+        return $candidates[0].'/data/dictionary';
+    }
+
+    protected function getTempDir(): string
+    {
+        if ($this->tempDir === null) {
+            $base = rtrim(sys_get_temp_dir(), '/');
+            $this->tempDir = $base.'/'.uniqid('opencc-', true);
+            $this->ensureDirectory($this->tempDir);
+        }
+
+        return $this->tempDir;
+    }
+
+    protected function cleanupTempDir(): void
+    {
+        if ($this->tempDir === null || ! is_dir($this->tempDir)) {
+            return;
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($this->tempDir, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            if ($item->isDir()) {
+                rmdir($item->getPathname());
+
+                continue;
+            }
+
+            unlink($item->getPathname());
+        }
+
+        rmdir($this->tempDir);
+        $this->tempDir = null;
+    }
+
+    protected function ensureDirectory(string $path): void
+    {
+        if (is_dir($path)) {
+            return;
+        }
+
+        if (! mkdir($path, 0755, true) && ! is_dir($path)) {
+            throw new \RuntimeException("Unable to create directory [{$path}].");
+        }
     }
 }

@@ -1,5 +1,9 @@
 <?php
-$active_tab = isset($_GET["tab"]) ? sanitize_text_field($_GET["tab"]) : "basic";
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
+$active_tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'basic';
 
 // 网络控制检查
 $is_network_controlled = function ($option_name) {
@@ -162,6 +166,7 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
 
             <form method="post" action="">
                 <input type="hidden" name="wpcco_submitted" value="1" />
+                <?php wp_nonce_field( "wpcc_save_settings", "wpcc_settings_nonce" ); ?>
 
 
 
@@ -1825,6 +1830,7 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                 <div class="wpcc-action-buttons" style="margin-top: 10px;">
                                     <form method="post" style="display: inline;">
                                         <input type="hidden" name="toggle_cache" value="1" />
+                                        <?php wp_nonce_field( "wpcc_toggle_cache", "wpcc_toggle_cache_nonce" ); ?>
                                         <?php if ($cache_status == 1): ?>
                                             <button type="submit" class="button button-secondary"><?php echo __(
                                                 "安装兼容",
@@ -1982,7 +1988,8 @@ $is_post_conversion_controlled = $post_conv_disabled;
 
                                 <form method="post" action="">
                                     <label class="wpcc-switch">
-                                        <input type="checkbox" name="wpcco_uninstall_nonce" />
+                                        <input type="checkbox" name="wpcco_uninstall_confirm" value="1" />
+                                        <?php wp_nonce_field( "wpcc_uninstall", "wpcc_uninstall_nonce" ); ?>
                                         <span class="wpcc-slider"></span>
                                         <span class="wpcc-switch-label"><?php _e(
                                             "确认卸载 (此操作不可逆)",
