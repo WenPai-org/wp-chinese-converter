@@ -154,7 +154,9 @@ function wpcc_remove_language_from_url( $url ) {
 }
 
 function custom_sitemap_template_redirect() {
-    $uri = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
+    $uri = isset( $_SERVER['REQUEST_URI'] ) && is_string( $_SERVER['REQUEST_URI'] )
+        ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) )
+        : '';
 
     // 动态语言模式：仅允许已启用语言
     $enabled = isset($GLOBALS['wpcc_options']['wpcc_used_langs']) && is_array($GLOBALS['wpcc_options']['wpcc_used_langs']) ? $GLOBALS['wpcc_options']['wpcc_used_langs'] : array('zh-cn','zh-tw','zh-hk');

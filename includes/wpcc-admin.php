@@ -450,17 +450,17 @@ if ( defined( 'WP_DEBUG' ) && WP_DEBUG || defined( 'wpcc_DEBUG' ) && wpcc_DEBUG 
 		echo 'WP WP Chinese Converter Plugin Debug Output:<br />';
 		echo '默认URL: <a href="' . esc_url( $wpcc_noconversion_url ) . '">' . esc_html( $wpcc_noconversion_url ) . '</a><br />';
 		echo '当前语言(空则是不转换): ' . esc_html( $wpcc_target_lang ) . "<br />";
-		echo 'Query String: ' . ( isset( $_SERVER['QUERY_STRING'] ) ? esc_html( wp_unslash( $_SERVER['QUERY_STRING'] ) ) : '' ) . '<br />';
-		echo 'Request URI: ' . ( isset( $_SERVER['REQUEST_URI'] ) ? esc_url( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '' ) . '<br />';
+		echo 'Query String: ' . ( isset( $_SERVER['QUERY_STRING'] ) ? esc_html( sanitize_text_field( wp_unslash( $_SERVER['QUERY_STRING'] ) ) ) : '' ) . '<br />';
+		echo 'Request URI: ' . ( isset( $_SERVER['REQUEST_URI'] ) ? esc_url( esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) ) : '' ) . '<br />';
 		foreach ( $wpcc_langs_urls as $key => $value ) {
 			echo esc_html( $key ) . ' URL: <a href="' . esc_url( $value ) . '">' . esc_html( $value ) . '</a><br />';
 		}
 		echo 'Category feed link: ' . esc_url( get_category_feed_link( 1 ) ) . '<br />';
 		echo 'Search feed link: ' . esc_url( get_search_feed_link( 'test' ) );
 		echo 'Rewrite Rules: <br />';
-		echo nl2br( esc_html( var_export( $wp_rewrite->rewrite_rules(), true ) ) ) . '<br />';
+		echo nl2br( esc_html( (string) wp_json_encode( $wp_rewrite->rewrite_rules(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE ) ) ) . '<br />';
 		echo 'Debug Data: <br />';
-		echo nl2br( esc_html( var_export( $wpcc_debug_data, true ) ) );
+		echo nl2br( esc_html( (string) wp_json_encode( $wpcc_debug_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE ) ) );
 		echo '</p>';
 		echo '-->';
 	}

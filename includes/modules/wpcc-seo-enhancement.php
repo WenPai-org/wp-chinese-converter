@@ -207,7 +207,7 @@ $this->version = '1.5';
 	
 	private function get_current_language() {
 		if ( isset( $_GET['variant'] ) ) {
-			return sanitize_text_field( $_GET['variant'] );
+			return is_string( $_GET['variant'] ) ? sanitize_key( wp_unslash( $_GET['variant'] ) ) : '';
 		}
 		
 		global $wpcc_options;

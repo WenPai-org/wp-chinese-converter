@@ -54,7 +54,7 @@ class WPCC_Blocks {
     public function enqueue_block_editor_assets() {
         // 确保wpcc-variant脚本已加载
         if ( ! wp_script_is( 'wpcc-variant', 'registered' ) ) {
-            wp_register_script( 'wpcc-variant', plugins_url( 'assets/dist/wpcc-variant.umd.js', dirname( dirname( __FILE__ ) ) ), array(), wpcc_VERSION );
+            wp_register_script( 'wpcc-variant', plugins_url( 'assets/dist/wpcc-variant.umd.js', dirname( dirname( __FILE__ ) ) ), array(), wpcc_VERSION, false );
         }
 
         // 样式已在 init 阶段注册，这里只需要加载即可
@@ -99,7 +99,7 @@ wpcc_VERSION,
     public function enqueue_frontend_assets() {
         // 确保wpcc-variant脚本已加载
         if ( ! wp_script_is( 'wpcc-variant', 'registered' ) ) {
-            wp_register_script( 'wpcc-variant', plugins_url( 'assets/dist/wpcc-variant.umd.js', dirname( dirname( __FILE__ ) ) ), array(), wpcc_VERSION );
+            wp_register_script( 'wpcc-variant', plugins_url( 'assets/dist/wpcc-variant.umd.js', dirname( dirname( __FILE__ ) ) ), array(), wpcc_VERSION, false );
         }
 
         // 为前端状态指示器的 dashicons 图标提供样式支持

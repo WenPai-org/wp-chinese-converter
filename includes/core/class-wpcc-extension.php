@@ -107,11 +107,17 @@ protected $required_core_version = '1.5';
 	 * 激活许可证
 	 */
 	public function activate_license(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Insufficient permissions', 403 );
+		}
+
 		if ( ! check_ajax_referer( $this->extension_slug . '_license_nonce', 'nonce' ) ) {
 			wp_die( 'Security check failed' );
 		}
 		
-		$license_key = sanitize_text_field( $_POST['license_key'] ?? '' );
+		$license_key = isset( $_POST['license_key'] ) && is_string( $_POST['license_key'] )
+			? sanitize_text_field( wp_unslash( $_POST['license_key'] ) )
+			: '';
 		if ( empty( $license_key ) ) {
 			wp_send_json_error( 'License key is required' );
 		}
@@ -144,6 +150,10 @@ protected $required_core_version = '1.5';
 	 * 停用许可证
 	 */
 	public function deactivate_license(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Insufficient permissions', 403 );
+		}
+
 		if ( ! check_ajax_referer( $this->extension_slug . '_license_nonce', 'nonce' ) ) {
 			wp_die( 'Security check failed' );
 		}
@@ -187,7 +197,7 @@ protected $required_core_version = '1.5';
 	 * 渲染许可证设置界面
 	 */
 	public function render_license_settings(): string {
-		if ( ! $this->is_premium ) {
+		if ( ! $this->is_premium || ! current_user_can( 'manage_options' ) ) {
 			return '';
 		}
 		

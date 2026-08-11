@@ -80,12 +80,14 @@ function wpcc_add_global_js()
         plugins_url("/assets/dist/wpcc-variant.umd.js", __FILE__),
         [],
         wpcc_VERSION,
+        false,
     );
     wp_register_script(
         "wpcc-block-script-ok",
         plugins_url("/assets/js/wpcc-block-script-ok.js", __FILE__),
         ["wp-blocks", "wp-element", "wpcc-variant"],
         wpcc_VERSION,
+        false,
     );
 
     wp_enqueue_script(["wpcc-variant", "wpcc-block-script-ok"]);

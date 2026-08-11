@@ -142,7 +142,7 @@ function wpcc_parse_query( $query ) {
 	// 标记 AJAX/REST/wc-ajax 请求，跳过转换避免干扰 JSON 响应
 	$is_ajax = wp_doing_ajax();
 	$is_rest = defined('REST_REQUEST') && REST_REQUEST;
-	$is_wc_ajax = isset($_REQUEST['wc-ajax']) && is_string($_REQUEST['wc-ajax']) && $_REQUEST['wc-ajax'] !== '';
+	$is_wc_ajax = isset( $_REQUEST['wc-ajax'] ) && is_string( $_REQUEST['wc-ajax'] ) && '' !== sanitize_key( wp_unslash( $_REQUEST['wc-ajax'] ) );
 	$wpcc_direct_conversion_flag = (bool) ( $is_ajax || $is_rest || $is_wc_ajax );
 
 	if ( ! is_404() ) {
@@ -891,7 +891,9 @@ function wpcc_is_robot(): bool {
 	if ( empty( $_SERVER['HTTP_USER_AGENT'] ) ) {
 		return true;
 	}
-	$ua = strtoupper( $_SERVER['HTTP_USER_AGENT'] );
+	$ua = is_string( $_SERVER['HTTP_USER_AGENT'] )
+		? strtoupper( sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) )
+		: '';
 
 	$robots = array( 'bot', 'spider', 'crawler', 'dig', 'search', 'find' );
 

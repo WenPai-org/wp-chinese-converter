@@ -2135,6 +2135,7 @@ class WPCC_Network_Settings
 
     private static function get_post_value($key, $default = null)
     {
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- This private helper is called only after the network settings nonce check; each caller applies field-specific validation.
         return isset($_POST[$key]) ? wp_unslash($_POST[$key]) : $default;
     }
 

@@ -16,7 +16,6 @@
 /assets/src
 /phpunit.xml.dist
 /phpstan.neon.dist
-/composer.json
 /composer.lock
 /README.md
 /changelog.txt

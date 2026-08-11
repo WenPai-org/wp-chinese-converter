@@ -31,11 +31,8 @@ class WP_Chinese_Converter {
 	}
 
 	private function set_locale() {
-		load_plugin_textdomain(
-			'wp-chinese-converter',
-			false,
-			dirname( dirname( plugin_basename( __FILE__ ) ) ) . '/languages/'
-		);
+		// WordPress 6.3+ loads translations on demand from the plugin header's
+		// declared text domain and Domain Path.
 	}
 
 	private function define_admin_hooks() {

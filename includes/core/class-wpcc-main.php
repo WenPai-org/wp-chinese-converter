@@ -69,7 +69,7 @@ class WPCC_Main {
         // 标记 AJAX/REST/wc-ajax 请求为"直接输出"，跳过页面级转换
         $is_ajax = function_exists('wp_doing_ajax') ? wp_doing_ajax() : ( defined('DOING_AJAX') && DOING_AJAX );
         $is_rest = defined('REST_REQUEST') && REST_REQUEST;
-        $is_wc_ajax = isset($_REQUEST['wc-ajax']) && is_string($_REQUEST['wc-ajax']) && $_REQUEST['wc-ajax'] !== '';
+        $is_wc_ajax = isset( $_REQUEST['wc-ajax'] ) && is_string( $_REQUEST['wc-ajax'] ) && '' !== sanitize_key( wp_unslash( $_REQUEST['wc-ajax'] ) );
         $this->config->set_direct_conversion_flag( (bool) ( $is_ajax || $is_rest || $is_wc_ajax ) );
         
         // 初始化模块
@@ -138,14 +138,16 @@ class WPCC_Main {
             'wpcc-variant',
             plugins_url( '/assets/dist/wpcc-variant.umd.js', dirname( dirname( __FILE__ ) ) ),
             [],
-            wpcc_VERSION
+            wpcc_VERSION,
+            false
         );
         
         wp_register_script(
             'wpcc-block-script',
             plugins_url( '/assets/js/wpcc-block-script-ok.js', dirname( dirname( __FILE__ ) ) ),
             [ 'wp-blocks', 'wp-element', 'wpcc-variant' ],
-            wpcc_VERSION
+            wpcc_VERSION,
+            false
         );
         
         wp_enqueue_script( [ 'wpcc-variant', 'wpcc-block-script' ] );
@@ -330,7 +332,9 @@ class WPCC_Main {
         }
         
         $cookie_key = 'wpcc_variant_' . COOKIEHASH;
-        $current_cookie = $_COOKIE[$cookie_key] ?? '';
+        $current_cookie = isset( $_COOKIE[ $cookie_key ] ) && is_string( $_COOKIE[ $cookie_key ] )
+            ? sanitize_key( wp_unslash( $_COOKIE[ $cookie_key ] ) )
+            : '';
         
         if ( $current_cookie !== $target_lang ) {
             setcookie( $cookie_key, $target_lang, [
@@ -989,7 +993,9 @@ class WPCC_Main {
         }
         $enabled = $this->config->get_enabled_languages();
         if ( empty( $enabled ) ) { return; }
-        $path = isset( $_SERVER['REQUEST_URI'] ) ? (string) $_SERVER['REQUEST_URI'] : '';
+        $path = isset( $_SERVER['REQUEST_URI'] ) && is_string( $_SERVER['REQUEST_URI'] )
+            ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) )
+            : '';
         if ( $path === '' ) { return; }
         $path = trim( $path, '/' );
         $candidate = $path;

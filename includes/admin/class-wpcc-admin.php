@@ -459,6 +459,7 @@ class wpcc_Admin
                 } elseif ($post_field === "wpcco_no_conversion_tip") {
                     $options[$option_field] = trim(sanitize_text_field(wp_unslash($_POST[$post_field])));
                 } elseif ($post_field === "wpcco_sitemap_post_type") {
+                    // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- The allowlisted dynamic field is unslashed, split, and every value is sanitized with sanitize_key().
                     $post_types = array_filter(array_map("sanitize_key", explode(",", wp_unslash($_POST[$post_field]))));
                     $options[$option_field] = implode(",", array_unique($post_types));
                 } elseif (
@@ -481,7 +482,7 @@ class wpcc_Admin
 
         // 兼容旧字段：当表单提交了 wpcc_flag_option 时，将其映射为 wpcc_translate_type
         if (isset($_POST['wpcc_flag_option'])) {
-            $options['wpcc_translate_type'] = intval($_POST['wpcc_flag_option']);
+            $options['wpcc_translate_type'] = intval( wp_unslash( $_POST['wpcc_flag_option'] ) );
         }
 
         if (is_array($this->langs)) {
