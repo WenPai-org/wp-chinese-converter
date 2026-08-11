@@ -14,11 +14,11 @@ function getAvailableLanguages() {
         {code:"zh-hant",name:"繁体",label:"繁体中文"},
         {code:"zh-jp",name:"日式",label:"日式汉字"}
     ];
-    
+
     if (typeof wpccBlockSettings !== 'undefined' && wpccBlockSettings.enabledLanguages) {
         const enabledCodes = wpccBlockSettings.enabledLanguages;
         const enabledLanguages = allLanguages.filter(lang => enabledCodes.includes(lang.code));
-        
+
         if (wpccBlockSettings.languageLabels) {
             enabledLanguages.forEach(lang => {
                 if (wpccBlockSettings.languageLabels[lang.code]) {
@@ -26,16 +26,16 @@ function getAvailableLanguages() {
                 }
             });
         }
-        
+
         return enabledLanguages;
     }
-    
+
     return allLanguages;
 }
 
 function sortLanguages(languages, sortOrder, showCurrentFirst) {
     let sorted = [...languages];
-    
+
     switch(sortOrder) {
         case 'alphabetical':
             sorted.sort((a, b) => a.name.localeCompare(b.name));
@@ -47,14 +47,14 @@ function sortLanguages(languages, sortOrder, showCurrentFirst) {
         default:
             break;
     }
-    
+
     if (showCurrentFirst) {
         const currentLang = sorted.find(lang => lang.code === 'zh-cn');
         if (currentLang) {
             sorted = [currentLang, ...sorted.filter(lang => lang.code !== 'zh-cn')];
         }
     }
-    
+
     return sorted;
 }
 
@@ -73,34 +73,34 @@ registerBlockType("wpcc/language-switcher",{
             showLanguageCode,
             customLabels
         }=attributes;
-        
+
         const blockProps=blockEditor.useBlockProps({
             className:`wpcc-language-switcher wpcc-${displayStyle} wpcc-align-${alignment} wpcc-size-${buttonSize}`
         });
-        
+
         const availableLanguages = getAvailableLanguages();
-        
+
         let currentEnabledLanguages = enabledLanguages;
         if (typeof wpccBlockSettings !== 'undefined' && wpccBlockSettings.enabledLanguages) {
             const wpEnabledLanguages = wpccBlockSettings.enabledLanguages;
             currentEnabledLanguages = enabledLanguages.filter(lang => wpEnabledLanguages.includes(lang));
-            
+
             if (currentEnabledLanguages.length === 0) {
                 currentEnabledLanguages = wpEnabledLanguages;
                 setAttributes({enabledLanguages: wpEnabledLanguages});
             }
         }
-        
+
         const filteredLanguages = availableLanguages.filter(lang => currentEnabledLanguages.includes(lang.code));
         const sortedLanguages = sortLanguages(filteredLanguages, sortOrder, showCurrentFirst);
-        
+
         const getLanguageLabel = (lang) => {
             if (customLabels[lang.code]) {
                 return customLabels[lang.code];
             }
             return showLanguageCode ? `${lang.name} (${lang.code})` : lang.name;
         };
-        
+
         return createElement(Fragment,null,
             createElement(blockEditor.InspectorControls,null,
                 createElement(components.PanelBody,{title:__("基础设置","wp-chinese-converter")},
@@ -142,7 +142,7 @@ registerBlockType("wpcc/language-switcher",{
                 ),
                 createElement(components.PanelBody,{title:__("语言选择","wp-chinese-converter"),initialOpen:false},
                     createElement("p",null,__("选择要显示的语言变体：","wp-chinese-converter")),
-                    availableLanguages.length > 0 ? 
+                    availableLanguages.length > 0 ?
                         availableLanguages.map(lang=>createElement(components.CheckboxControl,{
                             key:lang.code,
                             label:lang.label,
@@ -249,14 +249,14 @@ registerBlockType("wpcc/language-switcher",{
             showLanguageCode,
             customLabels
         }=attributes;
-        
+
         // Keep save output stable, do not depend on runtime settings
         let finalEnabledLanguages = enabledLanguages;
-        
+
         const blockProps=blockEditor.useBlockProps.save({
             className:`wpcc-language-switcher wpcc-${displayStyle} wpcc-align-${alignment} wpcc-size-${buttonSize}`
         });
-        
+
         return createElement("div",blockProps,
             createElement("div",{
                 className:"wpcc-switcher-placeholder",
