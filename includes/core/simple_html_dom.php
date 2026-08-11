@@ -150,10 +150,12 @@ class simple_html_dom_node {
     function dump($show_attr = true, $deep = 0) {
         $lead = str_repeat('    ', $deep);
 
+        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Bundled third-party debug dump intentionally prints the parsed node verbatim.
         echo $lead . $this->tag;
         if ($show_attr && count($this->attr) > 0) {
             echo '(';
             foreach ($this->attr as $k => $v) {
+                // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Bundled third-party debug dump intentionally prints parsed attributes verbatim.
                 echo "[$k]=>\"" . $this->$k . '", ';
             }
             echo ')';
@@ -212,6 +214,7 @@ class simple_html_dom_node {
         $string .= "\n";
 
         if ($echo) {
+            // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Bundled third-party debug dump intentionally prints assembled node details verbatim.
             echo $string;
 
             return;

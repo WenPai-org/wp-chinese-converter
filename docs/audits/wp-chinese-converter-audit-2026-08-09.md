@@ -175,3 +175,41 @@
 
 - 版本元数据仍冲突：插件头和根 `composer.json` 声明 PHP 7.4，当前 lock/vendor 生成的 `platform_check.php` 要求 PHP >= 8.1；必须在发布前选择提高 `Requires PHP`，或重新约束并验证兼容 PHP 7.4 的依赖闭包。
 - 第三轮 exact-ZIP 真实运行覆盖 multisite 主站与子站；没有另建独立 single-site 拓扑，因此不能把该轮结果表述为独立单站环境 PASS。
+
+## 9. [CX] 发布收口第三批（2026-08-11）
+
+### 9.1 已实现
+
+- 版本契约统一为 WordPress 6.3、PHP 8.1、插件 1.5.1。最低 WordPress 选择 6.3，因为现有三个区块使用 Block API v3；两处缓存组清理仍先检查 `wp_cache_supports( 'flush_group' )`，对象缓存不支持时不退化为全站 `wp_cache_flush()`。
+- 发表转换历史升级为 `_wpcc_conversion_history_v2`：单值 schema 2，默认保留 10 条、硬上限 50；旧 `_wpcc_conversion_backup` 只迁移复制、不删除。记录 target、engine、用户、时间、来源通道和 original/converted hashes；重复输入不追加。
+- 管理员恢复入口在自动转换关闭时仍可见。恢复 UI 使用独立 footer form、`edit_post`、文章专用 nonce、严格输入清洗和 safe redirect；支持选定历史、dry-run、标题/内容逐字段 diff、stale hash 冲突拒绝、后续编辑拒绝和重复恢复 no-op。
+- 修复 WordPress slashing contract：filter 边界内部统一使用 unslashed 值，返回 filter、post meta 和 `wp_update_post()` 写入按各自契约 slash；引号、反斜杠、JSON 和 HTML attribute 可精确备份/恢复。
+- multisite 普通站点管理员恢复历史 HTML 时，只在已通过权限、nonce 和 expected-hash 的同步写入窗口临时移除 post KSES filters，并在嵌套 `finally` 恢复；未授予 `unfiltered_html`，后续普通保存继续按原 capability 执行 KSES。
+- Plugin Check 原 54 errors 已按输出上下文处理为 0：文本、属性、URL、inline JSON 分开转义；完整 XML、主题提供的 widget wrapper 和已逐节点转义的导航仅使用最窄单行说明性 ignore；第三方 `simple_html_dom` 只对未被插件调用的 debug dump 定点处理。
+- Gutenberg 方案选择“重建”而不是删除功能：补回三个区块源码、variant 源、`package.json` 和确定性构建器；修复语言切换器 `edit`/`save` 中会触发 `ReferenceError` 的 `returncreateElement`，行为测试实际调用生成区块的 `edit()` 和 `save()`。
+- 发布脚本固定排序、权限、mtime 和 ZIP extra fields；源码保留在仓库，release ZIP 排除 `node_modules`、构建源码、tests/docs 和 dev vendor。新增的 Forgejo CI 候选覆盖 WP 6.3/PHP 8.1 与 latest/PHP 8.3、PHPUnit、PHPStan、Gutenberg build check、双 ZIP 比对、exact ZIP runtime 和 Plugin Check；没有触发该 CI。
+- legacy URL filter 对非字符串/空值原样返回，消除 PHP 8.3 下 `strpos( null )` deprecation。
+
+### 9.2 验证证据
+
+- PHPUnit：22 tests / 76 assertions，exit 0；含历史上限、legacy 保留、任意旧版本、dry-run、stale/later-edit、slashing 特殊字符、KSES 恢复与异常复位。
+- PHPStan：完整 `phpstan.neon.dist`、2 GiB，`[OK] No errors`，exit 0。
+- Composer validate/audit、41 个非 vendor PHP lint、YAML parse、`bash -n`、ShellCheck、JS syntax、language-switcher block behavior、variant reset 和 `git diff --check` 均 exit 0。
+- exact fixed-epoch ZIP Plugin Check：进程 exit 0，**0 errors / 207 warnings**。warnings 主要为历史全局命名 115、nonce 37、输入 unslash/sanitize/validate 25、development debug 19；命令成功与 0 error 分开记录，warnings 未写成清零。
+- 可复现构建：`SOURCE_DATE_EPOCH=1786400000` 连续两次构建 byte-identical，`cmp` 和 `unzip -t` exit 0。最终候选 `dist/wp-chinese-converter-1.5.1.zip` 为 1,293,281 bytes / 401 entries，SHA-256 `b2034115344de2834d7dd65a0abb3c67b7c5ecd6a249727a16a79f961914dc9a`。
+- WordPress 7.0.3 / PHP 8.3.33 独立 standalone：完整进程 `/tmp/wpcc-r4-final-single-v3.rc` 为 1，唯一失败是后来纠正的测试假断言（错误要求具 `unfiltered_html` 的 standalone administrator 后续保存也必须剥离 script），不能记整进程 PASS。该进程在失败前已通过 exact ZIP 的 CLI、REST、XML-RPC history/幂等/dry-run/stale/later-edit/选版恢复、history cap 10、sitemap 200/200、Yoast 和两类前端 E2E；纠正 capability 判定后的定向管理员流程 `/tmp/wpcc-r4-final-single-admin-v7.rc` 为 0，dry-run、diff、恢复、重复恢复通过，并明确输出 `not-applicable-unfiltered-html`。
+- WordPress 7.0.3 / PHP 8.3.33 multisite network-active：主站同一 exact 业务内容的 transport/history/sitemap/Yoast/两类前端 E2E通过，普通站点管理员 HTML/JSON 恢复、重复恢复和后续 KSES保护通过；`tradtest` 子站完整 site matrix exit 0，动态 blog ID 的 XML-RPC、peer postmeta隔离、sitemap 200/200、Yoast、两类前端 E2E和管理员恢复均通过。
+- 运行期安装 ZIP 的 SHA 为 `162b1d9d998a5276c657f0408e07ae22cac699f35392216c06b1259fd8934bbd`；它与最终 `b203...` 的文件内容相同，仅构建 epoch/ZIP mtime不同。最终 `b203...` 另行完成 byte-identical 双构建和 exact ZIP Plugin Check。
+
+### 9.3 仍未通过的发布门
+
+1. FeiCode 为 P0、`write_policy=board_required`。本轮没有推送、审批/触发 CI、合并、tag/release、发布或部署；本地 `.forgejo/workflows/ci.yml` 不能算远端 CI PASS。
+2. 最低版本 WP 6.3/PHP 8.1 的真实容器样本因 WenPai 缺镜像且拉取超过 30 分钟仍未完成，记 **BLOCKED**，不是 PASS。必须由 Board change 对 exact final HEAD 跑最低版本 CI。
+3. Plugin Check 虽为 0 errors，仍有 207 warnings；nonce/input warnings 需要按实际写操作继续逐项审计，历史命名和 debug 债不能冒充已清零。
+4. 全仓 PHPCS 沿用第三轮 17,266 errors / 1,541 warnings 的失败基线；本轮只对改动/安全输出做定向验证，没有机械格式化全仓，也不能写 PHPCS PASS。
+5. 管理恢复使用 WordPress 钩子和乐观 expected-hash，hash 检查到 `wp_update_post()` 之间仍非数据库 CAS；并发窗口为已知 P2，不在本版绕过 WordPress hooks 直写数据库。
+
+### 9.4 Board 人工动作
+
+- 已生成 `docs/ai-context/board-change-wpcc-pr4.md`，但没有发布 Board 任务。
+- devops 审核后只能普通、非 force push 本地 exact HEAD 到 PR #4 既有非默认候选分支，并只运行绑定该 SHA 的 CI；默认分支、merge、tag/release、发布资产、fei-publish/Woo/mall、部署和生产权限均禁止改变。

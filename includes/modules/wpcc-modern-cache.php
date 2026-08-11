@@ -126,7 +126,7 @@ $this->version = '1.5';
 	}
 	
 	public function clear_object_cache() {
-		if ( wp_using_ext_object_cache() && function_exists( 'wp_cache_flush_group' ) ) {
+		if ( wp_using_ext_object_cache() && function_exists( 'wp_cache_supports' ) && wp_cache_supports( 'flush_group' ) ) {
 			wp_cache_flush_group( $this->cache_group );
 		}
 	}

@@ -1095,8 +1095,8 @@ class WPCC_Main {
         echo "\n" . '<!-- WP Chinese Converter Plugin Version ' . esc_html( wpcc_VERSION ) . ' -->';
         
         $script_data = [
-            'wpcc_target_lang' => $target_lang ? esc_js( $target_lang ) : '',
-            'wpcc_noconversion_url' => $noconv_forced ? esc_url( $noconv_forced ) : '',
+            'wpcc_target_lang' => $target_lang ? sanitize_key( $target_lang ) : '',
+            'wpcc_noconversion_url' => $noconv_forced ? esc_url_raw( $noconv_forced ) : '',
             'wpcc_langs_urls' => []
         ];
         
@@ -1104,15 +1104,15 @@ class WPCC_Main {
             foreach ( $langs_urls as $key => $value ) {
                 $safe_key = preg_match( '/^[a-z-]+$/', $key ) ? $key : '';
                 if ( $safe_key && filter_var( $value, FILTER_VALIDATE_URL ) ) {
-                    $script_data['wpcc_langs_urls'][ $safe_key ] = esc_url( $value );
+                    $script_data['wpcc_langs_urls'][ $safe_key ] = esc_url_raw( $value );
                 }
             }
         }
         
         echo '<script type="text/javascript">';
         echo '/* <![CDATA[ */';
-        echo 'var wpcc_target_lang="' . $script_data['wpcc_target_lang'] . '";';
-        echo 'var wpcc_noconversion_url="' . $script_data['wpcc_noconversion_url'] . '";';
+        echo 'var wpcc_target_lang=' . wp_json_encode( $script_data['wpcc_target_lang'] ) . ';';
+        echo 'var wpcc_noconversion_url=' . wp_json_encode( $script_data['wpcc_noconversion_url'] ) . ';';
         echo 'var wpcc_langs_urls=' . wp_json_encode( $script_data['wpcc_langs_urls'] ) . ';';
         echo '/* ]]> */';
         echo '</script>';

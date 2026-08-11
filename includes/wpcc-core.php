@@ -305,6 +305,10 @@ function wpcc_get_noconversion_url() {
  */
 function wpcc_link_conversion( $link, $variant = null ) {
 	global $wpcc_options;
+
+	if ( ! is_string( $link ) || '' === $link ) {
+		return $link;
+	}
 	
 	static $wpcc_wp_home;
 	if ( empty( $wpcc_wp_home ) ) {
@@ -742,6 +746,7 @@ function wpcc_output_navi( $args = '', $isReturn = false ) {
 	if ( ! $echo || $isReturn ) {
 		return $html;
 	}
+	// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Navigation markup is assembled above from context-escaped URLs, attributes, and labels.
 	echo $html;
 }
 
@@ -767,6 +772,7 @@ function wpcc_output_navi2() {
 	$html .= '<span id="wpcc_cn_link" class="' . ( $wpcc_target_lang == 'zh-cn' ? 'wpcc_current_lang' : 'wpcc_lang' ) . '"><a class="wpcc_link" rel="nofollow" href="' . esc_url( $wpcc_langs_urls['zh-cn'] ) . '" title="' . esc_html( '大陆简体' ) . '">' . esc_html( '大陆简体' ) . '</a></span>' . "\n";
 	$html .= '<span id="wpcc_tw_link" class="' . ( $wpcc_target_lang == 'zh-tw' ? 'wpcc_current_lang' : 'wpcc_lang' ) . '"><a class="wpcc_link" rel="nofollow" href="' . esc_url( $wpcc_langs_urls['zh-tw'] ) . '" title="' . esc_html( '台湾正体' ) . '">' . esc_html( '台湾正体' ) . '</a></span>' . "\n";
 	$html .= '<!--wpcc_NC_END--></div>' . "\n";
+	// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Navigation markup is assembled above from context-escaped URLs and fixed labels.
 	echo $html;
 }
 
@@ -792,12 +798,15 @@ class wpcc_Widget extends WP_Widget {
 	public function widget( $args, $instance ): void {
 		extract( $args );
 		$title = apply_filters( 'widget_title', $instance['title'] ?? '' );
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Wrapper markup is supplied by the active theme via registered sidebar arguments.
 		echo $before_widget;
 		if ( $title ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Theme wrappers are trusted sidebar arguments; the title itself is escaped.
 			echo $before_title . esc_html( $title ) . $after_title;
 		}
 		$widget_args = isset( $instance['args'] ) ? sanitize_text_field( $instance['args'] ) : '';
 		wpcc_output_navi( $widget_args );
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Wrapper markup is supplied by the active theme via registered sidebar arguments.
 		echo $after_widget;
 	}
 
@@ -806,20 +815,20 @@ class wpcc_Widget extends WP_Widget {
 	}
 
 	public function form( $instance ): void {
-		$title = isset( $instance['title'] ) ? esc_attr( $instance['title'] ) : '';
-		$args = isset( $instance['args'] ) ? esc_attr( $instance['args'] ) : '';
+		$title = isset( $instance['title'] ) ? sanitize_text_field( $instance['title'] ) : '';
+		$args = isset( $instance['args'] ) ? sanitize_text_field( $instance['args'] ) : '';
 		?>
         <p>
-            <label for="<?php echo $this->get_field_id( 'title' ); ?>">Title: <input class="widefat"
-                                                                                     id="<?php echo $this->get_field_id( 'title' ); ?>"
-                                                                                     name="<?php echo $this->get_field_name( 'title' ); ?>"
-                                                                                     type="text"
-                                                                                     value="<?php echo $title; ?>"/></label>
-            <label for="<?php echo $this->get_field_id( 'args' ); ?>">Args: <input class="widefat"
-                                                                                   id="<?php echo $this->get_field_id( 'args' ); ?>"
-                                                                                   name="<?php echo $this->get_field_name( 'args' ); ?>"
-                                                                                   type="text"
-                                                                                   value="<?php echo $args; ?>"/></label>
+			<label for="<?php echo esc_attr( $this->get_field_id( 'title' ) ); ?>">Title: <input class="widefat"
+																	 id="<?php echo esc_attr( $this->get_field_id( 'title' ) ); ?>"
+																	 name="<?php echo esc_attr( $this->get_field_name( 'title' ) ); ?>"
+																	 type="text"
+																	 value="<?php echo esc_attr( $title ); ?>"/></label>
+			<label for="<?php echo esc_attr( $this->get_field_id( 'args' ) ); ?>">Args: <input class="widefat"
+																   id="<?php echo esc_attr( $this->get_field_id( 'args' ) ); ?>"
+																   name="<?php echo esc_attr( $this->get_field_name( 'args' ) ); ?>"
+																   type="text"
+																   value="<?php echo esc_attr( $args ); ?>"/></label>
         </p>
 		<?php
 	}
@@ -1109,8 +1118,8 @@ function wpcc_header() {
 	echo "\n" . '<!-- WP Chinese Converter Plugin Version ' . esc_html( wpcc_VERSION ) . ' -->';
 	
 	$script_data = array(
-		'wpcc_target_lang' => $wpcc_target_lang ? esc_js( $wpcc_target_lang ) : '',
-		'wpcc_noconversion_url' => $wpcc_noconversion_url ? esc_url( $wpcc_noconversion_url ) : '',
+		'wpcc_target_lang' => $wpcc_target_lang ? sanitize_key( $wpcc_target_lang ) : '',
+		'wpcc_noconversion_url' => $wpcc_noconversion_url ? esc_url_raw( $wpcc_noconversion_url ) : '',
 		'wpcc_langs_urls' => array()
 	);
 	
@@ -1118,15 +1127,15 @@ function wpcc_header() {
 		foreach ( $wpcc_langs_urls as $key => $value ) {
 			$safe_key = preg_match( '/^[a-z-]+$/', $key ) ? $key : '';
 			if ( $safe_key && filter_var( $value, FILTER_VALIDATE_URL ) ) {
-				$script_data['wpcc_langs_urls'][ $safe_key ] = esc_url( $value );
+				$script_data['wpcc_langs_urls'][ $safe_key ] = esc_url_raw( $value );
 			}
 		}
 	}
 	
 	echo '<script type="text/javascript">';
 	echo '/* <![CDATA[ */';
-	echo 'var wpcc_target_lang="' . $script_data['wpcc_target_lang'] . '";';
-	echo 'var wpcc_noconversion_url="' . $script_data['wpcc_noconversion_url'] . '";';
+	echo 'var wpcc_target_lang=' . wp_json_encode( $script_data['wpcc_target_lang'] ) . ';';
+	echo 'var wpcc_noconversion_url=' . wp_json_encode( $script_data['wpcc_noconversion_url'] ) . ';';
 	echo 'var wpcc_langs_urls=' . wp_json_encode( $script_data['wpcc_langs_urls'] ) . ';';
 	echo '/* ]]> */';
 	echo '</script>';
@@ -1337,7 +1346,7 @@ function wpcc_rel_canonical() {
 		return;
 	}
 	$link = wpcc_cancel_link_conversion( get_permalink( $id ) );
-	echo "<link rel='canonical' href='$link' />\n";
+	printf( '<link rel="canonical" href="%s" />' . "\n", esc_url( $link ) );
 }
 
 /**

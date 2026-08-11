@@ -705,7 +705,7 @@ $engine_key
                                     2
                                         ? 'selected="selected"'
                                         : ""; ?>>
-                                        <?php echo __(
+                                        <?php esc_html_e(
                                             "开启",
                                             "wp-chinese-converter",
                                         ); ?>
@@ -719,7 +719,7 @@ $engine_key
                                         1
                                         ? 'selected="selected"'
                                         : ""; ?>>
-                                        <?php echo __(
+                                        <?php esc_html_e(
                                             "关闭",
                                             "wp-chinese-converter",
                                         ); ?>
@@ -730,7 +730,7 @@ $engine_key
                                     1
                                         ? 'selected="selected"'
                                         : ""; ?>>
-                                        <?php echo __(
+                                        <?php esc_html_e(
                                             '仅语言非"不转换"时开启（默认）',
                                             "wp-chinese-converter",
                                         ); ?>
@@ -848,7 +848,7 @@ $disabled_class = $post_conv_disabled ? "wpcc-disabled" : "";
 // 定义调试用变量，避免未定义警告
 $is_post_conversion_controlled = $post_conv_disabled;
 ?>
-                                <label class="wpcc-switch <?php echo $disabled_class; ?>" <?php echo $post_conv_disabled ? 'aria-disabled="true"' : ''; ?>>
+                                <label class="wpcc-switch <?php echo esc_attr( $disabled_class ); ?>" <?php echo $post_conv_disabled ? 'aria-disabled="true"' : ''; ?>>
                                     <input type="checkbox" name="wpcc_enable_post_conversion"
                                            <?php checked(
                                                isset(
@@ -950,17 +950,14 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                             ) {
                                                 $lang =
                                                     $lang_options[$lang_code];
-                                                $selected = selected(
-                                                    $current_target,
-                                                    $lang_code,
-                                                    false,
-                                                );
-                                                echo "<option value=\"{$lang_code}\" {$selected}>{$lang["name"]} ({$lang_code})</option>";
+                                                echo '<option value="' . esc_attr( $lang_code ) . '"';
+                                                selected( $current_target, $lang_code );
+                                                echo '>' . esc_html( $lang["name"] ) . ' (' . esc_html( $lang_code ) . ')</option>';
                                             }
                                         }
                                         if (empty($enabled_langs)) {
                                             echo '<option value="">' .
-                                                __(
+                                                esc_html__(
                                                     "请先启用语言模块",
                                                     "wp-chinese-converter",
                                                 ) .
@@ -1020,11 +1017,11 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                            <?php echo wp_kses($get_field_attributes(
                                                "wpcc_use_permalink",
                                            ), []); ?> />
-                                    <code><?php echo home_url() .
+                                    <code><?php echo esc_html( home_url() .
                                         (empty($wp_rewrite->permalink_structure)
                                             ? "/?p=123&variant=zh-tw"
                                             : $wp_rewrite->permalink_structure .
-                                                "?variant=zh-tw"); ?></code>
+                                                "?variant=zh-tw") ); ?></code>
                                     (默认)
                                 </label><br>
                                 <label class="wpcc-radio">
@@ -1044,7 +1041,7 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                            <?php echo wp_kses($get_field_attributes(
                                                "wpcc_use_permalink",
                                            ), []); ?> />
-                                    <code><?php echo home_url() .
+                                    <code><?php echo esc_html( home_url() .
                                         user_trailingslashit(
                                             trailingslashit(
                                                 $wp_rewrite->permalink_structure,
@@ -1052,7 +1049,7 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                         ) .
                                         (empty($wp_rewrite->permalink_structure)
                                             ? "/"
-                                            : ""); ?></code>
+                                            : "") ); ?></code>
                                 </label><br>
                                 <label class="wpcc-radio">
                                     <input type="radio" name="wpcc_use_permalink" value="2"
@@ -1071,12 +1068,12 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                            <?php echo wp_kses($get_field_attributes(
                                                "wpcc_use_permalink",
                                            ), []); ?> />
-                                    <code><?php echo home_url() .
+                                    <code><?php echo esc_html( home_url() .
                                         "/zh-tw" .
                                         $wp_rewrite->permalink_structure .
                                         (empty($wp_rewrite->permalink_structure)
                                             ? "/"
-                                            : ""); ?></code>
+                                            : "") ); ?></code>
                                 </label>
                                 <p class="description">
                                     <?php esc_html_e(
@@ -1702,7 +1699,7 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                     if (!empty($cache_status)) {
                                         echo '<div style="margin-top: 10px; padding: 10px; background: #f0f8ff; border-left: 4px solid #0073aa;">';
                                         echo "<strong>" .
-                                            __(
+                                            esc_html__(
                                                 "检测到的缓存插件:",
                                                 "wp-chinese-converter",
                                             ) .
@@ -1812,18 +1809,18 @@ $is_post_conversion_controlled = $post_conv_disabled;
                             $cache_status = $this->get_cache_status();
                             if ($cache_status == 0) {
                                 echo '<p style="color: #d63638;">' .
-                                    __(
+                                    esc_html__(
                                         "未使用WP Super Cache插件",
                                         "wp-chinese-converter",
                                     ) .
                                     "</p>";
                             } elseif ($cache_status == 1) {
                                 echo '<p style="color: #dba617;">' .
-                                    __("未安装", "wp-chinese-converter") .
+                                    esc_html__("未安装", "wp-chinese-converter") .
                                     "</p>";
                             } elseif ($cache_status == 2) {
                                 echo '<p style="color: #00a32a;">' .
-                                    __("已安装", "wp-chinese-converter") .
+                                    esc_html__("已安装", "wp-chinese-converter") .
                                     "</p>";
                             }
                             ?>
@@ -1834,12 +1831,12 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                         <input type="hidden" name="toggle_cache" value="1" />
                                         <?php wp_nonce_field( "wpcc_toggle_cache", "wpcc_toggle_cache_nonce" ); ?>
                                         <?php if ($cache_status == 1): ?>
-                                            <button type="submit" class="button button-secondary"><?php echo __(
+                                            <button type="submit" class="button button-secondary"><?php esc_html_e(
                                                 "安装兼容",
                                                 "wp-chinese-converter",
                                             ); ?></button>
                                         <?php else: ?>
-                                            <button type="submit" class="button button-secondary"><?php echo __(
+                                            <button type="submit" class="button button-secondary"><?php esc_html_e(
                                                 "卸载兼容",
                                                 "wp-chinese-converter",
                                             ); ?></button>
@@ -1915,7 +1912,7 @@ $is_post_conversion_controlled = $post_conv_disabled;
                             if (!empty($active_cache_plugins)) {
                                 echo '<div style="margin-bottom: 15px;">';
                                 echo '<strong style="color: #00a32a;">' .
-                                    __(
+                                    esc_html__(
                                         "检测到的活跃缓存插件:",
                                         "wp-chinese-converter",
                                     ) .
@@ -1941,7 +1938,7 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                 }
                             } else {
                                 echo '<p style="color: #666;">' .
-                                    __(
+                                    esc_html__(
                                         "未检测到活跃的缓存插件。",
                                         "wp-chinese-converter",
                                     ) .
@@ -2038,7 +2035,7 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                 $stats = $network_module->get_network_statistics();
                                 echo '<div style="margin-bottom: 15px; padding: 10px; background: #f9f9f9; border-left: 4px solid #0073aa;">';
                                 echo "<strong>" .
-                                    __("网络统计:", "wp-chinese-converter") .
+                                    esc_html__("网络统计:", "wp-chinese-converter") .
                                     "</strong><br>";
                                 echo "总站点数: " .
                                     esc_html($stats["total_sites"]) .

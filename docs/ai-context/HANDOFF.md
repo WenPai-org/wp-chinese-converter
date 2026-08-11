@@ -27,3 +27,15 @@
 - 发布仍阻断：exact Plugin Check 54 errors/208 warnings（51 output、2 WP compatibility、1 heredoc）；PHPCS 17,266/1,541 旧失败基线；nonce/input/naming/debug warnings；保存恢复 UI/dry-run/diff；Gutenberg 构建源缺失。
 - 详细命令、HTTP 状态、测试环境根因与边界见 `docs/audits/wp-chinese-converter-audit-2026-08-09.md` 第 8 节。
 - [CX] 追加发布阻断：插件头与 `composer.json` 声明 PHP 7.4，但最终 lock/vendor 的 Composer platform check 要求 PHP >= 8.1；未统一元数据或依赖前不能发布。第三轮真实运行矩阵覆盖 multisite 主站与子站，没有另建独立 single-site 拓扑。
+
+## [CX] 2026-08-11 wp-chinese-converter 发布收口第三批
+
+- 继续 WenPai 隔离分支 `codex/wp-chinese-converter-audit-20260809`；FeiCode P0 `write_policy=board_required`，本轮只有本地候选，未推送、未触发/审批 CI、未合并、未发布、未部署。
+- 版本保持 1.5.1，最低要求统一为 WordPress 6.3 / PHP 8.1；缓存组清理使用 `wp_cache_supports( 'flush_group' )`，不全站 flush。
+- 管理恢复已交付：有界 v2 多版本历史、legacy 只迁移不删除、权限/nonce、dry-run、标题/内容 diff、选版恢复、stale/later-edit冲突、重复恢复 no-op；slashing 特殊字符和 multisite 普通管理员 KSES 精确恢复已修。
+- Gutenberg 不删功能：补回三个 block 源、variant 源、package/build脚本及 edit/save 行为测试；发布 ZIP 可固定 epoch 重建。
+- 最终本地静态门：PHPUnit 22/76、full PHPStan 0、Composer validate/audit、lint、ShellCheck、Gutenberg build/behavior、diff-check 均通过。exact fixed-epoch ZIP Plugin Check 为 0 errors / 207 warnings。
+- standalone WP7.0.3/PHP8.3 完整进程 rc1，唯一失败为后来纠正的 `unfiltered_html` 测试假断言；其前序三 transport/history cap/Yoast/sitemap/两类前端 E2E通过，纠正后的管理员定向流程 rc0。multisite 主站管理员定向与子站完整 matrix 均 rc0。WP6.3/PHP8.1 真实样本因镜像不可用记 BLOCKED。
+- 最终 ZIP：`dist/wp-chinese-converter-1.5.1.zip`，1,293,281 bytes / 401 entries，SHA-256 `b2034115344de2834d7dd65a0abb3c67b7c5ecd6a249727a16a79f961914dc9a`，固定 epoch 双构建一致。
+- 剩余发布门：devops 发布/审核 `docs/ai-context/board-change-wpcc-pr4.md` 对应 change；普通 push exact local HEAD；只审批绑定该 SHA 的最低版本/latest CI。不得 merge/release/deploy。Plugin Check 207 warnings和PHPCS历史失败继续分批处理。
+- 完整证据与边界见 `docs/audits/wp-chinese-converter-audit-2026-08-09.md` 第 9 节。

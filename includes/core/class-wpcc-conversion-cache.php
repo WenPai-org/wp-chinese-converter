@@ -223,7 +223,7 @@ class WPCC_Conversion_Cache {
 		
 		// Group flushing is not available on every supported WordPress/cache backend.
 		// Do not flush the entire site cache as a fallback; stale entries expire in one hour.
-		if ( function_exists( 'wp_cache_flush_group' ) ) {
+		if ( function_exists( 'wp_cache_supports' ) && wp_cache_supports( 'flush_group' ) ) {
 			wp_cache_flush_group( 'wpcc_conversion' );
 		}
 		

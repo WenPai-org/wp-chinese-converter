@@ -177,6 +177,7 @@ function custom_sitemap_template_redirect() {
         header( 'HTTP/1.1 200 OK' );
 
         $content = generate_sitemap_index( $lang );
+        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Complete XML document; dynamic nodes are escaped while it is assembled.
         echo $content !== '' ? $content : '<?xml version="1.0" encoding="UTF-8"?><error>Sitemap not found</error>';
         exit;
     }
@@ -191,6 +192,7 @@ function custom_sitemap_template_redirect() {
         }
         header( 'Content-Type: application/xml; charset=utf-8' );
         header( 'HTTP/1.1 200 OK' );
+        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Complete XML document; dynamic nodes are escaped while it is assembled.
         echo generate_paged_sitemap_content( $lang, $page );
         exit;
     }
@@ -214,6 +216,7 @@ function custom_sitemap_template_redirect() {
         
         header( 'Content-Type: application/xml; charset=utf-8' );
         header( 'HTTP/1.1 200 OK' );
+        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Complete XML document; dynamic nodes are escaped while it is assembled.
         echo generate_taxonomy_sitemap_content( $taxonomy, $lang, $page );
         exit;
     }
@@ -222,6 +225,7 @@ function custom_sitemap_template_redirect() {
         header( 'Content-Type: text/xsl; charset=utf-8' );
         header( 'HTTP/1.1 200 OK' );
 
+        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Complete static XSL document with no dynamic values.
         echo generate_sitemap_styles();
         exit;
     }
@@ -357,8 +361,7 @@ function generate_paged_sitemap_content( string $lang, int $page ) {
 }
 
 function generate_sitemap_styles() {
-    return <<<XSL
-<?xml version="1.0" encoding="UTF-8"?>
+    return '<?xml version="1.0" encoding="UTF-8"?>
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:sitemap="http://www.sitemaps.org/schemas/sitemap/0.9">
 <xsl:output method="html" version="1.0" encoding="UTF-8" indent="yes"/>
 <xsl:template match="/">
@@ -497,8 +500,7 @@ function generate_sitemap_styles() {
     </body>
     </html>
 </xsl:template>
-</xsl:stylesheet>
-XSL;
+</xsl:stylesheet>';
 }
 
 /**

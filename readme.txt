@@ -1,9 +1,9 @@
 === WP Chinese Converter ===
 Contributors: wpfanyi
 Tags: chinese, traditional chinese, simplified chinese, localization, converter
-Requires at least: 6.0
+Requires at least: 6.3
 Tested up to: 7.0
-Requires PHP: 7.4
+Requires PHP: 8.1
 Stable tag: 1.5.1
 License: GPLv3 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -45,7 +45,7 @@ No. REST conversion requires the `manage_options` capability by default. Develop
 
 = Which conversion engine should I use? =
 
-OpenCC provides phrase and regional vocabulary conversion on PHP 8.1 or later. On PHP 7.4 and 8.0, the plugin safely uses the MediaWiki compatibility engine.
+OpenCC provides phrase and regional vocabulary conversion. PHP 8.1 or later is required by the plugin and its locked runtime dependencies.
 
 == Changelog ==
 

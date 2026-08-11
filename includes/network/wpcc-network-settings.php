@@ -143,7 +143,7 @@ class WPCC_Network_Settings
             echo '<div class="notice notice-info"><p>' .
                 sprintf(
                     "WP Chinese Converter 插件的 %d 项设置由网络管理员控制。这些设置的更改将不会生效。",
-                    $controlled_count,
+                    absint( $controlled_count ),
                 ) .
                 "</p></div>";
         }
@@ -165,7 +165,7 @@ class WPCC_Network_Settings
                 ? intval(wp_unslash($_GET["reset_count"]))
                 : 0;
             echo '<div class="notice notice-success is-dismissible"><p>已成功重置 ' .
-                $reset_count .
+                esc_html( absint( $reset_count ) ) .
                 " 个站点的设置。</p></div>";
         }
     }

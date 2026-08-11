@@ -38,11 +38,11 @@ abstract class WPCC_Abstract_Module implements WPCC_Module_Interface {
 	public function is_compatible() {
 		global $wp_version;
 		
-		if ( version_compare( PHP_VERSION, '7.4', '<' ) ) {
+		if ( version_compare( PHP_VERSION, '8.1', '<' ) ) {
 			return false;
 		}
 		
-		if ( version_compare( $wp_version, '5.0', '<' ) ) {
+		if ( version_compare( $wp_version, '6.3', '<' ) ) {
 			return false;
 		}
 		

@@ -174,51 +174,155 @@ function wpcc_get_language_config() {
  */
 function wpcc_conversion_meta_box_callback( $post ) {
 	global $wpcc_options;
-	$target_lang = $wpcc_options['wpcc_post_conversion_target'] ?? 'zh-cn';
-	$enabled_langs = $wpcc_options['wpcc_used_langs'] ?? array();
 
-	$default_names = array(
-		'zh-cn' => '中国大陆',
-		'zh-tw' => '台湾正体',
-		'zh-hk' => '港澳繁体',
+	$target_lang = $wpcc_options['wpcc_post_conversion_target'] ?? 'zh-cn';
+	$engine      = $wpcc_options['wpcc_engine'] ?? 'mediawiki';
+	$is_enabled = ! empty( $wpcc_options['wpcc_enable_post_conversion'] );
+	$names       = array(
+		'zh-cn'   => '中国大陆',
+		'zh-tw'   => '台湾正体',
+		'zh-hk'   => '港澳繁体',
 		'zh-hans' => '简体中文',
 		'zh-hant' => '繁体中文',
-		'zh-sg' => '马新简体',
-		'zh-jp' => '日式汉字'
+		'zh-sg'   => '马新简体',
+		'zh-jp'   => '日式汉字',
 	);
-
-	$is_enabled = !empty($wpcc_options['wpcc_enable_post_conversion']);
-	
-	if (!$is_enabled) {
-		echo '<p>发表时自动转换功能已禁用。</p>';
-		echo '<p><a href="' . esc_url( admin_url( 'admin.php?page=wp-chinese-converter' ) ) . '">前往设置启用</a></p>';
-		return;
-	}
-
-	if (empty($enabled_langs)) {
-		echo '<p>未启用任何语言模块。</p>';
-		echo '<p><a href="' . esc_url( admin_url( 'admin.php?page=wp-chinese-converter' ) ) . '">前往设置启用语言模块</a></p>';
-		return;
-	}
-
-	if (!in_array($target_lang, $enabled_langs)) {
-		echo '<p style="color: #d63638;">当前转换目标语言未启用。</p>';
-		echo '<p><a href="' . esc_url( admin_url( 'admin.php?page=wp-chinese-converter' ) ) . '">前往设置修改</a></p>';
-		return;
-	}
-
-	$target_display_name = isset($default_names[$target_lang]) ? $default_names[$target_lang] . ' (' . $target_lang . ')' : $target_lang;
-	echo '<p><strong>目标：</strong>' . esc_html( $target_display_name ) . '</p>';
-	
-	$engine = $wpcc_options['wpcc_engine'] ?? 'mediawiki';
 	$engine_names = array(
 		'mediawiki' => 'MediaWiki',
-		'opencc' => 'OpenCC'
+		'opencc'    => 'OpenCC',
 	);
-	echo '<p><strong>引擎：</strong>' . esc_html( $engine_names[ $engine ] ?? $engine ) . '</p>';
-	
-	echo '<p><small>发表时将自动转换标题和内容。<a target="_blank" href="' . esc_url( admin_url( 'admin.php?page=wp-chinese-converter' ) ) . '">修改设置 ↗</a></small></p>';
+
+	if ( $is_enabled ) {
+		$target_name = isset( $names[ $target_lang ] ) ? $names[ $target_lang ] . ' (' . $target_lang . ')' : $target_lang;
+		echo '<p><strong>' . esc_html__( 'Automatic conversion:', 'wp-chinese-converter' ) . '</strong> ' . esc_html__( 'Enabled', 'wp-chinese-converter' ) . '</p>';
+		echo '<p><strong>' . esc_html__( 'Target:', 'wp-chinese-converter' ) . '</strong> ' . esc_html( $target_name ) . '<br>';
+		echo '<strong>' . esc_html__( 'Engine:', 'wp-chinese-converter' ) . '</strong> ' . esc_html( $engine_names[ $engine ] ?? $engine ) . '</p>';
+	} else {
+		echo '<p><strong>' . esc_html__( 'Automatic conversion:', 'wp-chinese-converter' ) . '</strong> ' . esc_html__( 'Disabled', 'wp-chinese-converter' ) . '</p>';
+	}
+
+	$history = WPCC_Post_Conversion_Backup::get_history( $post->ID );
+	if ( is_wp_error( $history ) || empty( $history ) ) {
+		echo '<p id="wpcc-conversion-history-empty">' . esc_html__( 'No saved conversion history is available for this post.', 'wp-chinese-converter' ) . '</p>';
+		echo '<p><a href="' . esc_url( admin_url( 'admin.php?page=wp-chinese-converter' ) ) . '">' . esc_html__( 'Conversion settings', 'wp-chinese-converter' ) . '</a></p>';
+		return;
+	}
+
+	?>
+	<hr>
+	<p><strong><?php esc_html_e( 'Conversion recovery history', 'wp-chinese-converter' ); ?></strong></p>
+		<label class="screen-reader-text" for="wpcc-conversion-backup-id"><?php esc_html_e( 'History version', 'wp-chinese-converter' ); ?></label>
+		<select id="wpcc-conversion-backup-id" name="backup_id" class="widefat" form="wpcc-conversion-restore-form">
+			<?php foreach ( array_reverse( $history ) as $entry ) : ?>
+				<?php
+				$created = ! empty( $entry['created_at'] ) ? date_i18n( 'Y-m-d H:i:s', (int) $entry['created_at'] ) : __( 'Unknown time', 'wp-chinese-converter' );
+				$label   = sprintf(
+					/* translators: 1: conversion time, 2: target language, 3: conversion engine. */
+					__( '%1$s — %2$s / %3$s', 'wp-chinese-converter' ),
+					$created,
+					(string) ( $entry['target'] ?? '' ),
+					(string) ( $entry['engine'] ?? '' )
+				);
+				?>
+				<option value="<?php echo esc_attr( (string) $entry['id'] ); ?>"><?php echo esc_html( $label ); ?></option>
+			<?php endforeach; ?>
+		</select>
+		<p class="description"><?php esc_html_e( 'Dry-run shows the title and content changes without writing. Restore is rejected if the post changed after this screen loaded.', 'wp-chinese-converter' ); ?></p>
+		<p>
+			<button id="wpcc-conversion-dry-run" type="submit" class="button" name="wpcc_restore_mode" value="dry-run" form="wpcc-conversion-restore-form"><?php esc_html_e( 'Preview field diff', 'wp-chinese-converter' ); ?></button>
+			<button id="wpcc-conversion-restore" type="submit" class="button button-secondary" name="wpcc_restore_mode" value="restore" form="wpcc-conversion-restore-form" onclick="return confirm('<?php echo esc_js( __( 'Restore the selected title and content version?', 'wp-chinese-converter' ) ); ?>');"><?php esc_html_e( 'Restore selected version', 'wp-chinese-converter' ); ?></button>
+		</p>
+	<table class="widefat striped wpcc-conversion-history">
+		<thead><tr><th><?php esc_html_e( 'Version', 'wp-chinese-converter' ); ?></th><th><?php esc_html_e( 'Changed fields', 'wp-chinese-converter' ); ?></th></tr></thead>
+		<tbody>
+		<?php foreach ( array_reverse( $history ) as $entry ) : ?>
+			<?php
+			$changed = array();
+			foreach ( array( 'post_title', 'post_content' ) as $field ) {
+				if ( (string) ( $entry['original'][ $field ] ?? '' ) !== (string) ( $entry['converted'][ $field ] ?? '' ) ) {
+					$changed[] = $field;
+				}
+			}
+			?>
+			<tr data-wpcc-backup-id="<?php echo esc_attr( (string) $entry['id'] ); ?>">
+				<td><code><?php echo esc_html( substr( (string) $entry['id'], 0, 12 ) ); ?></code></td>
+				<td><?php echo esc_html( implode( ', ', $changed ) ); ?></td>
+			</tr>
+		<?php endforeach; ?>
+		</tbody>
+	</table>
+	<?php
 }
+
+/**
+ * Render the recovery form outside WordPress' main post-edit form.
+ */
+function wpcc_render_conversion_restore_form() {
+	global $post;
+
+	if ( ! $post instanceof WP_Post || ! current_user_can( 'edit_post', $post->ID ) ) {
+		return;
+	}
+	$history = WPCC_Post_Conversion_Backup::get_history( $post->ID );
+	if ( is_wp_error( $history ) || empty( $history ) ) {
+		return;
+	}
+	?>
+	<form id="wpcc-conversion-restore-form" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post" style="display:none">
+		<input type="hidden" name="action" value="wpcc_restore_post_conversion">
+		<input type="hidden" name="post_id" value="<?php echo esc_attr( (string) $post->ID ); ?>">
+		<input type="hidden" name="expected_hash" value="<?php echo esc_attr( WPCC_Post_Conversion_Backup::hash_post( $post ) ); ?>">
+		<?php wp_nonce_field( 'wpcc_restore_post_conversion_' . $post->ID, 'wpcc_restore_nonce' ); ?>
+	</form>
+	<?php
+}
+add_action( 'admin_footer-post.php', 'wpcc_render_conversion_restore_form' );
+add_action( 'admin_footer-post-new.php', 'wpcc_render_conversion_restore_form' );
+
+/**
+ * Process an authenticated conversion recovery request from the post editor.
+ */
+function wpcc_handle_post_conversion_restore() {
+	$post_id = isset( $_POST['post_id'] ) && is_string( $_POST['post_id'] ) ? absint( wp_unslash( $_POST['post_id'] ) ) : 0;
+	if ( ! $post_id || ! current_user_can( 'edit_post', $post_id ) ) {
+		wp_die( esc_html__( 'You are not allowed to restore this post.', 'wp-chinese-converter' ), '', array( 'response' => 403 ) );
+	}
+
+	if ( ! isset( $_POST['wpcc_restore_nonce'] ) || ! is_string( $_POST['wpcc_restore_nonce'] ) ) {
+		wp_die( esc_html__( 'Invalid recovery nonce.', 'wp-chinese-converter' ), '', array( 'response' => 403 ) );
+	}
+	check_admin_referer( 'wpcc_restore_post_conversion_' . $post_id, 'wpcc_restore_nonce' );
+	$backup_id     = isset( $_POST['backup_id'] ) && is_string( $_POST['backup_id'] ) ? sanitize_key( wp_unslash( $_POST['backup_id'] ) ) : '';
+	$expected_hash = isset( $_POST['expected_hash'] ) && is_string( $_POST['expected_hash'] ) ? sanitize_text_field( wp_unslash( $_POST['expected_hash'] ) ) : '';
+	$mode          = isset( $_POST['wpcc_restore_mode'] ) && is_string( $_POST['wpcc_restore_mode'] ) ? sanitize_key( wp_unslash( $_POST['wpcc_restore_mode'] ) ) : '';
+	$dry_run      = 'dry-run' === $mode;
+	if ( ! $dry_run && 'restore' !== $mode ) {
+		wp_die( esc_html__( 'Invalid recovery action.', 'wp-chinese-converter' ), '', array( 'response' => 400 ) );
+	}
+
+	$result = wpcc_restore_post_conversion( $post_id, $backup_id, $expected_hash, $dry_run );
+	if ( is_wp_error( $result ) ) {
+		$redirect = add_query_arg( 'wpcc_restore_status', sanitize_key( $result->get_error_code() ), get_edit_post_link( $post_id, 'url' ) );
+		wp_safe_redirect( $redirect );
+		exit;
+	}
+
+	if ( $dry_run ) {
+		$html = '<div id="wpcc-restore-dry-run"><h1>' . esc_html__( 'Conversion recovery dry-run', 'wp-chinese-converter' ) . '</h1>';
+		$html .= '<table class="widefat striped"><thead><tr><th>' . esc_html__( 'Field', 'wp-chinese-converter' ) . '</th><th>' . esc_html__( 'Current value', 'wp-chinese-converter' ) . '</th><th>' . esc_html__( 'Restored value', 'wp-chinese-converter' ) . '</th></tr></thead><tbody>';
+		foreach ( $result['diff'] as $field => $change ) {
+			$html .= '<tr data-wpcc-field="' . esc_attr( (string) $field ) . '"><th>' . esc_html( (string) $field ) . '</th><td><pre>' . esc_html( (string) $change['before'] ) . '</pre></td><td><pre>' . esc_html( (string) $change['after'] ) . '</pre></td></tr>';
+		}
+		$html .= '</tbody></table><p><a class="button" href="' . esc_url( get_edit_post_link( $post_id, 'url' ) ) . '">' . esc_html__( 'Return to editor', 'wp-chinese-converter' ) . '</a></p></div>';
+		wp_die( wp_kses_post( $html ), esc_html__( 'Conversion recovery dry-run', 'wp-chinese-converter' ), array( 'response' => 200 ) );
+	}
+
+	$status   = ! empty( $result['already_restored'] ) ? 'already-restored' : 'restored';
+	$redirect = add_query_arg( 'wpcc_restore_status', $status, get_edit_post_link( $post_id, 'url' ) );
+	wp_safe_redirect( $redirect );
+	exit;
+}
+add_action( 'admin_post_wpcc_restore_post_conversion', 'wpcc_handle_post_conversion_restore' );
 
 /**
  * 获取首页slug

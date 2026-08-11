@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "fc22dcc6985cf7a03a301189d2ee880f",
+    "content-hash": "4db433c0393c9e7fc98bbe02b604d6f1",
     "packages": [
         {
             "name": "overtrue/php-opencc",
@@ -3262,7 +3262,7 @@
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
-        "php": ">=7.4"
+        "php": ">=8.1"
     },
     "platform-dev": {},
     "platform-overrides": {

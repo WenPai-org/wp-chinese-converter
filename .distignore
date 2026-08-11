@@ -1,4 +1,5 @@
 /.git
+/.forgejo
 /.github
 /.gitignore
 /.distignore
@@ -8,12 +9,16 @@
 /tests
 /scripts
 /dist
+/node_modules
+/package.json
+/package-lock.json
+/includes/blocks/src
+/assets/src
 /phpunit.xml.dist
 /phpstan.neon.dist
 /composer.json
 /composer.lock
 /README.md
-/package-lock.json
 /changelog.txt
 /assets/.DS_Store
 /phpcs.xml.dist

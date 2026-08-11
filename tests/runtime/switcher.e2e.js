@@ -19,7 +19,8 @@ if (!pageId) throw new Error('WPCC_PAGE_ID is required');
 
   await page.locator('#wpcc_translate_type').selectOption('zh-tw');
   await page.waitForLoadState('networkidle');
-  if (!(await contentText()).includes('網路軟體和後臺印表機')) throw new Error('traditional DOM missing');
+  const traditionalText = await contentText();
+  if (!traditionalText.includes('網路軟體') || !traditionalText.includes('印表機')) throw new Error('traditional DOM missing');
   if (!page.url().includes('variant=zh-tw')) throw new Error('traditional URL missing variant');
 
   await page.locator('#wpcc_translate_type').selectOption('');

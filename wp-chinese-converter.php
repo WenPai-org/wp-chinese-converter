@@ -7,8 +7,8 @@
  * Text Domain: wp-chinese-converter
  * Domain Path: /languages
  * Version: 1.5.1
- * Requires at least: 6.0
- * Requires PHP: 7.4
+ * Requires at least: 6.3
+ * Requires PHP: 8.1
  * License: GPLv3 or later
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
  */
@@ -52,11 +52,8 @@ $wpcc_direct_conversion_flag = false;
 $wpcc_langs_urls = [];
 $wpcc_target_lang = false;
 
-// OpenCC and its locked Symfony dependencies require PHP 8.1. The built-in
-// MediaWiki converter remains available on the plugin's PHP 7.4 baseline.
-if ( PHP_VERSION_ID >= 80100 ) {
-    require __DIR__ . "/vendor/autoload.php";
-}
+// The release dependency set and plugin metadata require PHP 8.1 or later.
+require __DIR__ . "/vendor/autoload.php";
 
 // 载入核心依赖
 require_once dirname(__FILE__) .
