@@ -213,3 +213,25 @@
 
 - 已生成 `docs/ai-context/board-change-wpcc-pr4.md`，但没有发布 Board 任务。
 - devops 审核后只能普通、非 force push 本地 exact HEAD 到 PR #4 既有非默认候选分支，并只运行绑定该 SHA 的 CI；默认分支、merge、tag/release、发布资产、fei-publish/Woo/mall、部署和生产权限均禁止改变。
+
+## 10. [CX] 发布门补测（2026-08-11）
+
+### 10.1 Plugin Check warnings 定点整治
+
+- 对 exact ZIP 的 207 warnings 重新分桶，只修改有明确安全或审核依据的项目：输入 unslash/sanitize/type guard、network settings 的 `manage_network_options` 与 nonce、license AJAX 的 `manage_options`、脚本显式 header/footer 参数、debug JSON 输出和发布包 Composer 元数据。没有批量重命名历史全局符号、第三方类/函数、外部集成 hook 或商标文本。
+- 源码修复提交为 `9918065da0f29c2301332f34437d8108c0c14d67`。最终 exact ZIP Plugin Check 2.0.0 strict-csv 进程 exit 0，findings 为 **0 errors / 170 warnings**。170 项分桶：历史全局命名 115（变量 68、函数 33、hook 7、常量 4、类 3），nonce 35（Recommended 29、Missing 6），有意异常日志 17，商标文本 3。输入 unslash/sanitize/validate 和脚本 footer warnings 已清零。
+- E2E harness 后续提交 `5fbee3beddf36d53205409df7dbf0a22988dddab`：每次创建唯一页面 slug，切换时显式等待目标 URL；multisite capability 不再从 REST user payload 推断，而是对临时用户调用 `current_user_can( 'unfiltered_html' )` 后传入浏览器断言。该提交不进入 release ZIP。
+
+### 10.2 最终候选与回归
+
+- 可复现构建固定 `SOURCE_DATE_EPOCH=1786437235` 连续两次 exit 0，`cmp` exit 0。候选 `dist/wp-chinese-converter-1.5.1.zip`：1,294,645 bytes / 402 entries，SHA-256 `f7ba5f7df7c3494cdcad301b475b7170d655f6062b793e854f409c7686ea3d9a`；Plugin Check 使用该 exact ZIP。
+- standalone WordPress 7.0.3 / PHP 8.3.33 的单一完整 `runtime-matrix.sh all` 进程 exit 0：CLI、REST、XML-RPC 的两版本 history、dry-run/diff、stale/later-edit 冲突、选定旧版本恢复、重复恢复 no-op、history cap、core/variant sitemap、Yoast canonical/hreflang、两类前端 E2E 和管理员恢复均通过；具 `unfiltered_html` 的单站管理员明确记 KSES 检查不适用。证据 `/tmp/wpcc-r5a-final4-all.log`。
+- multisite WordPress 7.0.3 / PHP 8.3.33 network-active：主站完整 `all` exit 0，修正 capability 探针后的 main admin 定向 exit 0；子站单一完整 `all` exit 0，包含三 transport、主子站隔离、sitemap、Yoast、两类 E2E、普通站点管理员历史恢复和后续 KSES 保护。证据 `/tmp/wpcc-r5m-final-main-all-v2.log`、`/tmp/wpcc-r5m-final-main-admin.log`、`/tmp/wpcc-r5m-final-child-all-v2.log`。
+- 当前源码静态门：PHPUnit 22 tests / 76 assertions、full PHPStan 0 errors、Composer validate/audit、非 vendor PHP lint、Gutenberg reproducible build check、block behavior、variant reset、harness syntax 与 `git diff --check` 均 exit 0。
+
+### 10.3 最低版本样本与边界
+
+- WP 6.3/PHP 8.1 仍为 **BLOCKED**，零样本未写 PASS。官方 Docker Hub `wordpress:6.3-php8.1-apache` arm64/v8 manifest 为 `sha256:0f7b87ee7c96f0b234d75c1dd2d9a11bafac7b91464ef8c55253405e39ce0307`，multi-arch index 为 `sha256:2e29efb1c94a2602aa597a9fb98d8f9adce1328b9bcc617f495cd394264c89a4`。
+- 对该精确 digest 的两次 pull 各有 900 秒硬上限，均 exit 124（16:10:31–16:25:31、16:26:17–16:41:18）。DNS、TLS 1.3、证书和 registry 预期 401 均正常；Docker daemon 使用 `https://docker.1ms.run/`，阻塞发生在 layer 传输。没有改用未校验第三方镜像拼凑样本。
+- 备用官方 WordPress 6.3 tar 已下载并与官方校验端点一致：23,445,410 bytes，SHA-1 `5ae2e02020004f7a848fc4015d309a0479f7c261`，MD5 `096a73a915b72e51aca7dbe94b7f2219`；因未取得官方 PHP 8.1 runtime，未启动伪最低版本环境。
+- 本轮未 push、未触发/审批 FeiCode CI、未合并、未发布、未部署。所有自建 standalone/multisite 容器、网络和卷已 `down -v` 清理，exit 0。

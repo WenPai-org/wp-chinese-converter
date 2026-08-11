@@ -39,3 +39,12 @@
 - 最终 ZIP：`dist/wp-chinese-converter-1.5.1.zip`，1,293,281 bytes / 401 entries，SHA-256 `b2034115344de2834d7dd65a0abb3c67b7c5ecd6a249727a16a79f961914dc9a`，固定 epoch 双构建一致。
 - 剩余发布门：devops 发布/审核 `docs/ai-context/board-change-wpcc-pr4.md` 对应 change；普通 push exact local HEAD；只审批绑定该 SHA 的最低版本/latest CI。不得 merge/release/deploy。Plugin Check 207 warnings和PHPCS历史失败继续分批处理。
 - 完整证据与边界见 `docs/audits/wp-chinese-converter-audit-2026-08-09.md` 第 9 节。
+
+## [CX] 2026-08-11 wp-chinese-converter 发布门补测
+
+- warnings 定点修复提交 `9918065da0f29c2301332f34437d8108c0c14d67`；E2E harness 稳定提交 `5fbee3beddf36d53205409df7dbf0a22988dddab`。未 push、未触发/审批 CI、未合并、未发布、未部署。
+- exact ZIP：1,294,645 bytes / 402 entries，SHA-256 `f7ba5f7df7c3494cdcad301b475b7170d655f6062b793e854f409c7686ea3d9a`；固定 `SOURCE_DATE_EPOCH=1786437235` 双构建与 `cmp` exit 0。
+- Plugin Check 2.0.0：0 errors / 170 warnings。剩余为历史命名 115、nonce 35、有意异常日志 17、商标 3；输入 unslash/sanitize/validate warnings 已清零。
+- standalone WP7.0.3/PHP8.3.33 完整单进程 `all` exit 0；multisite 主站完整 `all`、修正 capability 后 admin/KSES、子站完整 `all` 均 exit 0。
+- WP6.3/PHP8.1 真实样本仍 BLOCKED：官方 arm64 digest 两次精确 pull 各 900 秒均 exit 124；官方 WP6.3 tar checksum 已验证，但未取得官方 PHP8.1 runtime，未写 PASS。
+- 详细证据与来源见 `docs/audits/wp-chinese-converter-audit-2026-08-09.md` 第 10 节。
