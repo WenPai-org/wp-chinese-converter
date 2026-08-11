@@ -363,12 +363,13 @@ PY
 }
 
 frontend_e2e(){
-  local old_post old_cookie old_browser standard_rc session_rc page_id
+  local old_post old_cookie old_browser standard_rc session_rc page_id page_title
   old_post="$(wp_site eval '$o=(array)get_option("wpcc_options",array());echo (int)($o["wpcc_enable_post_conversion"]??0);')"
   old_cookie="$(wp_site eval '$o=(array)get_option("wpcc_options",array());echo (int)($o["wpcc_use_cookie_variant"]??0);')"
   old_browser="$(wp_site eval '$o=(array)get_option("wpcc_options",array());echo (int)($o["wpcc_browser_redirect"]??0);')"
   wp_site eval '$o=(array)get_option("wpcc_options",array());$o["wpcc_enable_post_conversion"]=0;$o["wpcc_translate_type"]=0;$o["wpcc_use_cookie_variant"]=1;$o["wpcc_browser_redirect"]=0;update_option("wpcc_options",$o);'
-  page_id="$(wp_site post create --post_type=page --post_status=publish --post_title='WPCC Runtime Switcher' --post_content='[wp-chinese-converter] 网络软件和后台打印机' --porcelain)"
+  page_title="WPCC Runtime Switcher ${WPCC_MARKER:-$(date +%s)-$$}"
+  page_id="$(wp_site post create --post_type=page --post_status=publish --post_title="$page_title" --post_content='[wp-chinese-converter] 网络软件和后台打印机' --porcelain)"
   CREATED_POST_IDS+=("$page_id")
   WPCC_PAGE_ID="$page_id"; export WPCC_PAGE_ID WPCC_SITE_URL
   set +e; node "$ROOT_DIR/tests/runtime/switcher.e2e.js" | tee "$OUT/e2e.json"; standard_rc=${PIPESTATUS[0]}; set -e
@@ -381,14 +382,15 @@ frontend_e2e(){
 
 admin_recovery_e2e(){
   [[ "${WPCC_RUN_ADMIN_E2E:-1}" == 1 ]] || { echo '{"admin_recovery":"skip"}' | tee "$OUT/admin-recovery.json"; return; }
-  local login pass email id
+  local login pass email id has_unfiltered_html
   login="wpccruntimeadmin$(date +%s)$$"
   pass="WPCC-runtime-$(date +%s)-$$-Strong!"
   email="$login@example.invalid"
   TEMP_ADMIN_ID="$(wp_site user create "$login" "$email" --role=administrator --user_pass="$pass" --porcelain)"
   id="$WPCC_ADMIN_RECOVERY_POST_ID"
+  has_unfiltered_html="$(wp_site eval "wp_set_current_user($TEMP_ADMIN_ID); echo current_user_can('unfiltered_html') ? '1' : '0';")"
   reset_to_latest_converted "$id"
-  WPCC_ADMIN_LOGIN="$login" WPCC_ADMIN_PASSWORD="$pass" WPCC_ADMIN_RECOVERY_POST_ID="$id" WPCC_ARTIFACT_DIR="$OUT" \
+  WPCC_ADMIN_LOGIN="$login" WPCC_ADMIN_PASSWORD="$pass" WPCC_ADMIN_RECOVERY_POST_ID="$id" WPCC_ADMIN_HAS_UNFILTERED_HTML="$has_unfiltered_html" WPCC_ARTIFACT_DIR="$OUT" \
     node "$ROOT_DIR/tests/runtime/admin-recovery.e2e.js" | tee "$OUT/admin-recovery.json"
   wp_site eval "wp_set_current_user(1); \$h=WPCC_Post_Conversion_Backup::get_history($id); \$a=isset(\$h['entries'])?\$h['entries']:\$h; \$e=end(\$a); \$p=get_post($id); if(\$p->post_title!==\$e['original']['post_title']||\$p->post_content!==\$e['original']['post_content']){exit(3);}" || die 'admin E2E did not restore exact selected original'
 }

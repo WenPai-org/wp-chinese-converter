@@ -8,8 +8,9 @@ if (!pageId) throw new Error('WPCC_PAGE_ID is required');
   const browser = await chromium.launch({ headless: true, executablePath, args: ['--no-sandbox'] });
   const page = await browser.newPage();
   const contentText = async () => {
-    const content = page.locator('.entry-content, .wp-block-post-content');
-    return (await content.count() ? content.first() : page.locator('body')).innerText();
+    const content = page.locator('.entry-content, .wp-block-post-content').first();
+    await content.waitFor({ state: 'visible' });
+    return content.innerText();
   };
 
   await page.goto(`${baseUrl}/?page_id=${pageId}`, { waitUntil: 'networkidle' });
@@ -17,21 +18,33 @@ if (!pageId) throw new Error('WPCC_PAGE_ID is required');
   const originalText = await contentText();
   if (!originalText.includes('网络软件和后台打印机')) throw new Error('original simplified DOM missing');
 
-  await page.locator('#wpcc_translate_type').selectOption('zh-tw');
+  await Promise.all([
+    page.waitForURL((url) => url.searchParams.get('variant') === 'zh-tw'),
+    page.locator('#wpcc_translate_type').selectOption('zh-tw'),
+  ]);
   await page.waitForLoadState('networkidle');
   const traditionalText = await contentText();
   if (!traditionalText.includes('網路軟體') || !traditionalText.includes('印表機')) throw new Error('traditional DOM missing');
   if (!page.url().includes('variant=zh-tw')) throw new Error('traditional URL missing variant');
 
-  await page.locator('#wpcc_translate_type').selectOption('');
+  await Promise.all([
+    page.waitForURL((url) => !url.searchParams.has('variant')),
+    page.locator('#wpcc_translate_type').selectOption(''),
+  ]);
   await page.waitForLoadState('networkidle');
   const restoredText = await contentText();
-  if (restoredText !== originalText) throw new Error('no-conversion did not exactly restore original content DOM text');
+  if (restoredText !== originalText) throw new Error(`no-conversion did not exactly restore original content DOM text: ${JSON.stringify({ originalText, restoredText })}`);
   if (page.url().includes('variant=zh-tw')) throw new Error('no-conversion kept zh-tw URL');
 
-  await page.locator('#wpcc_translate_type').selectOption('zh-tw');
+  await Promise.all([
+    page.waitForURL((url) => url.searchParams.get('variant') === 'zh-tw'),
+    page.locator('#wpcc_translate_type').selectOption('zh-tw'),
+  ]);
   await page.waitForLoadState('networkidle');
-  await page.locator('#wpcc_translate_type').selectOption('zh-cn');
+  await Promise.all([
+    page.waitForURL((url) => url.searchParams.get('variant') === 'zh-cn'),
+    page.locator('#wpcc_translate_type').selectOption('zh-cn'),
+  ]);
   await page.waitForLoadState('networkidle');
   if (!(await contentText()).includes('网络软件和后台打印机')) throw new Error('zh-cn switch did not restore simplified DOM');
   if (!page.url().includes('variant=zh-cn')) throw new Error('zh-cn URL missing variant');

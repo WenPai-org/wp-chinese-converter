@@ -109,14 +109,15 @@ async function revealRecoveryForm(page) {
   const rowsAfterRepeat = await page.locator('.wpcc-conversion-history tr[data-wpcc-backup-id]').count();
   if (rowsAfterRepeat !== beforeRows) throw new Error('repeat restore changed history row count');
 
-  const ksesResult = await page.evaluate(async () => {
+  const hasUnfilteredHtml = process.env.WPCC_ADMIN_HAS_UNFILTERED_HTML === '1';
+  const ksesResult = await page.evaluate(async (hasUnfilteredHtml) => {
     const settings = window.wpApiSettings;
     if (!settings || !settings.root || !settings.nonce) throw new Error('wpApiSettings unavailable');
     const endpoint = `${settings.root}wp/v2/posts`;
     const headers = { 'Content-Type': 'application/json', 'X-WP-Nonce': settings.nonce };
     const meResponse = await fetch(`${settings.root}wp/v2/users/me?context=edit`, { credentials: 'same-origin', headers });
     const me = await meResponse.json();
-    const hasUnfilteredHtml = Boolean(me.capabilities && me.capabilities.unfiltered_html);
+    if (!me || !me.id) throw new Error('REST current-user capability probe failed');
     const createdResponse = await fetch(endpoint, {
       method: 'POST', credentials: 'same-origin', headers,
       body: JSON.stringify({ status: 'draft', title: 'WPCC KSES follow-up', content: '<p>safe</p><script>window.wpccUnsafe=1</script>' }),
@@ -126,7 +127,7 @@ async function revealRecoveryForm(page) {
     const raw = created.content && created.content.raw ? created.content.raw : '';
     const deletedResponse = await fetch(`${endpoint}/${created.id}?force=true`, { method: 'DELETE', credentials: 'same-origin', headers });
     return { id: created.id, raw, deleted: deletedResponse.ok, hasUnfilteredHtml };
-  });
+  }, hasUnfilteredHtml);
   const scriptPreserved = (ksesResult.raw || '').includes('<script');
   if (ksesResult.error || !ksesResult.deleted || (!ksesResult.hasUnfilteredHtml && scriptPreserved)) {
     throw new Error(`post-restore save policy mismatch: ${JSON.stringify(ksesResult)}`);
