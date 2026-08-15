@@ -1,0 +1,22 @@
+{
+  "name": "wp-chinese-converter-assets",
+  "version": "1.5.1",
+  "private": true,
+  "description": "Reproducible Gutenberg block and browser asset build for WP Chinese Converter.",
+  "license": "GPL-3.0-or-later",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "scripts": {
+    "build": "node scripts/build-blocks.mjs",
+    "check:build": "node scripts/build-blocks.mjs --check",
+    "build:release": "bash scripts/build-release.sh"
+  },
+  "dependencies": {
+    "urijs": "1.19.11"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.9"
+  }
+}

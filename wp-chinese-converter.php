@@ -6,10 +6,16 @@
  * Author URI: https://wpcc.net
  * Text Domain: wp-chinese-converter
  * Domain Path: /languages
-* Version: 1.5
+ * Version: 1.5.1
+ * Requires at least: 6.3
+ * Requires PHP: 8.1
  * License: GPLv3 or later
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
  */
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
 
 /**
  * WP Chinese Converter
@@ -25,17 +31,10 @@
 
 // 基础常量定义
 define("wpcc_DEBUG", false);
-define("wpcc_VERSION", "1.5");
+define("wpcc_VERSION", "1.5.1");
 
 // 插件URL常量
-if (defined("WP_PLUGIN_URL")) {
-    define(
-        "wpcc_DIR_URL",
-        WP_PLUGIN_URL .
-            "/" .
-            str_replace(basename(__FILE__), "", plugin_basename(__FILE__)),
-    );
-} elseif (function_exists("plugins_url")) {
+if (function_exists("plugins_url")) {
     define("wpcc_DIR_URL", plugins_url("", __FILE__) . "/");
 } else {
     // 测试环境的fallback
@@ -53,11 +52,8 @@ $wpcc_direct_conversion_flag = false;
 $wpcc_langs_urls = [];
 $wpcc_target_lang = false;
 
-// 载入OpenCC库
+// The release dependency set and plugin metadata require PHP 8.1 or later.
 require __DIR__ . "/vendor/autoload.php";
-
-use Overtrue\PHPOpenCC\OpenCC;
-use Overtrue\PHPOpenCC\Strategy;
 
 // 载入核心依赖
 require_once dirname(__FILE__) .
@@ -68,6 +64,7 @@ require_once dirname(__FILE__) .
 require_once dirname(__FILE__) . "/includes/core/class-wpcc-converter-factory.php";
 require_once dirname(__FILE__) . "/includes/core/class-wpcc-module-manager.php";
 require_once dirname(__FILE__) . "/includes/core/class-wpcc-conversion-cache.php";
+require_once dirname(__FILE__) . "/includes/core/class-wpcc-post-conversion-backup.php";
 require_once dirname(__FILE__) . "/includes/core/class-wpcc-config.php";
 require_once dirname(__FILE__) . "/includes/core/class-wpcc-presets.php";
 require_once dirname(__FILE__) . "/includes/core/class-wpcc-main.php";
@@ -83,12 +80,14 @@ function wpcc_add_global_js()
         plugins_url("/assets/dist/wpcc-variant.umd.js", __FILE__),
         [],
         wpcc_VERSION,
+        false,
     );
     wp_register_script(
         "wpcc-block-script-ok",
         plugins_url("/assets/js/wpcc-block-script-ok.js", __FILE__),
         ["wp-blocks", "wp-element", "wpcc-variant"],
         wpcc_VERSION,
+        false,
     );
 
     wp_enqueue_script(["wpcc-variant", "wpcc-block-script-ok"]);
@@ -107,6 +106,16 @@ $wpcc_config = $wpcc_main->get_config();
 
 // 保持向后兼容性
 $wpcc_options = $wpcc_config->get_all_options();
+
+
+/**
+ * Persist the complete defaults in every activation context, including WP-CLI.
+ */
+function wpcc_activate() {
+    $activation_config = WPCC_Config::get_instance();
+    update_option( 'wpcc_options', $activation_config->get_all_options() );
+}
+register_activation_hook( __FILE__, 'wpcc_activate' );
 
 // 加载站点地图模块
 $modules_dir = __DIR__ . "/includes/modules/";
@@ -140,6 +149,9 @@ if (
     if ( ! class_exists( 'WPCC_Main' ) ) {
         add_filter("query_vars", "wpcc_insert_query_vars");
     }
+
+    // Register stored-content conversion for admin, REST, XML-RPC, and WP-CLI saves.
+    add_action( 'init', 'wpcc_init_post_conversion' );
 
     // 加载管理后台模块（仅在后台时加载）
     if (is_admin()) {

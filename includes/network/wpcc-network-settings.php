@@ -143,7 +143,7 @@ class WPCC_Network_Settings
             echo '<div class="notice notice-info"><p>' .
                 sprintf(
                     "WP Chinese Converter 插件的 %d 项设置由网络管理员控制。这些设置的更改将不会生效。",
-                    $controlled_count,
+                    absint( $controlled_count ),
                 ) .
                 "</p></div>";
         }
@@ -151,21 +151,21 @@ class WPCC_Network_Settings
 
     public static function network_admin_notices()
     {
-        if (isset($_GET["updated"]) && $_GET["updated"] === "true") {
+        if (isset($_GET["updated"]) && sanitize_key(wp_unslash($_GET["updated"])) === "true") {
             echo '<div class="notice notice-success is-dismissible"><p>网络设置已更新。</p></div>';
         }
-        if (isset($_GET["imported"]) && $_GET["imported"] === "true") {
+        if (isset($_GET["imported"]) && sanitize_key(wp_unslash($_GET["imported"])) === "true") {
             echo '<div class="notice notice-success is-dismissible"><p>设置导入成功。</p></div>';
         }
-        if (isset($_GET["reset"]) && $_GET["reset"] === "true") {
+        if (isset($_GET["reset"]) && sanitize_key(wp_unslash($_GET["reset"])) === "true") {
             echo '<div class="notice notice-success is-dismissible"><p>网络设置已重置为默认值。</p></div>';
         }
-        if (isset($_GET["bulk_reset"]) && $_GET["bulk_reset"] === "true") {
+        if (isset($_GET["bulk_reset"]) && sanitize_key(wp_unslash($_GET["bulk_reset"])) === "true") {
             $reset_count = isset($_GET["reset_count"])
-                ? intval($_GET["reset_count"])
+                ? intval(wp_unslash($_GET["reset_count"]))
                 : 0;
             echo '<div class="notice notice-success is-dismissible"><p>已成功重置 ' .
-                $reset_count .
+                esc_html( absint( $reset_count ) ) .
                 " 个站点的设置。</p></div>";
         }
     }
@@ -199,7 +199,7 @@ class WPCC_Network_Settings
     public static function render_network_page()
     {
         $active_tab = isset($_GET["tab"])
-            ? sanitize_text_field($_GET["tab"])
+            ? sanitize_key(wp_unslash($_GET["tab"]))
             : "network";
 
         wp_enqueue_style(
@@ -225,7 +225,8 @@ class WPCC_Network_Settings
             <h1>
                 <?php esc_html_e("文派译词网络设置", "wp-chinese-converter"); ?>
                 <span style="font-size: 13px; padding-left: 10px; color: #666;">
-                    <?php printf(
+					<?php printf(
+						/* translators: %s: plugin version. */
                         esc_html__("版本: %s", "wp-chinese-converter"),
                         esc_html(wpcc_VERSION),
                     ); ?>
@@ -275,11 +276,11 @@ class WPCC_Network_Settings
                 "network"
                     ? "display: none;"
                     : ""; ?>">
-                    <h2><?php _e(
+                    <h2><?php esc_html_e(
                         "网络管理设置",
                         "wp-chinese-converter",
                     ); ?></h2>
-                    <p class="wpcc-section-desc"><?php _e(
+                    <p class="wpcc-section-desc"><?php esc_html_e(
                         "配置多站点网络的中文转换管理方式，控制子站点的设置权限。",
                         "wp-chinese-converter",
                     ); ?></p>
@@ -516,15 +517,15 @@ class WPCC_Network_Settings
                                     ?>
                                     <p class="description">选中的选项将在所有站点使用网络设置，未选中的选项可由站点管理员自定义。</p>
                                     <div class="wpcc-action-buttons" style="margin-top:10px;">
-                                        <button type="button" id="select-all-options" class="button button-secondary"><?php _e(
+                                        <button type="button" id="select-all-options" class="button button-secondary"><?php esc_html_e(
                                             "全选",
                                             "wp-chinese-converter",
                                         ); ?></button>
-                                        <button type="button" id="deselect-all-options" class="button button-secondary"><?php _e(
+                                        <button type="button" id="deselect-all-options" class="button button-secondary"><?php esc_html_e(
                                             "取消全选",
                                             "wp-chinese-converter",
                                         ); ?></button>
-                                        <button type="button" id="reset-default-options" class="button button-secondary"><?php _e(
+                                        <button type="button" id="reset-default-options" class="button button-secondary"><?php esc_html_e(
                                             "恢复默认",
                                             "wp-chinese-converter",
                                         ); ?></button>
@@ -544,8 +545,8 @@ class WPCC_Network_Settings
                 "basic"
                     ? "display: none;"
                     : ""; ?>">
-                    <h2><?php _e("基础设置", "wp-chinese-converter"); ?></h2>
-                    <p class="wpcc-section-desc"><?php _e(
+                    <h2><?php esc_html_e("基础设置", "wp-chinese-converter"); ?></h2>
+                    <p class="wpcc-section-desc"><?php esc_html_e(
                         "配置网络默认设置，新建站点将自动应用这些设置。",
                         "wp-chinese-converter",
                     ); ?></p>
@@ -958,21 +959,21 @@ class WPCC_Network_Settings
                                             0,
                                         ),
                                         0,
-                                    ); ?>> <?php echo $wpcc_network_base; ?>/blog/%year%/%monthnum%/%day%/%postname%/?variant=zh-tw (默认)</label><br>
+                                    ); ?>> <?php echo esc_html($wpcc_network_base); ?>/blog/%year%/%monthnum%/%day%/%postname%/?variant=zh-tw (默认)</label><br>
                                     <label><input type="radio" name="wpcc_default_use_permalink" value="1" <?php checked(
                                         get_site_option(
                                             "wpcc_default_use_permalink",
                                             0,
                                         ),
                                         1,
-                                    ); ?>> <?php echo $wpcc_network_base; ?>/blog/%year%/%monthnum%/%day%/%postname%/zh-tw/</label><br>
+                                    ); ?>> <?php echo esc_html($wpcc_network_base); ?>/blog/%year%/%monthnum%/%day%/%postname%/zh-tw/</label><br>
                                     <label><input type="radio" name="wpcc_default_use_permalink" value="2" <?php checked(
                                         get_site_option(
                                             "wpcc_default_use_permalink",
                                             0,
                                         ),
                                         2,
-                                    ); ?>> <?php echo $wpcc_network_base; ?>/zh-tw/blog/%year%/%monthnum%/%day%/%postname%/</label>
+                                    ); ?>> <?php echo esc_html($wpcc_network_base); ?>/zh-tw/blog/%year%/%monthnum%/%day%/%postname%/</label>
                                     <p class="description">注意：此选项影响插件生成的转换页面链接。提示：若未开启固定链接，则只能选第一种默认URL形式。</p>
                                 </td>
                             </tr>
@@ -1007,7 +1008,7 @@ class WPCC_Network_Settings
                                         if (!is_array($default_langs)) { $default_langs = array('zh-cn','zh-tw'); }
                                         $sample_lang = !empty($default_langs) ? $default_langs[0] : 'zh-cn';
                                     ?>
-                                    <p class="description">网站地图访问地址：<?php echo $wpcc_network_base2; ?>/<?php echo esc_html($sample_lang); ?>/sitemap.xml/</p>
+                                    <p class="description">网站地图访问地址：<?php echo esc_html($wpcc_network_base2); ?>/<?php echo esc_html($sample_lang); ?>/sitemap.xml/</p>
                                 </td>
                             </tr>
                         </table>
@@ -1291,19 +1292,19 @@ class WPCC_Network_Settings
                 "import_export"
                     ? "display: none;"
                     : ""; ?>">
-                    <h2><?php _e("导入导出", "wp-chinese-converter"); ?></h2>
-                    <p class="wpcc-section-desc"><?php _e(
+                    <h2><?php esc_html_e("导入导出", "wp-chinese-converter"); ?></h2>
+                    <p class="wpcc-section-desc"><?php esc_html_e(
                         "导入或导出网络设置，便于备份和迁移配置。",
                         "wp-chinese-converter",
                     ); ?></p>
 
                     <div class="wpcc-import-export-wrapper">
                         <div class="wpcc-export-section">
-                            <h3><?php _e(
+                            <h3><?php esc_html_e(
                                 "导出设置",
                                 "wp-chinese-converter",
                             ); ?></h3>
-                            <p><?php _e(
+                            <p><?php esc_html_e(
                                 "导出当前网络设置为JSON文件，包含所有网络级别的配置。",
                                 "wp-chinese-converter",
                             ); ?></p>
@@ -1321,14 +1322,14 @@ class WPCC_Network_Settings
                         </div>
 
                         <div class="wpcc-import-section">
-                            <h3><?php _e(
+                            <h3><?php esc_html_e(
                                 "导入设置",
                                 "wp-chinese-converter",
                             ); ?></h3>
-                            <p><?php _e(
+                            <p><?php esc_html_e(
                                 "从JSON文件导入网络设置。",
                                 "wp-chinese-converter",
-                            ); ?><strong><?php _e(
+                            ); ?><strong><?php esc_html_e(
     "注意：这将覆盖当前设置。",
     "wp-chinese-converter",
 ); ?></strong></p>
@@ -1368,8 +1369,8 @@ class WPCC_Network_Settings
                 "tools"
                     ? "display: none;"
                     : ""; ?>">
-                    <h2><?php _e("工具维护", "wp-chinese-converter"); ?></h2>
-                    <p class="wpcc-section-desc"><?php _e(
+                    <h2><?php esc_html_e("工具维护", "wp-chinese-converter"); ?></h2>
+                    <p class="wpcc-section-desc"><?php esc_html_e(
                         "网络级别的插件管理和维护工具。",
                         "wp-chinese-converter",
                     ); ?></p>
@@ -1378,7 +1379,7 @@ class WPCC_Network_Settings
                         <?php wp_nonce_field("wpcc_network_settings"); ?>
                         <input type="hidden" name="tab" value="tools">
 
-                        <h3><?php _e(
+                        <h3><?php esc_html_e(
                             "网络控制选项",
                             "wp-chinese-converter",
                         ); ?></h3>
@@ -1426,15 +1427,15 @@ class WPCC_Network_Settings
                     <?php if (
                         get_site_option("wpcc_enable_network_tools", 1)
                     ): ?>
-                    <h3><?php _e(
+                    <h3><?php esc_html_e(
                         "网络统计概览",
                         "wp-chinese-converter",
                     ); ?></h3>
                     <table class="form-table">
                         <tr>
                             <th>
-                                <?php _e("站点统计", "wp-chinese-converter"); ?>
-                                <a href="https://wpcc.net/document/network-statistics" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                                <?php esc_html_e("站点统计", "wp-chinese-converter"); ?>
+                                <a href="https://wpcc.net/document/network-statistics" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                     "查看详细说明",
                                     "wp-chinese-converter",
                                 ); ?>">↗</a>
@@ -1568,12 +1569,12 @@ class WPCC_Network_Settings
                     <?php endif; ?>
 
                     <?php if (get_site_option("wpcc_allow_site_details", 1)): ?>
-                    <h3><?php _e("站点管理", "wp-chinese-converter"); ?></h3>
+                    <h3><?php esc_html_e("站点管理", "wp-chinese-converter"); ?></h3>
                     <table class="form-table">
                         <tr>
                             <th>
-                                <?php _e("站点列表", "wp-chinese-converter"); ?>
-                                <a href="https://wpcc.net/document/network-site-management" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                                <?php esc_html_e("站点列表", "wp-chinese-converter"); ?>
+                                <a href="https://wpcc.net/document/network-site-management" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                     "查看详细说明",
                                     "wp-chinese-converter",
                                 ); ?>">↗</a>
@@ -1601,6 +1602,7 @@ class WPCC_Network_Settings
                                                 "zh-jp" => "日式",
                                             ];
 
+                                            $sites = get_sites();
                                             foreach ($sites as $site) {
                                                 switch_to_blog($site->blog_id);
                                                 $options = get_option(
@@ -1690,10 +1692,10 @@ class WPCC_Network_Settings
                                                                 ) .
                                                                 "</span>";
                                                         }
-                                                        echo implode(
+                                                        echo wp_kses_post(implode(
                                                             " ",
                                                             $lang_tags,
-                                                        );
+                                                        ));
                                                         echo "</div>";
                                                     }
                                                 } else {
@@ -1721,7 +1723,7 @@ class WPCC_Network_Settings
                                     </table>
                                 </div>
                                 <p class="description" style="margin-top: 10px;">
-                                    <?php _e(
+                                    <?php esc_html_e(
                                         '显示网络中所有站点的插件状态和配置信息。点击"管理设置"可直接访问对应站点的设置页面。',
                                         "wp-chinese-converter",
                                     ); ?>
@@ -1731,15 +1733,15 @@ class WPCC_Network_Settings
                     </table>
                     <?php endif; ?>
 
-                    <h3><?php _e("缓存兼容性", "wp-chinese-converter"); ?></h3>
+                    <h3><?php esc_html_e("缓存兼容性", "wp-chinese-converter"); ?></h3>
                     <table class="form-table">
                         <tr>
                             <th>
-                                <?php _e(
+                                <?php esc_html_e(
                                     "缓存插件状态",
                                     "wp-chinese-converter",
                                 ); ?>
-                                <a href="https://wpcc.net/document/cache-compatibility" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                                <a href="https://wpcc.net/document/cache-compatibility" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                     "查看详细说明",
                                     "wp-chinese-converter",
                                 ); ?>">↗</a>
@@ -1865,18 +1867,18 @@ class WPCC_Network_Settings
                     <?php if (
                         get_site_option("wpcc_enable_bulk_operations", 0)
                     ): ?>
-                    <h3 style="color: #d63638;"><?php _e(
+                    <h3 style="color: #d63638;"><?php esc_html_e(
                         "危险操作区域",
                         "wp-chinese-converter",
                     ); ?></h3>
                     <table class="form-table">
                         <tr>
                             <th style="color: #d63638;">
-                                <?php _e(
+                                <?php esc_html_e(
                                     "批量重置站点设置",
                                     "wp-chinese-converter",
                                 ); ?>
-                                <a href="https://wpcc.net/document/bulk-operations" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                                <a href="https://wpcc.net/document/bulk-operations" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                     "查看详细说明",
                                     "wp-chinese-converter",
                                 ); ?>">↗</a>
@@ -2131,6 +2133,83 @@ class WPCC_Network_Settings
 <?php
     }
 
+    private static function get_post_value($key, $default = null)
+    {
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- This private helper is called only after the network settings nonce check; each caller applies field-specific validation.
+        return isset($_POST[$key]) ? wp_unslash($_POST[$key]) : $default;
+    }
+
+    private static function sanitize_imported_basic_settings($settings)
+    {
+        if (!is_array($settings)) {
+            return [];
+        }
+
+        $text_keys = [
+            "wpcc_default_cntip", "wpcc_default_twtip", "wpcc_default_hktip",
+            "wpcc_default_hanstip", "wpcc_default_hanttip", "wpcc_default_sgtip",
+            "wpcc_default_jptip", "wpcc_default_nctip",
+            "wpcc_default_sitemap_post_type",
+        ];
+        $integer_keys = [
+            "wpcc_default_flag_option", "wpcc_default_enable_extended_langs",
+            "wpcc_default_search_conversion", "wpcc_default_use_fullpage_conversion",
+            "wpcc_default_no_conversion_qtag", "wpcc_default_enable_post_conversion",
+            "wpcc_default_auto_language_recong",
+            "wpcc_default_use_permalink", "wpcc_default_use_sitemap",
+            "wpcc_default_browser_redirect", "wpcc_default_use_cookie_variant",
+            "wpcc_default_first_visit_default", "wpcc_default_no_conversion_ja",
+            "wpcc_default_enable_hreflang_x_default",
+            "wpcc_default_enable_hreflang_tags",
+            "wpcc_default_enable_schema_conversion",
+            "wpcc_default_enable_meta_conversion",
+            "wpcc_default_enable_cache_addon",
+            "wpcc_default_enable_network_module",
+        ];
+        $sanitized = [];
+
+        foreach ($text_keys as $key) {
+            if (array_key_exists($key, $settings)) {
+                $sanitized[$key] = sanitize_text_field($settings[$key]);
+            }
+        }
+        foreach ($integer_keys as $key) {
+            if (array_key_exists($key, $settings)) {
+                $sanitized[$key] = intval($settings[$key]);
+            }
+        }
+        // Accept the legacy export key, but normalize it to the option consumed by the UI/runtime.
+        if (!array_key_exists("wpcc_default_no_conversion_qtag", $sanitized) && array_key_exists("wpcc_default_enable_quicktags", $settings)) {
+            $sanitized["wpcc_default_no_conversion_qtag"] = intval($settings["wpcc_default_enable_quicktags"]);
+        }
+        if (isset($settings["wpcc_default_used_langs"]) && is_array($settings["wpcc_default_used_langs"])) {
+            $sanitized["wpcc_default_used_langs"] = array_values(array_intersect(
+                array_map("sanitize_key", $settings["wpcc_default_used_langs"]),
+                ["zh-cn", "zh-tw", "zh-hk", "zh-hans", "zh-hant", "zh-sg", "zh-jp"],
+            ));
+        }
+        if (isset($settings["wpcc_default_engine"])) {
+            $engine = sanitize_key($settings["wpcc_default_engine"]);
+            $sanitized["wpcc_default_engine"] = in_array($engine, ["mediawiki", "opencc"], true)
+                ? $engine
+                : "mediawiki";
+        }
+        if (isset($settings["wpcc_default_post_conversion_target"])) {
+            $target = sanitize_key($settings["wpcc_default_post_conversion_target"]);
+            if (in_array($target, ["zh-cn", "zh-tw", "zh-hk", "zh-hans", "zh-hant", "zh-sg", "zh-jp"], true)) {
+                $sanitized["wpcc_default_post_conversion_target"] = $target;
+            }
+        }
+        if (isset($settings["wpcc_default_hreflang_x_default"])) {
+            $sanitized["wpcc_default_hreflang_x_default"] = sanitize_key($settings["wpcc_default_hreflang_x_default"]);
+        }
+        if (isset($settings["wpcc_default_no_conversion_tag"])) {
+            $sanitized["wpcc_default_no_conversion_tag"] = sanitize_textarea_field($settings["wpcc_default_no_conversion_tag"]);
+        }
+
+        return $sanitized;
+    }
+
     public static function save_network_settings()
     {
         if (!current_user_can("manage_network_options")) {
@@ -2141,7 +2220,7 @@ class WPCC_Network_Settings
         check_admin_referer("wpcc_network_settings");
 
         $current_tab = isset($_POST["tab"])
-            ? sanitize_text_field($_POST["tab"])
+            ? sanitize_key(self::get_post_value("tab"))
             : "";
 
         if ($current_tab === "network") {
@@ -2157,7 +2236,7 @@ class WPCC_Network_Settings
             $controlled_options = isset(
                 $_POST["wpcc_network_controlled_options"],
             )
-                ? $_POST["wpcc_network_controlled_options"]
+                ? array_values(array_intersect(array_map("sanitize_key", (array) self::get_post_value("wpcc_network_controlled_options", [])), self::$default_controlled_options))
                 : [];
             update_site_option(
                 "wpcc_network_controlled_options",
@@ -2209,8 +2288,11 @@ class WPCC_Network_Settings
                 ? 1
                 : 0;
             $engine = isset($_POST["wpcc_default_engine"])
-                ? sanitize_text_field($_POST["wpcc_default_engine"])
+                ? sanitize_key(self::get_post_value("wpcc_default_engine"))
                 : get_site_option("wpcc_default_engine", "opencc");
+            if (!in_array($engine, ["mediawiki", "opencc"], true)) {
+                $engine = "mediawiki";
+            }
 
             // 1) 扩展语言未启用时，仅保留基础三种
             if (!$ext_enabled) {
@@ -2233,40 +2315,40 @@ class WPCC_Network_Settings
             update_site_option("wpcc_default_used_langs", $default_used_langs);
             update_site_option(
                 "wpcc_default_cntip",
-                sanitize_text_field($_POST["wpcc_default_cntip"] ?? "简体"),
+                sanitize_text_field(self::get_post_value("wpcc_default_cntip", "简体")),
             );
             update_site_option(
                 "wpcc_default_twtip",
-                sanitize_text_field($_POST["wpcc_default_twtip"] ?? "繁体"),
+                sanitize_text_field(self::get_post_value("wpcc_default_twtip", "繁体")),
             );
             update_site_option(
                 "wpcc_default_hktip",
-                sanitize_text_field($_POST["wpcc_default_hktip"] ?? "港澳"),
+                sanitize_text_field(self::get_post_value("wpcc_default_hktip", "港澳")),
             );
             update_site_option(
                 "wpcc_default_hanstip",
-                sanitize_text_field($_POST["wpcc_default_hanstip"] ?? "简体"),
+                sanitize_text_field(self::get_post_value("wpcc_default_hanstip", "简体")),
             );
             update_site_option(
                 "wpcc_default_hanttip",
-                sanitize_text_field($_POST["wpcc_default_hanttip"] ?? "繁体"),
+                sanitize_text_field(self::get_post_value("wpcc_default_hanttip", "繁体")),
             );
             update_site_option(
                 "wpcc_default_sgtip",
-                sanitize_text_field($_POST["wpcc_default_sgtip"] ?? "马新"),
+                sanitize_text_field(self::get_post_value("wpcc_default_sgtip", "马新")),
             );
             update_site_option(
                 "wpcc_default_jptip",
-                sanitize_text_field($_POST["wpcc_default_jptip"] ?? "日式"),
+                sanitize_text_field(self::get_post_value("wpcc_default_jptip", "日式")),
             );
 
             update_site_option(
                 "wpcc_default_nctip",
-                sanitize_text_field($_POST["wpcc_default_nctip"] ?? "简体"),
+                sanitize_text_field(self::get_post_value("wpcc_default_nctip", "简体")),
             );
             update_site_option(
                 "wpcc_default_flag_option",
-                intval($_POST["wpcc_default_flag_option"] ?? 1),
+                intval(self::get_post_value("wpcc_default_flag_option", 1)),
             );
             update_site_option(
                 "wpcc_default_enable_extended_langs",
@@ -2276,7 +2358,7 @@ class WPCC_Network_Settings
             update_site_option("wpcc_default_engine", $engine);
             update_site_option(
                 "wpcc_default_search_conversion",
-                intval($_POST["wpcc_default_search_conversion"] ?? 1),
+                intval(self::get_post_value("wpcc_default_search_conversion", 1)),
             );
             update_site_option(
                 "wpcc_default_use_fullpage_conversion",
@@ -2295,19 +2377,19 @@ class WPCC_Network_Settings
                 update_site_option(
                     "wpcc_default_post_conversion_target",
                     sanitize_text_field(
-                        $_POST["wpcc_default_post_conversion_target"],
+                        self::get_post_value("wpcc_default_post_conversion_target"),
                     ),
                 );
             }
 
             update_site_option(
                 "wpcc_default_use_permalink",
-                intval($_POST["wpcc_default_use_permalink"] ?? 0),
+                intval(self::get_post_value("wpcc_default_use_permalink", 0)),
             );
             update_site_option(
                 "wpcc_default_sitemap_post_type",
                 sanitize_text_field(
-                    $_POST["wpcc_default_sitemap_post_type"] ?? "post,page",
+                    self::get_post_value("wpcc_default_sitemap_post_type", "post,page"),
                 ),
             );
             update_site_option(
@@ -2317,11 +2399,11 @@ class WPCC_Network_Settings
 
             update_site_option(
                 "wpcc_default_browser_redirect",
-                intval($_POST["wpcc_default_browser_redirect"] ?? 0),
+                intval(self::get_post_value("wpcc_default_browser_redirect", 0)),
             );
             update_site_option(
                 "wpcc_default_use_cookie_variant",
-                intval($_POST["wpcc_default_use_cookie_variant"] ?? 0),
+                intval(self::get_post_value("wpcc_default_use_cookie_variant", 0)),
             );
             update_site_option(
                 "wpcc_default_first_visit_default",
@@ -2335,7 +2417,7 @@ class WPCC_Network_Settings
             update_site_option(
                 "wpcc_default_no_conversion_tag",
                 sanitize_textarea_field(
-                    $_POST["wpcc_default_no_conversion_tag"] ?? "",
+                    self::get_post_value("wpcc_default_no_conversion_tag", ""),
                 ),
             );
             update_site_option(
@@ -2350,7 +2432,7 @@ class WPCC_Network_Settings
             update_site_option(
                 "wpcc_default_hreflang_x_default",
                 sanitize_text_field(
-                    $_POST["wpcc_default_hreflang_x_default"] ?? "zh-cn",
+                    self::get_post_value("wpcc_default_hreflang_x_default", "zh-cn"),
                 ),
             );
             update_site_option(
@@ -2475,7 +2557,7 @@ class WPCC_Network_Settings
             $redirect_url = add_query_arg("tab", $current_tab, $redirect_url);
         }
 
-        wp_redirect($redirect_url);
+        wp_safe_redirect($redirect_url);
         exit();
     }
 
@@ -2601,13 +2683,17 @@ class WPCC_Network_Settings
                     "wpcc_default_use_fullpage_conversion",
                     1,
                 ),
-                "wpcc_default_enable_quicktags" => get_site_option(
-                    "wpcc_default_enable_quicktags",
+                "wpcc_default_no_conversion_qtag" => get_site_option(
+                    "wpcc_default_no_conversion_qtag",
                     1,
                 ),
                 "wpcc_default_enable_post_conversion" => get_site_option(
                     "wpcc_default_enable_post_conversion",
                     0,
+                ),
+                "wpcc_default_post_conversion_target" => get_site_option(
+                    "wpcc_default_post_conversion_target",
+                    "zh-tw",
                 ),
                 "wpcc_default_use_permalink" => get_site_option(
                     "wpcc_default_use_permalink",
@@ -2623,6 +2709,10 @@ class WPCC_Network_Settings
                 ),
                 "wpcc_default_browser_redirect" => get_site_option(
                     "wpcc_default_browser_redirect",
+                    0,
+                ),
+                "wpcc_default_auto_language_recong" => get_site_option(
+                    "wpcc_default_auto_language_recong",
                     0,
                 ),
                     "wpcc_default_use_cookie_variant" => get_site_option(
@@ -2687,7 +2777,7 @@ class WPCC_Network_Settings
             "site_url" => network_site_url(),
         ];
 
-        $filename = "wpcc-network-settings-" . date("Y-m-d-H-i-s") . ".json";
+		$filename = "wpcc-network-settings-" . current_time("Y-m-d-H-i-s") . ".json";
 
         header("Content-Type: application/json");
         header('Content-Disposition: attachment; filename="' . $filename . '"');
@@ -2711,53 +2801,80 @@ class WPCC_Network_Settings
         check_admin_referer("wpcc_import_settings");
 
         if (
-            !isset($_FILES["import_file"]) ||
-            $_FILES["import_file"]["error"] !== UPLOAD_ERR_OK
+            !isset(
+                $_FILES["import_file"],
+                $_FILES["import_file"]["error"],
+                $_FILES["import_file"]["tmp_name"],
+                $_FILES["import_file"]["name"],
+                $_FILES["import_file"]["size"],
+            ) ||
+            UPLOAD_ERR_OK !== intval($_FILES["import_file"]["error"])
         ) {
             wp_die("文件上传失败，请重试。");
             return;
         }
 
-        $file_content = file_get_contents($_FILES["import_file"]["tmp_name"]);
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- PHP upload metadata is validated before the temporary file is read.
+        $uploaded_file = $_FILES["import_file"];
+        $tmp_name = (string) $uploaded_file["tmp_name"];
+        $extension = strtolower(pathinfo((string) $uploaded_file["name"], PATHINFO_EXTENSION));
+        if (
+            !is_uploaded_file($tmp_name) ||
+            "json" !== $extension ||
+            intval($uploaded_file["size"]) > 1048576
+        ) {
+            wp_die("仅允许导入不超过 1 MiB 的 JSON 文件。");
+            return;
+        }
+
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Reading a validated PHP upload temporary file.
+        $file_content = file_get_contents($tmp_name);
         $import_data = json_decode($file_content, true);
 
-        if (json_last_error() !== JSON_ERROR_NONE) {
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($import_data)) {
             wp_die("无效的JSON文件，请检查文件格式。");
             return;
         }
 
         if (
             isset($_POST["import_network_settings"]) &&
-            isset($import_data["network_settings"])
+            isset($import_data["network_settings"]) &&
+            is_array($import_data["network_settings"])
         ) {
-            foreach ($import_data["network_settings"] as $key => $value) {
-                update_site_option($key, $value);
+            foreach (["wpcc_network_enabled", "wpcc_network_enforce"] as $key) {
+                if (array_key_exists($key, $import_data["network_settings"])) {
+                    update_site_option($key, intval($import_data["network_settings"][$key]));
+                }
             }
         }
 
-        if (
-            isset($_POST["import_basic_settings"]) &&
-            isset($import_data["basic_settings"])
-        ) {
-            foreach ($import_data["basic_settings"] as $key => $value) {
+        $basic_settings = isset($import_data["basic_settings"])
+            ? self::sanitize_imported_basic_settings($import_data["basic_settings"])
+            : [];
+
+        if (isset($_POST["import_basic_settings"])) {
+            foreach ($basic_settings as $key => $value) {
                 update_site_option($key, $value);
             }
         }
 
         if (
             isset($_POST["import_controlled_options"]) &&
-            isset($import_data["controlled_options"])
+            isset($import_data["controlled_options"]["wpcc_network_controlled_options"]) &&
+            is_array($import_data["controlled_options"]["wpcc_network_controlled_options"])
         ) {
-            foreach ($import_data["controlled_options"] as $key => $value) {
-                update_site_option($key, $value);
-            }
+            $controlled_options = array_values(array_intersect(
+                array_map(
+                    "sanitize_key",
+                    $import_data["controlled_options"]["wpcc_network_controlled_options"],
+                ),
+                self::$default_controlled_options,
+            ));
+            update_site_option("wpcc_network_controlled_options", $controlled_options);
         }
 
-        if (
-            isset($_POST["apply_to_existing_sites"]) &&
-            isset($import_data["basic_settings"])
-        ) {
-            self::apply_settings_to_all_sites($import_data["basic_settings"]);
+        if (isset($_POST["apply_to_existing_sites"]) && !empty($basic_settings)) {
+            self::apply_settings_to_all_sites($basic_settings);
         }
 
         $redirect_url = add_query_arg(
@@ -2769,7 +2886,7 @@ class WPCC_Network_Settings
             network_admin_url("settings.php"),
         );
 
-        wp_redirect($redirect_url);
+        wp_safe_redirect($redirect_url);
         exit();
     }
 
@@ -2803,7 +2920,7 @@ class WPCC_Network_Settings
             network_admin_url("settings.php"),
         );
 
-        wp_redirect($redirect_url);
+        wp_safe_redirect($redirect_url);
         exit();
     }
 
@@ -3015,7 +3132,7 @@ class WPCC_Network_Settings
             network_admin_url("settings.php"),
         );
 
-        wp_redirect($redirect_url);
+        wp_safe_redirect($redirect_url);
         exit();
     }
 }

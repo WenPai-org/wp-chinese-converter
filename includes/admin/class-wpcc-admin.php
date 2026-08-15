@@ -181,48 +181,15 @@ class wpcc_Admin
     public function install_cache_module(): bool
     {
         global $wpcc_options;
-
-        $ret = true;
-
-        $file = file_get_contents(
-            dirname(__FILE__) . "/../modules/wpcc-cache-addon.php",
-        );
-
-        $used_langs = "Array()";
-        if (count($wpcc_options["wpcc_used_langs"]) > 0) {
-            $used_langs =
-                "Array('" .
-                implode("', '", $wpcc_options["wpcc_used_langs"]) .
-                "')";
-        }
-        $file = str_replace(
-            "##wpcc_auto_language_recong##",
-            $wpcc_options["wpcc_auto_language_recong"],
-            $file,
-        );
-        $file = str_replace("##wpcc_used_langs##", $used_langs, $file);
-
-        $fp = @fopen(
-            WP_PLUGIN_DIR .
-                "/wp-super-cache/plugins/wpcc-wp-super-cache-plugin.php",
-            "w",
-        );
-        if ($fp) {
-            @fwrite($fp, $file);
-            @fclose($fp);
-        } else {
-            $ret = false;
-        }
-
-        return $ret;
+		$wpcc_options['wpcc_enable_cache_addon'] = 1;
+		return (bool) update_wpcc_option( 'wpcc_options', $wpcc_options );
     }
 
     public function uninstall_cache_module(): bool
     {
-        return unlink(
-            WP_PLUGIN_DIR .
-                "/wp-super-cache/plugins/wpcc-wp-super-cache-plugin.php",
-        );
+		global $wpcc_options;
+		$wpcc_options['wpcc_enable_cache_addon'] = 0;
+		return (bool) update_wpcc_option( 'wpcc_options', $wpcc_options );
     }
 
     public function get_cache_status(): int
@@ -230,20 +197,17 @@ class wpcc_Admin
         if (!function_exists("wp_cache_is_enabled")) {
             return 0;
         }
-        if (
-            !file_exists(
-                WP_PLUGIN_DIR .
-                    "/wp-super-cache/plugins/wpcc-wp-super-cache-plugin.php",
-            )
-        ) {
-            return 1;
-        }
-
-        return 2;
+		global $wpcc_options;
+		return empty( $wpcc_options['wpcc_enable_cache_addon'] ) ? 1 : 2;
     }
 
     function display_options()
     {
+        $required_capability = is_network_admin() ? "manage_network_options" : "manage_options";
+        if (!current_user_can($required_capability)) {
+            wp_die(esc_html__("您没有权限管理文派译词设置。", "wp-chinese-converter"));
+        }
+
         global $wp_rewrite;
 
         wp_enqueue_style(
@@ -270,7 +234,8 @@ class wpcc_Admin
             "isGutenbergActive" => $this->is_gutenberg_active(),
         ]);
 
-        if (!empty($_POST["wpcco_uninstall_nonce"])) {
+        if (!empty($_POST["wpcco_uninstall_confirm"])) {
+            check_admin_referer("wpcc_uninstall", "wpcc_uninstall_nonce");
             delete_option("wpcc_options");
             update_option("rewrite_rules", "");
             echo '<div class="wrap"><h2>WP Chinese Converter Setting</h2><div class="updated">Uninstall Successfully. 卸载成功, 现在您可以到<a href="plugins.php">插件菜单</a>里禁用本插件.</div></div>';
@@ -306,18 +271,19 @@ class wpcc_Admin
         }
 
         if (!empty($_POST["toggle_cache"])) {
+            check_admin_referer("wpcc_toggle_cache", "wpcc_toggle_cache_nonce");
             if ($this->get_cache_status() == 1) {
                 $result = $this->install_cache_module();
                 if ($result) {
                     echo '<div class="updated fade" style=""><p>' .
-                        _e(
+                        esc_html__(
                             "安装WP Super Cache 兼容成功.",
                             "wp-chinese-converter",
                         ) .
                         "</p></div>";
                 } else {
                     echo '<div class="error" style=""><p>' .
-                        _e(
+                        esc_html__(
                             "错误: 安装WP Super Cache 兼容失败",
                             "wp-chinese-converter",
                         ) .
@@ -327,14 +293,14 @@ class wpcc_Admin
                 $result = $this->uninstall_cache_module();
                 if ($result) {
                     echo '<div class="updated fade" style=""><p>' .
-                        _e(
+                        esc_html__(
                             "卸载WP Super Cache 兼容成功",
                             "wp-chinese-converter",
                         ) .
                         "</p></div>";
                 } else {
                     echo '<div class="error" style=""><p>' .
-                        _e(
+                        esc_html__(
                             "错误: 卸载WP Super Cache 兼容失败",
                             "wp-chinese-converter",
                         ) .
@@ -361,6 +327,7 @@ class wpcc_Admin
             $o = limit_zhconversion($o, $this->langs[$this->admin_lang][0]);
         }
 
+        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Complete admin form HTML is produced by the bundled settings template; fields are escaped at their output contexts.
         echo $o;
     }
 
@@ -368,7 +335,7 @@ class wpcc_Admin
     {
         $variant =
             isset($_GET["variant"]) && !empty($_GET["variant"])
-                ? $_GET["variant"]
+                ? sanitize_key(wp_unslash($_GET["variant"]))
                 : "";
         $str =
             '<span><a title="' .
@@ -409,6 +376,7 @@ class wpcc_Admin
 
     function process()
     {
+        check_admin_referer("wpcc_save_settings", "wpcc_settings_nonce");
         global $wp_rewrite, $wpcc_options;
 
         // 获取当前设置作为基础
@@ -485,13 +453,15 @@ class wpcc_Admin
             if (isset($_POST[$post_field])) {
                 if ($post_field === "wpcco_no_conversion_tag" || $post_field === "wpcc_no_conversion_tag") {
                     $options[$option_field] = trim(
-                        $_POST[$post_field],
+                        sanitize_text_field(wp_unslash($_POST[$post_field])),
                         " \t\n\r\0\x0B,|",
                     );
                 } elseif ($post_field === "wpcco_no_conversion_tip") {
-                    $options[$option_field] = trim($_POST[$post_field]);
+                    $options[$option_field] = trim(sanitize_text_field(wp_unslash($_POST[$post_field])));
                 } elseif ($post_field === "wpcco_sitemap_post_type") {
-                    $options[$option_field] = trim($_POST[$post_field]);
+                    // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- The allowlisted dynamic field is unslashed, split, and every value is sanitized with sanitize_key().
+                    $post_types = array_filter(array_map("sanitize_key", explode(",", wp_unslash($_POST[$post_field]))));
+                    $options[$option_field] = implode(",", array_unique($post_types));
                 } elseif (
                     in_array($post_field, [
                         "wpcc_translate_type",
@@ -501,10 +471,10 @@ class wpcc_Admin
                         "wpcco_use_permalink",
                     ])
                 ) {
-                    $options[$option_field] = intval($_POST[$post_field]);
+                    $options[$option_field] = intval(wp_unslash($_POST[$post_field]));
                 } else {
                     $options[$option_field] = sanitize_text_field(
-                        $_POST[$post_field],
+                        wp_unslash($_POST[$post_field]),
                     );
                 }
             }
@@ -512,7 +482,7 @@ class wpcc_Admin
 
         // 兼容旧字段：当表单提交了 wpcc_flag_option 时，将其映射为 wpcc_translate_type
         if (isset($_POST['wpcc_flag_option'])) {
-            $options['wpcc_translate_type'] = intval($_POST['wpcc_flag_option']);
+            $options['wpcc_translate_type'] = intval( wp_unslash( $_POST['wpcc_flag_option'] ) );
         }
 
         if (is_array($this->langs)) {
@@ -523,7 +493,7 @@ class wpcc_Admin
                     isset($_POST[$value[1]]) &&
                     !empty($_POST[$value[1]])
                 ) {
-                    $options[$value[1]] = trim($_POST[$value[1]]);
+                    $options[$value[1]] = sanitize_text_field(wp_unslash($_POST[$value[1]]));
                 }
             }
         }
@@ -651,12 +621,18 @@ class wpcc_Admin
         }
 
         global $wpdb;
+		global $wp_version;
+		if ( version_compare( $wp_version, '6.2', '<' ) ) {
+			wp_send_json_error( 'Database optimization requires WordPress 6.2 or later.' );
+			return;
+		}
 
         $tables = [$wpdb->options];
         $optimized = 0;
 
         foreach ($tables as $table) {
-            $result = $wpdb->query("OPTIMIZE TABLE {$table}");
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQLPlaceholders.UnsupportedIdentifierPlaceholder -- Explicit administrator maintenance, runtime-gated to WordPress 6.2.
+			$result = $wpdb->query( $wpdb->prepare( 'OPTIMIZE TABLE %i', $table ) );
             if ($result !== false) {
                 $optimized++;
             }

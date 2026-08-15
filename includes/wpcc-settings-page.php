@@ -1,5 +1,9 @@
 <?php
-$active_tab = isset($_GET["tab"]) ? sanitize_text_field($_GET["tab"]) : "basic";
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
+$active_tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'basic';
 
 // 网络控制检查
 $is_network_controlled = function ($option_name) {
@@ -108,7 +112,8 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
     <h1>
         <?php esc_html_e("文派译词设置", "wp-chinese-converter"); ?>
         <span style="font-size: 13px; padding-left: 10px;">
-            <?php printf(
+				<?php printf(
+					/* translators: %s: plugin version. */
                 esc_html__("版本: %s", "wp-chinese-converter"),
                 esc_html(wpcc_VERSION),
             ); ?>
@@ -138,13 +143,13 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                 "basic"
                     ? "active"
                     : ""; ?>" data-tab="basic">
-                    <?php _e("基础设置", "wp-chinese-converter"); ?>
+                    <?php esc_html_e("基础设置", "wp-chinese-converter"); ?>
                 </button>
                 <button type="button" class="wpcc-tab <?php echo $active_tab ===
                 "tools"
                     ? "active"
                     : ""; ?>" data-tab="tools">
-                    <?php _e("工具维护", "wp-chinese-converter"); ?>
+                    <?php esc_html_e("工具维护", "wp-chinese-converter"); ?>
                 </button>
             </div>
         </div>
@@ -154,18 +159,19 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
         "basic"
             ? "display: none;"
             : "display: block;"; ?>">
-            <h2><?php _e("基础设置", "wp-chinese-converter"); ?></h2>
-            <p class="wpcc-section-desc"><?php _e(
+            <h2><?php esc_html_e("基础设置", "wp-chinese-converter"); ?></h2>
+            <p class="wpcc-section-desc"><?php esc_html_e(
                 "配置中文转换的基本选项和语言设置。",
                 "wp-chinese-converter",
             ); ?></p>
 
             <form method="post" action="">
                 <input type="hidden" name="wpcco_submitted" value="1" />
+                <?php wp_nonce_field( "wpcc_save_settings", "wpcc_settings_nonce" ); ?>
 
 
 
-                <h3><?php _e("语言和界面设置", "wp-chinese-converter"); ?></h3>
+                <h3><?php esc_html_e("语言和界面设置", "wp-chinese-converter"); ?></h3>
                 <?php
                 // 只显示语言模块和显示名称的网络通知，去掉展示形式和显示更多语言的通知
                 $language_section_options = [
@@ -179,13 +185,13 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                     "jptip",
                     "nctip",
                 ];
-                echo $get_network_notice($language_section_options);
+                echo wp_kses_post($get_network_notice($language_section_options));
                 ?>
                 <table class="form-table">
                         <tr>
                             <th>
-                                <?php _e("语言模块", "wp-chinese-converter"); ?>
-                                <a href="https://wpcc.net/document/language-modules" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                                <?php esc_html_e("语言模块", "wp-chinese-converter"); ?>
+                                <a href="https://wpcc.net/document/language-modules" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                     "查看详细说明",
                                     "wp-chinese-converter",
                                 ); ?>">↗</a>
@@ -207,11 +213,11 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                                                    )
                                                        ? 'checked="checked"'
                                                        : ""; ?>
-                                                   <?php echo $get_field_attributes(
+                                                   <?php echo wp_kses($get_field_attributes(
                                                        "wpcc_used_langs",
-                                                   ); ?> />
+                                                   ), []); ?> />
                                             <span class="wpcc-slider"></span>
-                                            <span class="wpcc-switch-label"><?php _e(
+                                            <span class="wpcc-switch-label"><?php esc_html_e(
                                                 "中国大陆 (zh-cn)",
                                                 "wp-chinese-converter",
                                             ); ?></span>
@@ -221,14 +227,14 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                                                    $this->options["cntip"] ??
                                                        "简体",
                                                ); ?>"
-                                               placeholder="<?php _e(
+                                               placeholder="<?php esc_attr_e(
                                                    "中国大陆",
                                                    "wp-chinese-converter",
                                                ); ?>"
                                                class="regular-text wpcc-input" style="margin-left: 20px;"
-                                               <?php echo $get_field_attributes(
+                                               <?php echo wp_kses($get_field_attributes(
                                                    "cntip",
-                                               ); ?> />
+                                               ), []); ?> />
                                     </div>
                                     <div style="margin-bottom: 10px;">
                                         <label class="wpcc-switch <?php echo $is_network_controlled(
@@ -245,11 +251,11 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                                                    )
                                                        ? 'checked="checked"'
                                                        : ""; ?>
-                                                   <?php echo $get_field_attributes(
+                                                   <?php echo wp_kses($get_field_attributes(
                                                        "wpcc_used_langs",
-                                                   ); ?> />
+                                                   ), []); ?> />
                                             <span class="wpcc-slider"></span>
-                                            <span class="wpcc-switch-label"><?php _e(
+                                            <span class="wpcc-switch-label"><?php esc_html_e(
                                                 "台灣正體 (zh-tw)",
                                                 "wp-chinese-converter",
                                             ); ?></span>
@@ -259,14 +265,14 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                                                    $this->options["twtip"] ??
                                                        "繁体",
                                                ); ?>"
-                                               placeholder="<?php _e(
+                                               placeholder="<?php esc_attr_e(
                                                    "台灣正體",
                                                    "wp-chinese-converter",
                                                ); ?>"
                                                class="regular-text wpcc-input" style="margin-left: 20px;"
-                                               <?php echo $get_field_attributes(
+                                               <?php echo wp_kses($get_field_attributes(
                                                    "twtip",
-                                               ); ?> />
+                                               ), []); ?> />
                                     </div>
                                     <div style="margin-bottom: 10px;">
                                         <label class="wpcc-switch <?php echo $is_network_controlled(
@@ -283,11 +289,11 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                                                    )
                                                        ? 'checked="checked"'
                                                        : ""; ?>
-                                                   <?php echo $get_field_attributes(
+                                                   <?php echo wp_kses($get_field_attributes(
                                                        "wpcc_used_langs",
-                                                   ); ?> />
+                                                   ), []); ?> />
                                             <span class="wpcc-slider"></span>
-                                            <span class="wpcc-switch-label"><?php _e(
+                                            <span class="wpcc-switch-label"><?php esc_html_e(
                                                 "港澳繁體 (zh-hk)",
                                                 "wp-chinese-converter",
                                             ); ?></span>
@@ -297,14 +303,14 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                                                    $this->options["hktip"] ??
                                                        "港澳",
                                                ); ?>"
-                                               placeholder="<?php _e(
+                                               placeholder="<?php esc_attr_e(
                                                    "港澳繁體",
                                                    "wp-chinese-converter",
                                                ); ?>"
                                                class="regular-text wpcc-input" style="margin-left: 20px;"
-                                               <?php echo $get_field_attributes(
+                                               <?php echo wp_kses($get_field_attributes(
                                                    "hktip",
-                                               ); ?> />
+                                               ), []); ?> />
                                     </div>
                                 </div>
 
@@ -314,7 +320,7 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
 <div class="wpcc-extended-languages <?php echo $extended_disabled
     ? "wpcc-disabled"
     : ""; ?>" data-depends="wpcc_show_more_langs" style="margin-top: 15px; display: none;">
-                                    <h4><?php _e(
+                                    <h4><?php esc_html_e(
                                         "扩展语言模块（国际）",
                                         "wp-chinese-converter",
                                     ); ?></h4>
@@ -333,14 +339,14 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                                                    )
                                                        ? 'checked="checked"'
                                                        : ""; ?>
-                                                   <?php echo $get_field_attributes(
+                                                   <?php echo wp_kses($get_field_attributes(
                                                        "wpcc_used_langs",
-                                                   ) .
+                                                   ), []) .
                                                        ($extended_disabled
                                                            ? ' disabled="disabled"'
                                                            : ""); ?> />
                                             <span class="wpcc-slider"></span>
-                                            <span class="wpcc-switch-label"><?php _e(
+                                            <span class="wpcc-switch-label"><?php esc_html_e(
                                                 "简体中文 (zh-hans)",
                                                 "wp-chinese-converter",
                                             ); ?></span>
@@ -350,12 +356,12 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                                                    $this->options["hanstip"] ??
                                                        "简体",
                                                ); ?>"
-                                               placeholder="<?php _e(
+                                               placeholder="<?php esc_attr_e(
                                                    "简体中文",
                                                    "wp-chinese-converter",
                                                ); ?>"
                                                class="regular-text wpcc-input" style="margin-left: 20px;"
-<?php echo $get_field_attributes("hanstip") .
+<?php echo wp_kses($get_field_attributes("hanstip"), []) .
     ($extended_disabled ? ' disabled="disabled"' : ""); ?> />
                                     </div>
                                     <div style="margin-bottom: 10px;">
@@ -373,14 +379,14 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                                                    )
                                                        ? 'checked="checked"'
                                                        : ""; ?>
-                                                   <?php echo $get_field_attributes(
+                                                   <?php echo wp_kses($get_field_attributes(
                                                        "wpcc_used_langs",
-                                                   ) .
+                                                   ), []) .
                                                        ($extended_disabled
                                                            ? ' disabled="disabled"'
                                                            : ""); ?> />
                                             <span class="wpcc-slider"></span>
-                                            <span class="wpcc-switch-label"><?php _e(
+                                            <span class="wpcc-switch-label"><?php esc_html_e(
                                                 "繁体中文 (zh-hant)",
                                                 "wp-chinese-converter",
                                             ); ?></span>
@@ -390,12 +396,12 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                                                    $this->options["hanttip"] ??
                                                        "繁体",
                                                ); ?>"
-                                               placeholder="<?php _e(
+                                               placeholder="<?php esc_attr_e(
                                                    "繁体中文",
                                                    "wp-chinese-converter",
                                                ); ?>"
                                                class="regular-text wpcc-input" style="margin-left: 20px;"
-<?php echo $get_field_attributes("hanttip") .
+<?php echo wp_kses($get_field_attributes("hanttip"), []) .
     ($extended_disabled ? ' disabled="disabled"' : ""); ?> />
                                     </div>
                                     <div style="margin-bottom: 10px;">
@@ -413,14 +419,14 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                                                    )
                                                        ? 'checked="checked"'
                                                        : ""; ?>
-                                                   <?php echo $get_field_attributes(
+                                                   <?php echo wp_kses($get_field_attributes(
                                                        "wpcc_used_langs",
-                                                   ) .
+                                                   ), []) .
                                                        ($extended_disabled
                                                            ? ' disabled="disabled"'
                                                            : ""); ?> />
                                             <span class="wpcc-slider"></span>
-                                            <span class="wpcc-switch-label"><?php _e(
+                                            <span class="wpcc-switch-label"><?php esc_html_e(
                                                 "马新简体 (zh-sg)",
                                                 "wp-chinese-converter",
                                             ); ?></span>
@@ -430,12 +436,12 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                                                    $this->options["sgtip"] ??
                                                        "马新",
                                                ); ?>"
-                                               placeholder="<?php _e(
+                                               placeholder="<?php esc_attr_e(
                                                    "马新简体",
                                                    "wp-chinese-converter",
                                                ); ?>"
                                                class="regular-text wpcc-input" style="margin-left: 20px;"
-<?php echo $get_field_attributes("sgtip") .
+<?php echo wp_kses($get_field_attributes("sgtip"), []) .
     ($extended_disabled ? ' disabled="disabled"' : ""); ?> />
                                     </div>
                                     <div style="margin-bottom: 10px;" id="zh-jp-option">
@@ -453,18 +459,18 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                                                    )
                                                        ? 'checked="checked"'
                                                        : ""; ?>
-                                                   <?php echo $get_field_attributes(
+                                                   <?php echo wp_kses($get_field_attributes(
                                                        "wpcc_used_langs",
-                                                   ) .
+                                                   ), []) .
                                                        ($extended_disabled
                                                            ? ' disabled="disabled"'
                                                            : ""); ?> />
                                             <span class="wpcc-slider"></span>
-                                            <span class="wpcc-switch-label"><?php _e(
+                                            <span class="wpcc-switch-label"><?php esc_html_e(
                                                 "日式汉字 (zh-jp)",
                                                 "wp-chinese-converter",
                                             ); ?></span>
-                                            <span class="wpcc-engine-note" style="color: #666; font-size: 12px;"><?php _e(
+                                            <span class="wpcc-engine-note" style="color: #666; font-size: 12px;"><?php esc_html_e(
                                                 "(仅 OpenCC 引擎)",
                                                 "wp-chinese-converter",
                                             ); ?></span>
@@ -474,16 +480,16 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                                                    $this->options["jptip"] ??
                                                        "日式",
                                                ); ?>"
-                                               placeholder="<?php _e(
+                                               placeholder="<?php esc_attr_e(
                                                    "日式汉字",
                                                    "wp-chinese-converter",
                                                ); ?>"
                                                class="regular-text wpcc-input" style="margin-left: 20px;"
-<?php echo $get_field_attributes("jptip") .
+<?php echo wp_kses($get_field_attributes("jptip"), []) .
     ($extended_disabled ? ' disabled="disabled"' : ""); ?> />
                                     </div>
                                 </div>
-                                <p class="description"><?php _e(
+                                <p class="description"><?php esc_html_e(
                                     "请至少勾选一种中文语言，否则插件无法正常运行。支持自定义名称，留空为默认值。",
                                     "wp-chinese-converter",
                                 ); ?></p>
@@ -491,11 +497,11 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                         </tr>
                         <tr>
                             <th>
-                                <?php _e(
+                                <?php esc_html_e(
                                     '"不转换"标签',
                                     "wp-chinese-converter",
                                 ); ?>
-                                <a href="https://wpcc.net/document/no-conversion-label" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                                <a href="https://wpcc.net/document/no-conversion-label" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                     "查看详细说明",
                                     "wp-chinese-converter",
                                 ); ?>">↗</a>
@@ -510,10 +516,10 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                                            "请输入显示名（默认值如左）",
                                            "wp-chinese-converter",
                                        ); ?>"
-                                       <?php echo $get_field_attributes(
+                                       <?php echo wp_kses($get_field_attributes(
                                            "nctip",
-                                       ); ?> />
-                                <p class="description"><?php _e(
+                                       ), []); ?> />
+                                <p class="description"><?php esc_html_e(
                                     '自定义小工具中"不转换"链接的显示名称。',
                                     "wp-chinese-converter",
                                 ); ?></p>
@@ -521,8 +527,8 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                         </tr>
                         <tr>
                             <th>
-                                <?php _e("展示形式", "wp-chinese-converter"); ?>
-                                <a href="https://wpcc.net/document/display-format" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                                <?php esc_html_e("展示形式", "wp-chinese-converter"); ?>
+                                <a href="https://wpcc.net/document/display-format" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                     "查看详细说明",
                                     "wp-chinese-converter",
                                 ); ?>">↗</a>
@@ -534,10 +540,10 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                                            <?php echo ($current_display == 1)
                                                ? 'checked="checked"'
                                                : ""; ?>
-                                           <?php echo $get_field_attributes(
+                                           <?php echo wp_kses($get_field_attributes(
                                                "wpcc_flag_option",
-                                           ); ?> />
-                                    <span class="wpcc-radio-label"><?php _e(
+                                           ), []); ?> />
+                                    <span class="wpcc-radio-label"><?php esc_html_e(
                                         "平铺",
                                         "wp-chinese-converter",
                                     ); ?></span>
@@ -547,15 +553,15 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                                            <?php echo ($current_display == 0)
                                                ? 'checked="checked"'
                                                : ""; ?>
-                                           <?php echo $get_field_attributes(
+                                           <?php echo wp_kses($get_field_attributes(
                                                "wpcc_flag_option",
-                                           ); ?> />
-                                    <span class="wpcc-radio-label"><?php _e(
+                                           ), []); ?> />
+                                    <span class="wpcc-radio-label"><?php esc_html_e(
                                         "下拉列表",
                                         "wp-chinese-converter",
                                     ); ?></span>
                                 </label>
-                                <p class="description"><?php _e(
+                                <p class="description"><?php esc_html_e(
                                     "选择语言切换按钮的展现方式。",
                                     "wp-chinese-converter",
                                 ); ?></p>
@@ -563,11 +569,11 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                         </tr>
                         <tr>
                             <th>
-                                <?php _e(
+                                <?php esc_html_e(
                                     "显示更多语言",
                                     "wp-chinese-converter",
                                 ); ?>
-                                <a href="https://wpcc.net/document/more-language-links" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                                <a href="https://wpcc.net/document/more-language-links" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                     "查看详细说明",
                                     "wp-chinese-converter",
                                 ); ?>">↗</a>
@@ -591,17 +597,17 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                                                    : 0,
                                                1,
                                            ); ?>
-                                           <?php echo $get_field_attributes(
+                                           <?php echo wp_kses($get_field_attributes(
                                                "wpcc_show_more_langs",
-                                           ); ?> />
+                                           ), []); ?> />
                                     <span class="wpcc-slider"></span>
-                                    <span class="wpcc-switch-label"><?php _e(
+                                    <span class="wpcc-switch-label"><?php esc_html_e(
                                         "启用扩展语言模块",
                                         "wp-chinese-converter",
                                     ); ?></span>
                                 </label>
                                 <p class="description">
-                                    <?php _e(
+                                    <?php esc_html_e(
                                         "启用后将显示更多中文语言变体选项，包括 zh-hans、zh-hant、zh-sg、zh-jp 等。",
                                         "wp-chinese-converter",
                                     ); ?>
@@ -610,7 +616,7 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                         </tr>
                 </table>
 
-                <h3><?php _e(
+                <h3><?php esc_html_e(
                     "转换引擎和核心功能",
                     "wp-chinese-converter",
                 ); ?></h3>
@@ -620,21 +626,21 @@ $get_network_notice = function ($section_options) use ($is_network_controlled) {
                     "wpcc_engine",
                     "wpcc_use_fullpage_conversion",
                 ];
-                echo $get_network_notice($engine_section_options);
+                echo wp_kses_post($get_network_notice($engine_section_options));
                 ?>
                 <table class="form-table">
                         <tr>
                             <th>
-                                <?php _e("转换引擎", "wp-chinese-converter"); ?>
-                                <a href="https://wpcc.net/document/conversion-engine" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                                <?php esc_html_e("转换引擎", "wp-chinese-converter"); ?>
+                                <a href="https://wpcc.net/document/conversion-engine" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                     "查看详细说明",
                                     "wp-chinese-converter",
                                 ); ?>">↗</a>
                             </th>
                             <td>
-                                <select name="wpcc_engine" class="wpcc-select" <?php echo $get_field_attributes(
+                                <select name="wpcc_engine" class="wpcc-select" <?php echo wp_kses($get_field_attributes(
                                     "wpcc_engine",
-                                ); ?>>
+                                ), []); ?>>
                                     <?php
                                     $available_engines = WPCC_Converter_Factory::get_available_engines();
                                     $current_engine =
@@ -683,23 +689,23 @@ $engine_key
                         </tr>
                         <tr>
                             <th>
-                                <?php _e("搜索转换", "wp-chinese-converter"); ?>
-                                <a href="https://wpcc.net/document/search-conversion" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                                <?php esc_html_e("搜索转换", "wp-chinese-converter"); ?>
+                                <a href="https://wpcc.net/document/search-conversion" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                     "查看详细说明",
                                     "wp-chinese-converter",
                                 ); ?>">↗</a>
                             </th>
                             <td>
-                                <select name="wpcc_search_conversion" class="wpcc-select" <?php echo $get_field_attributes(
+                                <select name="wpcc_search_conversion" class="wpcc-select" <?php echo wp_kses($get_field_attributes(
                                     "wpcc_search_conversion",
-                                ); ?>>
+                                ), []); ?>>
                                     <option value="2" <?php echo ($this
                                         ->options["wpcc_search_conversion"] ??
                                         1) ==
                                     2
                                         ? 'selected="selected"'
                                         : ""; ?>>
-                                        <?php echo __(
+                                        <?php esc_html_e(
                                             "开启",
                                             "wp-chinese-converter",
                                         ); ?>
@@ -713,7 +719,7 @@ $engine_key
                                         1
                                         ? 'selected="selected"'
                                         : ""; ?>>
-                                        <?php echo __(
+                                        <?php esc_html_e(
                                             "关闭",
                                             "wp-chinese-converter",
                                         ); ?>
@@ -724,14 +730,14 @@ $engine_key
                                     1
                                         ? 'selected="selected"'
                                         : ""; ?>>
-                                        <?php echo __(
+                                        <?php esc_html_e(
                                             '仅语言非"不转换"时开启（默认）',
                                             "wp-chinese-converter",
                                         ); ?>
                                     </option>
                                 </select>
 
-                                <p class="description"><?php _e(
+                                <p class="description"><?php esc_html_e(
                                     "此功能将增加搜索时数据库负担，低配服务器建议关闭。",
                                     "wp-chinese-converter",
                                 ); ?></p>
@@ -739,11 +745,11 @@ $engine_key
                         </tr>
                         <tr>
                             <th>
-                                <?php _e(
+                                <?php esc_html_e(
                                     "全页面转换",
                                     "wp-chinese-converter",
                                 ); ?>
-                                <a href="https://wpcc.net/document/fullpage-conversion" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                                <a href="https://wpcc.net/document/fullpage-conversion" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                     "查看详细说明",
                                     "wp-chinese-converter",
                                 ); ?>">↗</a>
@@ -761,17 +767,17 @@ $engine_key
                                                ] ?? 1,
                                                1,
                                            ); ?>
-                                           <?php echo $get_field_attributes(
+                                           <?php echo wp_kses($get_field_attributes(
                                                "wpcc_use_fullpage_conversion",
-                                           ); ?> />
+                                           ), []); ?> />
                                     <span class="wpcc-slider"></span>
-                                    <span class="wpcc-switch-label"><?php _e(
+                                    <span class="wpcc-switch-label"><?php esc_html_e(
                                         "启用全页面转换",
                                         "wp-chinese-converter",
                                     ); ?></span>
                                 </label>
                                 <p class="description">
-                                    <?php _e(
+                                    <?php esc_html_e(
                                         "如果遇到异常（包括中文转换错误，HTML页面错误或PHP错误等），请关闭此选项。",
                                         "wp-chinese-converter",
                                     ); ?>
@@ -780,17 +786,17 @@ $engine_key
                         </tr>
                 </table>
 
-                <h3><?php _e("编辑器增强", "wp-chinese-converter"); ?></h3>
+                <h3><?php esc_html_e("编辑器增强", "wp-chinese-converter"); ?></h3>
                 <?php
                 // 编辑器增强部分没有网络控制的选项
                 $editor_section_options = [];
-                echo $get_network_notice($editor_section_options);
+                echo wp_kses_post($get_network_notice($editor_section_options));
                 ?>
                 <table class="form-table">
                         <tr>
                             <th>
-                                <?php _e("快速标签", "wp-chinese-converter"); ?>
-                                <a href="https://wpcc.net/document/quicktags-feature" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                                <?php esc_html_e("快速标签", "wp-chinese-converter"); ?>
+                                <a href="https://wpcc.net/document/quicktags-feature" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                     "查看详细说明",
                                     "wp-chinese-converter",
                                 ); ?>">↗</a>
@@ -812,7 +818,7 @@ $engine_key
                                            ); ?>
                                            />
                                     <span class="wpcc-slider"></span>
-                                    <span class="wpcc-switch-label"><?php _e(
+                                    <span class="wpcc-switch-label"><?php esc_html_e(
                                         "启用编辑器快速标签",
                                         "wp-chinese-converter",
                                     ); ?></span>
@@ -823,11 +829,11 @@ $engine_key
                         </tr>
                         <tr>
                             <th>
-                                <?php _e(
+                                <?php esc_html_e(
                                     "发表时转换",
                                     "wp-chinese-converter",
                                 ); ?>
-                                <a href="https://wpcc.net/document/post-conversion-feature" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                                <a href="https://wpcc.net/document/post-conversion-feature" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                     "查看详细说明",
                                     "wp-chinese-converter",
                                 ); ?>">↗</a>
@@ -842,7 +848,7 @@ $disabled_class = $post_conv_disabled ? "wpcc-disabled" : "";
 // 定义调试用变量，避免未定义警告
 $is_post_conversion_controlled = $post_conv_disabled;
 ?>
-                                <label class="wpcc-switch <?php echo $disabled_class; ?>" <?php echo $post_conv_disabled ? 'aria-disabled="true"' : ''; ?>>
+                                <label class="wpcc-switch <?php echo esc_attr( $disabled_class ); ?>" <?php echo $post_conv_disabled ? 'aria-disabled="true"' : ''; ?>>
                                     <input type="checkbox" name="wpcc_enable_post_conversion"
                                            <?php checked(
                                                isset(
@@ -856,10 +862,10 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                                    : 0,
                                                1,
                                            ); ?>
-<?php echo $get_field_attributes("wpcc_enable_post_conversion") .
+<?php echo wp_kses($get_field_attributes("wpcc_enable_post_conversion"), []) .
     ($post_conv_disabled ? ' disabled="disabled"' : ""); ?> />
                                     <span class="wpcc-slider"></span>
-                                    <span class="wpcc-switch-label"><?php _e(
+                                    <span class="wpcc-switch-label"><?php esc_html_e(
                                         "启用发表时自动转换",
                                         "wp-chinese-converter",
                                     ); ?></span>
@@ -879,13 +885,13 @@ $is_post_conversion_controlled = $post_conv_disabled;
     : "display: none;"; ?>" id="post-conversion-options" class="<?php echo $post_conv_disabled
     ? "wpcc-disabled"
     : ""; ?>" <?php echo $post_conv_disabled ? 'aria-disabled="true"' : ''; ?>>
-                                    <label for="wpcc_post_conversion_target"><?php _e(
+                                    <label for="wpcc_post_conversion_target"><?php esc_html_e(
                                         "转换目标语言:",
                                         "wp-chinese-converter",
                                     ); ?></label>
-<select name="wpcc_post_conversion_target" id="wpcc_post_conversion_target" class="wpcc-select" style="margin-left: 10px;" <?php echo $get_field_attributes(
+<select name="wpcc_post_conversion_target" id="wpcc_post_conversion_target" class="wpcc-select" style="margin-left: 10px;" <?php echo wp_kses($get_field_attributes(
     "wpcc_post_conversion_target",
-) . ($post_conv_disabled ? ' disabled="disabled" aria-disabled="true"' : ""); ?>>
+), []) . ($post_conv_disabled ? ' disabled="disabled" aria-disabled="true"' : ""); ?>>
                                         <?php
                                         $enabled_langs =
                                             $this->options["wpcc_used_langs"] ??
@@ -944,17 +950,14 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                             ) {
                                                 $lang =
                                                     $lang_options[$lang_code];
-                                                $selected = selected(
-                                                    $current_target,
-                                                    $lang_code,
-                                                    false,
-                                                );
-                                                echo "<option value=\"{$lang_code}\" {$selected}>{$lang["name"]} ({$lang_code})</option>";
+                                                echo '<option value="' . esc_attr( $lang_code ) . '"';
+                                                selected( $current_target, $lang_code );
+                                                echo '>' . esc_html( $lang["name"] ) . ' (' . esc_html( $lang_code ) . ')</option>';
                                             }
                                         }
                                         if (empty($enabled_langs)) {
                                             echo '<option value="">' .
-                                                __(
+                                                esc_html__(
                                                     "请先启用语言模块",
                                                     "wp-chinese-converter",
                                                 ) .
@@ -964,7 +967,7 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                     </select>
                                 </div>
                                 <p class="description">
-                                    <?php _e(
+                                    <?php esc_html_e(
                                         "启用后，发表文章时会自动将标题和内容转换为指定的中文语言版本，并在编辑页面添加转换控制面板。",
                                         "wp-chinese-converter",
                                     ); ?>
@@ -973,7 +976,7 @@ $is_post_conversion_controlled = $post_conv_disabled;
                         </tr>
                 </table>
 
-                <h3><?php _e(
+                <h3><?php esc_html_e(
                     "URL 和站点地图设置",
                     "wp-chinese-converter",
                 ); ?></h3>
@@ -983,13 +986,13 @@ $is_post_conversion_controlled = $post_conv_disabled;
                     "wpcco_sitemap_post_type",
                     "wpcco_use_sitemap",
                 ];
-                echo $get_network_notice($url_sitemap_section_options);
+                echo wp_kses_post($get_network_notice($url_sitemap_section_options));
                 ?>
                 <table class="form-table">
                         <tr>
                             <th>
-                                <?php _e("链接格式", "wp-chinese-converter"); ?>
-                                <a href="https://wpcc.net/document/permalink-format" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                                <?php esc_html_e("链接格式", "wp-chinese-converter"); ?>
+                                <a href="https://wpcc.net/document/permalink-format" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                     "查看详细说明",
                                     "wp-chinese-converter",
                                 ); ?>">↗</a>
@@ -997,7 +1000,7 @@ $is_post_conversion_controlled = $post_conv_disabled;
                             <td>
                                 <?php
                                 global $wp_rewrite;
-                                $site_domain = parse_url(
+                                $site_domain = wp_parse_url(
                                     home_url(),
                                     PHP_URL_HOST,
                                 );
@@ -1011,14 +1014,14 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                            0
                                                ? 'checked="checked"'
                                                : ""; ?>
-                                           <?php echo $get_field_attributes(
+                                           <?php echo wp_kses($get_field_attributes(
                                                "wpcc_use_permalink",
-                                           ); ?> />
-                                    <code><?php echo home_url() .
+                                           ), []); ?> />
+                                    <code><?php echo esc_html( home_url() .
                                         (empty($wp_rewrite->permalink_structure)
                                             ? "/?p=123&variant=zh-tw"
                                             : $wp_rewrite->permalink_structure .
-                                                "?variant=zh-tw"); ?></code>
+                                                "?variant=zh-tw") ); ?></code>
                                     (默认)
                                 </label><br>
                                 <label class="wpcc-radio">
@@ -1035,10 +1038,10 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                            1
                                                ? 'checked="checked"'
                                                : ""; ?>
-                                           <?php echo $get_field_attributes(
+                                           <?php echo wp_kses($get_field_attributes(
                                                "wpcc_use_permalink",
-                                           ); ?> />
-                                    <code><?php echo home_url() .
+                                           ), []); ?> />
+                                    <code><?php echo esc_html( home_url() .
                                         user_trailingslashit(
                                             trailingslashit(
                                                 $wp_rewrite->permalink_structure,
@@ -1046,7 +1049,7 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                         ) .
                                         (empty($wp_rewrite->permalink_structure)
                                             ? "/"
-                                            : ""); ?></code>
+                                            : "") ); ?></code>
                                 </label><br>
                                 <label class="wpcc-radio">
                                     <input type="radio" name="wpcc_use_permalink" value="2"
@@ -1062,18 +1065,18 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                            2
                                                ? 'checked="checked"'
                                                : ""; ?>
-                                           <?php echo $get_field_attributes(
+                                           <?php echo wp_kses($get_field_attributes(
                                                "wpcc_use_permalink",
-                                           ); ?> />
-                                    <code><?php echo home_url() .
+                                           ), []); ?> />
+                                    <code><?php echo esc_html( home_url() .
                                         "/zh-tw" .
                                         $wp_rewrite->permalink_structure .
                                         (empty($wp_rewrite->permalink_structure)
                                             ? "/"
-                                            : ""); ?></code>
+                                            : "") ); ?></code>
                                 </label>
                                 <p class="description">
-                                    <?php _e(
+                                    <?php esc_html_e(
                                         "注意：此选项影响插件生成的转换页面链接。提示：若未开启固定链接，则只能选第一种默认URL形式。",
                                         "wp-chinese-converter",
                                     ); ?>
@@ -1082,11 +1085,11 @@ $is_post_conversion_controlled = $post_conv_disabled;
                         </tr>
                         <tr>
                             <th>
-                                <?php _e(
+                                <?php esc_html_e(
                                     "地图内容类型",
                                     "wp-chinese-converter",
                                 ); ?>
-                                <a href="https://wpcc.net/document/sitemap-post-types" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                                <a href="https://wpcc.net/document/sitemap-post-types" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                     "查看详细说明",
                                     "wp-chinese-converter",
                                 ); ?>">↗</a>
@@ -1099,15 +1102,15 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                            ] ?? "post,page",
                                        ); ?>"
                                        class="regular-text wpcc-input"
-                                       placeholder="<?php _e(
+                                       placeholder="<?php esc_attr_e(
                                            "默认为:post,page",
                                            "wp-chinese-converter",
                                        ); ?>"
-                                       <?php echo $get_field_attributes(
+                                       <?php echo wp_kses($get_field_attributes(
                                            "wpcco_sitemap_post_type",
-                                       ); ?> />
+                                       ), []); ?> />
                                 <p class="description">
-                                    <?php _e(
+                                    <?php esc_html_e(
                                         "默认为 post 和 page 生成地图，如需添加自定义 post_type 请用逗号分隔。",
                                         "wp-chinese-converter",
                                     ); ?>
@@ -1119,11 +1122,11 @@ $is_post_conversion_controlled = $post_conv_disabled;
                         if (wpcc_mobile_exist("sitemap")): ?>
                         <tr>
                             <th>
-                                <?php _e(
+                                <?php esc_html_e(
                                     "多语言地图",
                                     "wp-chinese-converter",
                                 ); ?>
-                                <a href="https://wpcc.net/document/multilingual-sitemap" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                                <a href="https://wpcc.net/document/multilingual-sitemap" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                     "查看详细说明",
                                     "wp-chinese-converter",
                                 ); ?>">↗</a>
@@ -1147,11 +1150,11 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                                : 0,
                                            1,
                                        ); ?>
-                                       <?php echo $get_field_attributes(
+                                       <?php echo wp_kses($get_field_attributes(
                                            "wpcco_use_sitemap",
-                                       ); ?> />
+                                       ), []); ?> />
                                     <span class="wpcc-slider"></span>
-                                    <span class="wpcc-switch-label"><?php _e(
+                                    <span class="wpcc-switch-label"><?php esc_html_e(
                                         "启用多语言网站地图",
                                         "wp-chinese-converter",
                                     ); ?></span>
@@ -1161,7 +1164,8 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                         $enabled_langs = $this->options['wpcc_used_langs'] ?? array('zh-cn','zh-tw');
                                         $sample_lang = is_array($enabled_langs) && !empty($enabled_langs) ? $enabled_langs[0] : 'zh-cn';
                                         printf(
-                                            __("网站地图访问地址：%s/%s/sitemap.xml/", "wp-chinese-converter"),
+											/* translators: 1: site URL, 2: language code. */
+											esc_html__( '网站地图访问地址：%1$s/%2$s/sitemap.xml/', 'wp-chinese-converter' ),
                                             esc_html(home_url()),
                                             esc_html($sample_lang)
                                         );
@@ -1173,7 +1177,7 @@ $is_post_conversion_controlled = $post_conv_disabled;
                         ?>
                 </table>
 
-                <h3><?php _e("智能检测功能", "wp-chinese-converter"); ?></h3>
+                <h3><?php esc_html_e("智能检测功能", "wp-chinese-converter"); ?></h3>
                 <?php
                 $detection_section_options = [
                     "wpcc_browser_redirect",
@@ -1181,31 +1185,31 @@ $is_post_conversion_controlled = $post_conv_disabled;
                     "wpcc_use_cookie_variant",
                     "wpcc_first_visit_default",
                 ];
-                echo $get_network_notice($detection_section_options);
+                echo wp_kses_post($get_network_notice($detection_section_options));
                 ?>
                 <table class="form-table">
                         <tr>
                             <th>
-                                <?php _e(
+                                <?php esc_html_e(
                                     "默认语言",
                                     "wp-chinese-converter",
                                 ); ?>
-                                <a href="https://wpcc.net/document/browser-language-detection" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                                <a href="https://wpcc.net/document/browser-language-detection" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                     "查看详细说明",
                                     "wp-chinese-converter",
                                 ); ?>">↗</a>
                             </th>
                             <td>
-                                <select name="wpcc_browser_redirect" class="wpcc-select" <?php echo $get_field_attributes(
+                                <select name="wpcc_browser_redirect" class="wpcc-select" <?php echo wp_kses($get_field_attributes(
                                     "wpcc_browser_redirect",
-                                ); ?>>
+                                ), []); ?>>
                                     <option value="2" <?php echo ($this
                                         ->options["wpcc_browser_redirect"] ??
                                         0) ==
                                     2
                                         ? 'selected="selected"'
                                         : ""; ?>>
-                                        <?php _e(
+                                        <?php esc_html_e(
                                             "显示为对应繁简版本",
                                             "wp-chinese-converter",
                                         ); ?>
@@ -1216,7 +1220,7 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                     1
                                         ? 'selected="selected"'
                                         : ""; ?>>
-                                        <?php _e(
+                                        <?php esc_html_e(
                                             "跳转至对应繁简页面",
                                             "wp-chinese-converter",
                                         ); ?>
@@ -1227,7 +1231,7 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                     0
                                         ? 'selected="selected"'
                                         : ""; ?>>
-                                        <?php _e(
+                                        <?php esc_html_e(
                                             "关闭（默认值）",
                                             "wp-chinese-converter",
                                         ); ?>
@@ -1238,9 +1242,9 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                         <input type="checkbox" name="wpcc_first_visit_default" value="1" <?php checked(
                                             $this->options["wpcc_first_visit_default"] ?? 0,
                                             1
-                                        ); ?> <?php echo $get_field_attributes("wpcc_first_visit_default"); ?> />
+                                        ); ?> <?php echo wp_kses($get_field_attributes("wpcc_first_visit_default"), []); ?> />
                                         <span class="wpcc-slider"></span>
-                                        <span class="wpcc-switch-label"><?php _e("首次访问不转换（保持站点默认语言）", "wp-chinese-converter"); ?></span>
+                                        <span class="wpcc-switch-label"><?php esc_html_e("首次访问不转换（保持站点默认语言）", "wp-chinese-converter"); ?></span>
                                     </label>
                                 </div>
                                 <div class="browser-redirect-dependent <?php echo $is_network_controlled('wpcc_browser_redirect') || $is_network_controlled('wpcc_auto_language_recong') ? 'wpcc-network-controlled' : ''; ?>" style="margin-top: 10px; <?php echo (($this->options['wpcc_browser_redirect'] ?? 0) == 0) ? 'display: none;' : ''; ?>">
@@ -1257,18 +1261,18 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                                1
                                                    ? 'checked="checked"'
                                                    : ""; ?>
-                                               <?php echo $get_field_attributes(
+                                               <?php echo wp_kses($get_field_attributes(
                                                    "wpcc_auto_language_recong",
-                                               ); ?> />
+                                               ), []); ?> />
                                         <span class="wpcc-slider"></span>
-                                        <span class="wpcc-switch-label"><?php _e(
+                                        <span class="wpcc-switch-label"><?php esc_html_e(
                                             "允许不同语系内通用",
                                             "wp-chinese-converter",
                                         ); ?></span>
                                     </label>
                                 </div>
                                 <p class="description">
-                                    <strong><?php _e(
+                                    <strong><?php esc_html_e(
                                         "注意：此项设置不会应用于搜索引擎。",
                                         "wp-chinese-converter",
                                     ); ?></strong>
@@ -1277,26 +1281,26 @@ $is_post_conversion_controlled = $post_conv_disabled;
                         </tr>
                         <tr>
                             <th>
-                                <?php _e(
+                                <?php esc_html_e(
                                     "Cookie偏好",
                                     "wp-chinese-converter",
                                 ); ?>
-                                <a href="https://wpcc.net/document/cookie-language-preference" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                                <a href="https://wpcc.net/document/cookie-language-preference" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                     "查看详细说明",
                                     "wp-chinese-converter",
                                 ); ?>">↗</a>
                             </th>
                             <td>
-                                <select name="wpcc_use_cookie_variant" class="wpcc-select" <?php echo $get_field_attributes(
+                                <select name="wpcc_use_cookie_variant" class="wpcc-select" <?php echo wp_kses($get_field_attributes(
                                     "wpcc_use_cookie_variant",
-                                ); ?>>
+                                ), []); ?>>
                                     <option value="2" <?php echo ($this
                                         ->options["wpcc_use_cookie_variant"] ??
                                         0) ==
                                     2
                                         ? 'selected="selected"'
                                         : ""; ?>>
-                                        <?php _e(
+                                        <?php esc_html_e(
                                             "显示为对应繁简版本",
                                             "wp-chinese-converter",
                                         ); ?>
@@ -1307,7 +1311,7 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                     1
                                         ? 'selected="selected"'
                                         : ""; ?>>
-                                        <?php _e(
+                                        <?php esc_html_e(
                                             "跳转至对应繁简页面",
                                             "wp-chinese-converter",
                                         ); ?>
@@ -1318,14 +1322,14 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                     0
                                         ? 'selected="selected"'
                                         : ""; ?>>
-                                        <?php _e(
+                                        <?php esc_html_e(
                                             "关闭（默认值）",
                                             "wp-chinese-converter",
                                         ); ?>
                                     </option>
                                 </select>
                                 <p class="description">
-                                    <?php _e(
+                                    <?php esc_html_e(
                                         "记住用户的语言选择偏好，下次访问时自动应用。",
                                         "wp-chinese-converter",
                                     ); ?>
@@ -1334,40 +1338,40 @@ $is_post_conversion_controlled = $post_conv_disabled;
                         </tr>
                 </table>
 
-                <h3><?php _e("内容过滤设置", "wp-chinese-converter"); ?></h3>
+                <h3><?php esc_html_e("内容过滤设置", "wp-chinese-converter"); ?></h3>
                 <?php
                 $filter_section_options = [
                     "wpcc_no_conversion_tag",
                     "wpcc_no_conversion_ja",
                 ];
-                echo $get_network_notice($filter_section_options);
+                echo wp_kses_post($get_network_notice($filter_section_options));
                 ?>
                 <table class="form-table">
                         <tr>
                             <th>
-                                <?php _e("标签排除", "wp-chinese-converter"); ?>
-                                <a href="https://wpcc.net/document/html-tag-exclusion" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                                <?php esc_html_e("标签排除", "wp-chinese-converter"); ?>
+                                <a href="https://wpcc.net/document/html-tag-exclusion" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                     "查看详细说明",
                                     "wp-chinese-converter",
                                 ); ?>">↗</a>
                             </th>
                             <td>
                                 <textarea name="wpcc_no_conversion_tag" class="large-text wpcc-textarea" rows="3"
-                                          placeholder="<?php _e(
+                                          placeholder="<?php esc_attr_e(
                                               "推荐默认值: pre,code,pre.wp-block-code,pre.wp-block-preformatted",
                                               "wp-chinese-converter",
                                           ); ?>"
-                                          <?php echo $get_field_attributes(
+                                          <?php echo wp_kses($get_field_attributes(
                                               "wpcc_no_conversion_tag",
-                                          ); ?>><?php echo esc_textarea(
+                                          ), []); ?>><?php echo esc_textarea(
     $this->options["wpcc_no_conversion_tag"] ??
         "pre,code,pre.wp-block-code,pre.wp-block-preformatted",
 ); ?></textarea>
                                 <p class="description">
-                                    <?php _e(
+                                    <?php esc_html_e(
                                         "这里输入的HTML标签或选择器内内容将不进行中文繁简转换，推荐设置",
                                         "wp-chinese-converter",
-                                    ); ?> <code>pre,code,pre.wp-block-code,pre.wp-block-preformatted</code> <?php _e(
+                                    ); ?> <code>pre,code,pre.wp-block-code,pre.wp-block-preformatted</code> <?php esc_html_e(
      "来排除区块编辑器的代码块与预格式化内容。",
      "wp-chinese-converter",
  ); ?>
@@ -1376,11 +1380,11 @@ $is_post_conversion_controlled = $post_conv_disabled;
                         </tr>
                         <tr>
                             <th>
-                                <?php _e(
+                                <?php esc_html_e(
                                     "日语内容排除",
                                     "wp-chinese-converter",
                                 ); ?>
-                                <a href="https://wpcc.net/document/japanese-content-exclusion" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                                <a href="https://wpcc.net/document/japanese-content-exclusion" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                     "查看详细说明",
                                     "wp-chinese-converter",
                                 ); ?>">↗</a>
@@ -1404,15 +1408,15 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                                    : 0,
                                                1,
                                            ); ?>
-                                           <?php echo $get_field_attributes("wpcc_no_conversion_ja"); ?> />
+                                           <?php echo wp_kses($get_field_attributes("wpcc_no_conversion_ja"), []); ?> />
                                     <span class="wpcc-slider"></span>
-                                    <span class="wpcc-switch-label"><?php _e(
+                                    <span class="wpcc-switch-label"><?php esc_html_e(
                                         "排除日语内容转换",
                                         "wp-chinese-converter",
                                     ); ?></span>
                                 </label>
                                 <p class="description">
-                                    <?php _e(
+                                    <?php esc_html_e(
                                         '启用后，标记为日语（lang="ja"）的内容将不进行中文繁简转换，避免日语汉字被错误转换。',
                                         "wp-chinese-converter",
                                     ); ?>
@@ -1421,7 +1425,7 @@ $is_post_conversion_controlled = $post_conv_disabled;
                         </tr>
                 </table>
 
-                <h3><?php _e("SEO 优化功能", "wp-chinese-converter"); ?></h3>
+                <h3><?php esc_html_e("SEO 优化功能", "wp-chinese-converter"); ?></h3>
                 <?php
                 $seo_section_options = [
                     "wpcc_enable_hreflang_tags",
@@ -1430,16 +1434,16 @@ $is_post_conversion_controlled = $post_conv_disabled;
                     "wpcc_enable_schema_conversion",
                     "wpcc_enable_meta_conversion",
                 ];
-                echo $get_network_notice($seo_section_options);
+                echo wp_kses_post($get_network_notice($seo_section_options));
                 ?>
                 <table class="form-table">
                         <tr>
                             <th>
-                                <?php _e(
+                                <?php esc_html_e(
                                     "hreflang 标签",
                                     "wp-chinese-converter",
                                 ); ?>
-                                <a href="https://wpcc.net/document/hreflang-tags" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                                <a href="https://wpcc.net/document/hreflang-tags" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                     "查看详细说明",
                                     "wp-chinese-converter",
                                 ); ?>">↗</a>
@@ -1463,17 +1467,17 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                                    : 1,
                                                1,
                                            ); ?>
-                                           <?php echo $get_field_attributes(
+                                           <?php echo wp_kses($get_field_attributes(
                                                "wpcc_enable_hreflang_tags",
-                                           ); ?> />
+                                           ), []); ?> />
                                     <span class="wpcc-slider"></span>
-                                    <span class="wpcc-switch-label"><?php _e(
+                                    <span class="wpcc-switch-label"><?php esc_html_e(
                                         "启用 hreflang 标签生成",
                                         "wp-chinese-converter",
                                     ); ?></span>
                                 </label>
                                 <p class="description">
-                                    <?php _e(
+                                    <?php esc_html_e(
                                         "自动为每个语言版本生成 hreflang 标签，提升多语言 SEO 效果。",
                                         "wp-chinese-converter",
                                     ); ?>
@@ -1482,31 +1486,31 @@ $is_post_conversion_controlled = $post_conv_disabled;
                         </tr>
                         <tr>
                             <th>
-                                <?php _e("x-default 标签", "wp-chinese-converter"); ?>
+                                <?php esc_html_e("x-default 标签", "wp-chinese-converter"); ?>
                             </th>
                             <td>
                                 <label class="wpcc-switch <?php echo $is_network_controlled('wpcc_enable_hreflang_x_default') ? 'wpcc-disabled' : ''; ?>">
                                     <input type="checkbox" name="wpcc_enable_hreflang_x_default"
                                            <?php checked(isset($this->options['wpcc_enable_hreflang_x_default']) ? $this->options['wpcc_enable_hreflang_x_default'] : 1, 1); ?>
-                                           <?php echo $get_field_attributes('wpcc_enable_hreflang_x_default'); ?> />
+                                           <?php echo wp_kses($get_field_attributes('wpcc_enable_hreflang_x_default'), []); ?> />
                                     <span class="wpcc-slider"></span>
-                                    <span class="wpcc-switch-label"><?php _e('启用 x-default hreflang 标签', 'wp-chinese-converter'); ?></span>
+                                    <span class="wpcc-switch-label"><?php esc_html_e('启用 x-default hreflang 标签', 'wp-chinese-converter'); ?></span>
                                 </label>
-                                <p class="description"><?php _e('关闭后将不输出 x-default hreflang 标签。', 'wp-chinese-converter'); ?></p>
+                                <p class="description"><?php esc_html_e('关闭后将不输出 x-default hreflang 标签。', 'wp-chinese-converter'); ?></p>
                             </td>
                         </tr>
                         <tr id="wpcc-site-x-default-options" style="<?php echo (isset($this->options['wpcc_enable_hreflang_x_default']) ? (int)$this->options['wpcc_enable_hreflang_x_default'] : 1) ? '' : 'display:none;'; ?>">
                             <th>
-                                <?php _e("默认语言", "wp-chinese-converter"); ?>
-                                <a href="https://wpcc.net/document/default-language" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                                <?php esc_html_e("默认语言", "wp-chinese-converter"); ?>
+                                <a href="https://wpcc.net/document/default-language" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                     "查看详细说明",
                                     "wp-chinese-converter",
                                 ); ?>">↗</a>
                             </th>
                             <td>
-                                <select name="wpcc_hreflang_x_default" id="wpcc_hreflang_x_default" class="wpcc-select" <?php echo $get_field_attributes(
+                                <select name="wpcc_hreflang_x_default" id="wpcc_hreflang_x_default" class="wpcc-select" <?php echo wp_kses($get_field_attributes(
                                     "wpcc_hreflang_x_default",
-                                ); ?>>
+                                ), []); ?>>
                                     <?php
                                     $all_languages = [
                                         "zh-cn" => "简体中文 (zh-cn)",
@@ -1537,7 +1541,7 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                     ?>
                                 </select>
                                 <p class="description">
-                                    <?php _e(
+                                    <?php esc_html_e(
                                         "设置 x-default hreflang 标签指向的默认语言版本。",
                                         "wp-chinese-converter",
                                     ); ?>
@@ -1546,11 +1550,11 @@ $is_post_conversion_controlled = $post_conv_disabled;
                         </tr>
                         <tr>
                             <th>
-                                <?php _e(
+                                <?php esc_html_e(
                                     "Schema 数据",
                                     "wp-chinese-converter",
                                 ); ?>
-                                <a href="https://wpcc.net/document/schema-conversion" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                                <a href="https://wpcc.net/document/schema-conversion" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                     "查看详细说明",
                                     "wp-chinese-converter",
                                 ); ?>">↗</a>
@@ -1574,17 +1578,17 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                                    : 1,
                                                1,
                                            ); ?>
-                                           <?php echo $get_field_attributes(
+                                           <?php echo wp_kses($get_field_attributes(
                                                "wpcc_enable_schema_conversion",
-                                           ); ?> />
+                                           ), []); ?> />
                                     <span class="wpcc-slider"></span>
-                                    <span class="wpcc-switch-label"><?php _e(
+                                    <span class="wpcc-switch-label"><?php esc_html_e(
                                         "启用 Schema 结构化数据转换",
                                         "wp-chinese-converter",
                                     ); ?></span>
                                 </label>
                                 <p class="description">
-                                    <?php _e(
+                                    <?php esc_html_e(
                                         "自动转换 JSON-LD 结构化数据中的文本内容，支持 Article、Product、Organization 等类型。",
                                         "wp-chinese-converter",
                                     ); ?>
@@ -1593,11 +1597,11 @@ $is_post_conversion_controlled = $post_conv_disabled;
                         </tr>
                         <tr>
                             <th>
-                                <?php _e(
+                                <?php esc_html_e(
                                     "元数据转换",
                                     "wp-chinese-converter",
                                 ); ?>
-                                <a href="https://wpcc.net/document/meta-conversion" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                                <a href="https://wpcc.net/document/meta-conversion" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                     "查看详细说明",
                                     "wp-chinese-converter",
                                 ); ?>">↗</a>
@@ -1621,17 +1625,17 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                                    : 1,
                                                1,
                                            ); ?>
-                                           <?php echo $get_field_attributes(
+                                           <?php echo wp_kses($get_field_attributes(
                                                "wpcc_enable_meta_conversion",
-                                           ); ?> />
+                                           ), []); ?> />
                                     <span class="wpcc-slider"></span>
-                                    <span class="wpcc-switch-label"><?php _e(
+                                    <span class="wpcc-switch-label"><?php esc_html_e(
                                         "启用 SEO 元数据转换",
                                         "wp-chinese-converter",
                                     ); ?></span>
                                 </label>
                                 <p class="description">
-                                    <?php _e(
+                                    <?php esc_html_e(
                                         "转换页面标题、描述、Open Graph 和 Twitter Card 等元数据。",
                                         "wp-chinese-converter",
                                     ); ?>
@@ -1640,16 +1644,16 @@ $is_post_conversion_controlled = $post_conv_disabled;
                         </tr>
                 </table>
 
-                <h3><?php _e("缓存和兼容性", "wp-chinese-converter"); ?></h3>
+                <h3><?php esc_html_e("缓存和兼容性", "wp-chinese-converter"); ?></h3>
                 <?php
                 $cache_section_options = ["wpcc_enable_cache_addon"];
-                echo $get_network_notice($cache_section_options);
+                echo wp_kses_post($get_network_notice($cache_section_options));
                 ?>
                 <table class="form-table">
                         <tr>
                             <th>
-                                <?php _e("缓存兼容", "wp-chinese-converter"); ?>
-                                <a href="https://wpcc.net/document/cache-compatibility" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                                <?php esc_html_e("缓存兼容", "wp-chinese-converter"); ?>
+                                <a href="https://wpcc.net/document/cache-compatibility" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                     "查看详细说明",
                                     "wp-chinese-converter",
                                 ); ?>">↗</a>
@@ -1673,17 +1677,17 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                                    : 1,
                                                1,
                                            ); ?>
-                                           <?php echo $get_field_attributes(
+                                           <?php echo wp_kses($get_field_attributes(
                                                "wpcc_enable_cache_addon",
-                                           ); ?> />
+                                           ), []); ?> />
                                     <span class="wpcc-slider"></span>
-                                    <span class="wpcc-switch-label"><?php _e(
+                                    <span class="wpcc-switch-label"><?php esc_html_e(
                                         "启用缓存插件兼容",
                                         "wp-chinese-converter",
                                     ); ?></span>
                                 </label>
                                 <p class="description">
-                                    <?php _e(
+                                    <?php esc_html_e(
                                         "支持 WP Super Cache、WP Rocket、LiteSpeed Cache、W3 Total Cache 等流行的缓存插件。",
                                         "wp-chinese-converter",
                                     ); ?>
@@ -1695,7 +1699,7 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                     if (!empty($cache_status)) {
                                         echo '<div style="margin-top: 10px; padding: 10px; background: #f0f8ff; border-left: 4px solid #0073aa;">';
                                         echo "<strong>" .
-                                            __(
+                                            esc_html__(
                                                 "检测到的缓存插件:",
                                                 "wp-chinese-converter",
                                             ) .
@@ -1749,7 +1753,7 @@ $is_post_conversion_controlled = $post_conv_disabled;
                             "确定要将所有设置重置为默认吗？此操作将覆盖当前配置。",
                             "wp-chinese-converter",
                         ),
-                    ); ?>');"><?php _e(
+                    ); ?>');"><?php esc_html_e(
     "重置选项",
     "wp-chinese-converter",
 ); ?></button>
@@ -1762,8 +1766,8 @@ $is_post_conversion_controlled = $post_conv_disabled;
         "tools"
             ? "display: none;"
             : ""; ?>">
-            <h2><?php _e("工具维护", "wp-chinese-converter"); ?></h2>
-            <p class="wpcc-section-desc"><?php _e(
+            <h2><?php esc_html_e("工具维护", "wp-chinese-converter"); ?></h2>
+            <p class="wpcc-section-desc"><?php esc_html_e(
                 "插件管理和维护工具。",
                 "wp-chinese-converter",
             ); ?></p>
@@ -1780,22 +1784,22 @@ $is_post_conversion_controlled = $post_conv_disabled;
                 }
             }
             if ($has_controlled_tools) {
-                echo $get_network_notice($tools_section_options);
+                echo wp_kses_post($get_network_notice($tools_section_options));
             }
             ?>
 
-            <h3><?php _e(
+            <h3><?php esc_html_e(
                 "缓存兼容性和插件管理",
                 "wp-chinese-converter",
             ); ?></h3>
             <table class="form-table">
                     <tr>
                         <th>
-                            <?php _e(
+                            <?php esc_html_e(
                                 "Super Cache状态",
                                 "wp-chinese-converter",
                             ); ?>
-                            <a href="https://wpcc.net/document/wp-super-cache-status" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                            <a href="https://wpcc.net/document/wp-super-cache-status" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                 "查看详细说明",
                                 "wp-chinese-converter",
                             ); ?>">↗</a>
@@ -1805,18 +1809,18 @@ $is_post_conversion_controlled = $post_conv_disabled;
                             $cache_status = $this->get_cache_status();
                             if ($cache_status == 0) {
                                 echo '<p style="color: #d63638;">' .
-                                    __(
+                                    esc_html__(
                                         "未使用WP Super Cache插件",
                                         "wp-chinese-converter",
                                     ) .
                                     "</p>";
                             } elseif ($cache_status == 1) {
                                 echo '<p style="color: #dba617;">' .
-                                    __("未安装", "wp-chinese-converter") .
+                                    esc_html__("未安装", "wp-chinese-converter") .
                                     "</p>";
                             } elseif ($cache_status == 2) {
                                 echo '<p style="color: #00a32a;">' .
-                                    __("已安装", "wp-chinese-converter") .
+                                    esc_html__("已安装", "wp-chinese-converter") .
                                     "</p>";
                             }
                             ?>
@@ -1825,13 +1829,14 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                 <div class="wpcc-action-buttons" style="margin-top: 10px;">
                                     <form method="post" style="display: inline;">
                                         <input type="hidden" name="toggle_cache" value="1" />
+                                        <?php wp_nonce_field( "wpcc_toggle_cache", "wpcc_toggle_cache_nonce" ); ?>
                                         <?php if ($cache_status == 1): ?>
-                                            <button type="submit" class="button button-secondary"><?php echo __(
+                                            <button type="submit" class="button button-secondary"><?php esc_html_e(
                                                 "安装兼容",
                                                 "wp-chinese-converter",
                                             ); ?></button>
                                         <?php else: ?>
-                                            <button type="submit" class="button button-secondary"><?php echo __(
+                                            <button type="submit" class="button button-secondary"><?php esc_html_e(
                                                 "卸载兼容",
                                                 "wp-chinese-converter",
                                             ); ?></button>
@@ -1839,7 +1844,7 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                     </form>
                                 </div>
                             <?php endif; ?>
-                            <p class="description"><?php _e(
+                            <p class="description"><?php esc_html_e(
                                 '默认情况下，"识别浏览器中文语言动作"和"Cookie识别用户语言偏好"功能与缓存插件不兼容。',
                                 "wp-chinese-converter",
                             ); ?></p>
@@ -1847,8 +1852,8 @@ $is_post_conversion_controlled = $post_conv_disabled;
                     </tr>
                     <tr>
                         <th>
-                            <?php _e("缓存插件状态", "wp-chinese-converter"); ?>
-                            <a href="https://wpcc.net/document/cache-compatibility" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                            <?php esc_html_e("缓存插件状态", "wp-chinese-converter"); ?>
+                            <a href="https://wpcc.net/document/cache-compatibility" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                 "查看详细说明",
                                 "wp-chinese-converter",
                             ); ?>">↗</a>
@@ -1907,7 +1912,7 @@ $is_post_conversion_controlled = $post_conv_disabled;
                             if (!empty($active_cache_plugins)) {
                                 echo '<div style="margin-bottom: 15px;">';
                                 echo '<strong style="color: #00a32a;">' .
-                                    __(
+                                    esc_html__(
                                         "检测到的活跃缓存插件:",
                                         "wp-chinese-converter",
                                     ) .
@@ -1933,7 +1938,7 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                 }
                             } else {
                                 echo '<p style="color: #666;">' .
-                                    __(
+                                    esc_html__(
                                         "未检测到活跃的缓存插件。",
                                         "wp-chinese-converter",
                                     ) .
@@ -1949,8 +1954,8 @@ $is_post_conversion_controlled = $post_conv_disabled;
                 <table class="form-table">
                     <tr>
                         <th style="color: #d63638;">
-                            <?php _e("插件卸载", "wp-chinese-converter"); ?>
-                            <a href="https://wpcc.net/document/plugin-uninstall" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                            <?php esc_html_e("插件卸载", "wp-chinese-converter"); ?>
+                            <a href="https://wpcc.net/document/plugin-uninstall" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                 "查看详细说明",
                                 "wp-chinese-converter",
                             ); ?>">↗</a>
@@ -1974,7 +1979,7 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                 </div>
                             <?php else: ?>
                                 <p class="description" style="color: #d63638; margin-bottom: 15px;">
-                                    <?php _e(
+                                    <?php esc_html_e(
                                         "这将清除数据库中本插件的所有设置项，提交后请到插件管理中禁用本插件。",
                                         "wp-chinese-converter",
                                     ); ?>
@@ -1982,9 +1987,10 @@ $is_post_conversion_controlled = $post_conv_disabled;
 
                                 <form method="post" action="">
                                     <label class="wpcc-switch">
-                                        <input type="checkbox" name="wpcco_uninstall_nonce" />
+                                        <input type="checkbox" name="wpcco_uninstall_confirm" value="1" />
+                                        <?php wp_nonce_field( "wpcc_uninstall", "wpcc_uninstall_nonce" ); ?>
                                         <span class="wpcc-slider"></span>
-                                        <span class="wpcc-switch-label"><?php _e(
+                                        <span class="wpcc-switch-label"><?php esc_html_e(
                                             "确认卸载 (此操作不可逆)",
                                             "wp-chinese-converter",
                                         ); ?></span>
@@ -1992,10 +1998,10 @@ $is_post_conversion_controlled = $post_conv_disabled;
 
                                     <div style="margin-top: 15px;">
                                         <button type="submit" class="button button-secondary"
-                                               onclick="return confirm('<?php _e(
+                                               onclick="return confirm('<?php echo esc_js(__(
                                                    "确定要卸载插件吗？此操作不可逆！",
                                                    "wp-chinese-converter",
-                                               ); ?>')"><?php _e(
+                                               )); ?>')"><?php esc_html_e(
     "卸载插件",
     "wp-chinese-converter",
 ); ?></button>
@@ -2011,8 +2017,8 @@ $is_post_conversion_controlled = $post_conv_disabled;
                     ): ?>
                     <tr>
                         <th>
-                            <?php _e("网络站点状态", "wp-chinese-converter"); ?>
-                            <a href="https://wpcc.net/document/network-management" target="_blank" class="wpcc-doc-link" title="<?php _e(
+                            <?php esc_html_e("网络站点状态", "wp-chinese-converter"); ?>
+                            <a href="https://wpcc.net/document/network-management" target="_blank" class="wpcc-doc-link" title="<?php esc_attr_e(
                                 "查看详细说明",
                                 "wp-chinese-converter",
                             ); ?>">↗</a>
@@ -2029,7 +2035,7 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                 $stats = $network_module->get_network_statistics();
                                 echo '<div style="margin-bottom: 15px; padding: 10px; background: #f9f9f9; border-left: 4px solid #0073aa;">';
                                 echo "<strong>" .
-                                    __("网络统计:", "wp-chinese-converter") .
+                                    esc_html__("网络统计:", "wp-chinese-converter") .
                                     "</strong><br>";
                                 echo "总站点数: " .
                                     esc_html($stats["total_sites"]) .
@@ -2068,7 +2074,7 @@ $is_post_conversion_controlled = $post_conv_disabled;
                                 echo "</div>";
                             }
                             ?>
-                            <p class="description"><?php _e(
+                            <p class="description"><?php esc_html_e(
                                 "显示网络中所有站点的插件状态和配置信息",
                                 "wp-chinese-converter",
                             ); ?></p>
@@ -2138,33 +2144,33 @@ jQuery(document).ready(function($) {
             // Gutenberg环境下只禁用快速标签功能，保留发表时转换功能
             quicktagsOption.find('.wpcc-switch').addClass('wpcc-disabled');
             quicktagsOption.find('input[type="checkbox"]').prop('disabled', true);
-quicktagsOption.find('.description').html('<?php _e(
+quicktagsOption.find('.description').text('<?php echo esc_js(__(
     "在经典编辑器工具栏中添加\"wpcc_NC\"按钮。区块编辑器可直接用 [wpcc_nc] 简码，示例：[wpcc_nc]文派墨图，文风笔笙[/wpcc_nc]",
     "wp-chinese-converter",
-); ?>');
+)); ?>');
 
             // 发表时转换功能在区块编辑器下保持可用
             postConversionOption.find('.wpcc-switch').removeClass('wpcc-disabled');
             postConversionOption.find('input[type="checkbox"]').prop('disabled', false);
-            postConversionOption.find('.description').html('<?php _e(
+            postConversionOption.find('.description').text('<?php echo esc_js(__(
                 "启用后，在发布或更新文章时自动转换内容。",
                 "wp-chinese-converter",
-            ); ?>');
+            )); ?>');
         } else {
             // 经典编辑器环境下启用所有编辑器增强功能
             quicktagsOption.find('.wpcc-switch').removeClass('wpcc-disabled');
             quicktagsOption.find('input[type="checkbox"]').prop('disabled', false);
-quicktagsOption.find('.description').html('<?php _e(
+quicktagsOption.find('.description').text('<?php echo esc_js(__(
     "在经典编辑器工具栏中添加\"wpcc_NC\"按钮。区块编辑器可直接用 [wpcc_nc] 简码，示例：[wpcc_nc]文派墨图，文风笔笙[/wpcc_nc]",
     "wp-chinese-converter",
-); ?>');
+)); ?>');
 
             postConversionOption.find('.wpcc-switch').removeClass('wpcc-disabled');
             postConversionOption.find('input[type="checkbox"]').prop('disabled', false);
-            postConversionOption.find('.description').html('<?php _e(
+            postConversionOption.find('.description').text('<?php echo esc_js(__(
                 "启用后，在发布或更新文章时自动转换内容。",
                 "wp-chinese-converter",
-            ); ?>');
+            )); ?>');
         }
     }
 

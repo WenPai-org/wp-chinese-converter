@@ -29,9 +29,11 @@ $this->version = '1.5';
         );
 		
 		if ( $this->is_enabled() ) {
-			add_action( 'init', array( $this, 'detect_seo_plugins' ), 5 );
+			// Modules are constructed on init. Register integrations immediately;
+			// adding another init callback at this point can miss the current hook.
+			$this->detect_seo_plugins();
+			$this->setup_seo_integrations();
 			add_action( 'wp_head', array( $this, 'output_hreflang_tags' ), 1 );
-			add_action( 'wp_head', array( $this, 'setup_seo_integrations' ), 2 );
 		}
 	}
 	
@@ -205,7 +207,7 @@ $this->version = '1.5';
 	
 	private function get_current_language() {
 		if ( isset( $_GET['variant'] ) ) {
-			return sanitize_text_field( $_GET['variant'] );
+			return is_string( $_GET['variant'] ) ? sanitize_key( wp_unslash( $_GET['variant'] ) ) : '';
 		}
 		
 		global $wpcc_options;
@@ -309,7 +311,7 @@ $this->version = '1.5';
 		}
 		
 		$permalink_type = intval( $wpcc_options['wpcc_use_permalink'] );
-		$parsed_url = parse_url( $clean_url );
+		$parsed_url = wp_parse_url( $clean_url );
 		$scheme = isset( $parsed_url['scheme'] ) ? $parsed_url['scheme'] : ( is_ssl() ? 'https' : 'http' );
 		$host   = isset( $parsed_url['host'] ) ? $parsed_url['host'] : '';
 		$base   = $scheme . '://' . $host;

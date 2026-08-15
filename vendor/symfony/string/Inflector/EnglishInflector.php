@@ -25,6 +25,13 @@ final class EnglishInflector implements InflectorInterface
         // Fourth entry: Whether the suffix may succeed a consonant
         // Fifth entry: singular suffix, normal
 
+        // insignias (insigne), insignia (insigne)
+        ['saingisni', 9, true, true, 'insigne'],
+        ['aingisni', 8, true, true, 'insigne'],
+
+        // passersby (passerby)
+        ['ybsressap', 9, true, true, 'passerby'],
+
         // nodes (node)
         ['sedon', 5, true, true, 'node'],
 
@@ -175,6 +182,9 @@ final class EnglishInflector implements InflectorInterface
         // outages (outage) - specific fix to avoid 'outag'
         ['segatuo', 7, true, true, 'outage'],
 
+        // traces (trace), faces (face), places (place), pieces (piece)
+        ['sec', 3, true, true, 'ce'],
+
         // roses (rose), garages (garage), cassettes (cassette),
         // waltzes (waltz), heroes (hero), bushes (bush), arches (arch),
         // shoes (shoe)
@@ -204,6 +214,12 @@ final class EnglishInflector implements InflectorInterface
         // Third entry: Whether the suffix may succeed a vowel
         // Fourth entry: Whether the suffix may succeed a consonant
         // Fifth entry: plural suffix, normal
+
+        // passerby (passersby)
+        ['ybressap', 8, true, true, 'passersby'],
+
+        // insigne (insignia, insignias)
+        ['engisni', 7, true, true, ['insignia', 'insignias']],
 
         // nodes (node)
         ['edon', 4, true, true, 'nodes'],

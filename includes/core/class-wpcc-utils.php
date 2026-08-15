@@ -121,19 +121,25 @@ final class WPCC_Utils {
 	 */
 	public static function get_request_language_preference(): ?string {
 		// 从 URL 参数获取
-		$url_lang = $_GET['variant'] ?? null;
+		$url_lang = isset( $_GET['variant'] ) && is_string( $_GET['variant'] )
+			? sanitize_key( wp_unslash( $_GET['variant'] ) )
+			: null;
 		if ( $url_lang && self::is_valid_language_code( $url_lang ) ) {
 			return $url_lang;
 		}
 		
 		// 从 Cookie 获取
-		$cookie_lang = $_COOKIE[ 'wpcc_variant_' . COOKIEHASH ] ?? null;
+		$cookie_lang = isset( $_COOKIE[ 'wpcc_variant_' . COOKIEHASH ] ) && is_string( $_COOKIE[ 'wpcc_variant_' . COOKIEHASH ] )
+			? sanitize_key( wp_unslash( $_COOKIE[ 'wpcc_variant_' . COOKIEHASH ] ) )
+			: null;
 		if ( $cookie_lang && self::is_valid_language_code( $cookie_lang ) ) {
 			return $cookie_lang;
 		}
 		
 		// 从浏览器 Accept-Language 头获取
-		$accept_lang = $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '';
+		$accept_lang = isset( $_SERVER['HTTP_ACCEPT_LANGUAGE'] ) && is_string( $_SERVER['HTTP_ACCEPT_LANGUAGE'] )
+			? sanitize_text_field( wp_unslash( $_SERVER['HTTP_ACCEPT_LANGUAGE'] ) )
+			: '';
 		if ( $accept_lang ) {
 			return self::parse_accept_language( $accept_lang );
 		}

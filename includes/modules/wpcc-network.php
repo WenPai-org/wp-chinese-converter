@@ -40,8 +40,28 @@ $this->version = '1.5';
 	}
 	
 	public function network_settings_page() {
-		if ( isset( $_POST['submit'] ) && wp_verify_nonce( $_POST['wpcc_network_nonce'], 'wpcc_network_settings' ) ) {
-			$this->save_network_settings();
+		if ( isset( $_POST['submit'] ) ) {
+			if ( ! current_user_can( 'manage_network_options' ) ) {
+				wp_die( esc_html__( 'You are not allowed to change network settings.', 'wp-chinese-converter' ) );
+			}
+			check_admin_referer( 'wpcc_network_settings', 'wpcc_network_nonce' );
+
+			$engine = isset( $_POST['default_engine'] ) && is_string( $_POST['default_engine'] )
+				? sanitize_key( wp_unslash( $_POST['default_engine'] ) )
+				: 'mediawiki';
+			if ( ! in_array( $engine, array( 'mediawiki', 'opencc' ), true ) ) {
+				$engine = 'mediawiki';
+			}
+			$languages = isset( $_POST['default_languages'] ) && is_array( $_POST['default_languages'] )
+				? array_map( 'sanitize_key', wp_unslash( $_POST['default_languages'] ) )
+				: array();
+			$this->save_network_settings(
+				array(
+					'default_engine' => $engine,
+					'allow_site_override' => isset( $_POST['allow_site_override'] ) ? 1 : 0,
+					'default_languages' => array_values( array_intersect( $languages, array( 'zh-cn', 'zh-tw', 'zh-hk', 'zh-sg' ) ) ),
+				)
+			);
 		}
 		
 		$network_settings = $this->get_network_settings();
@@ -98,18 +118,12 @@ $this->version = '1.5';
 		<?php
 	}
 	
-	private function save_network_settings() {
-		$settings = array(
-			'default_engine' => sanitize_text_field( $_POST['default_engine'] ?? 'mediawiki' ),
-			'allow_site_override' => isset( $_POST['allow_site_override'] ) ? 1 : 0,
-			'default_languages' => array_map( 'sanitize_text_field', $_POST['default_languages'] ?? array() )
-		);
-		
+	private function save_network_settings( array $settings ) {
 		update_site_option( 'wpcc_network_settings', $settings );
-		
+
 		echo '<div class="notice notice-success"><p>网络设置已保存</p></div>';
 	}
-	
+
 	public function get_network_settings() {
 		return get_site_option( 'wpcc_network_settings', array(
 			'default_engine' => 'mediawiki',

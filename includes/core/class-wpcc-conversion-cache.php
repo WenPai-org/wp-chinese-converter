@@ -49,14 +49,15 @@ class WPCC_Conversion_Cache {
 	 * 
 	 * @param string $text 原始文本
 	 * @param string $variant 目标语言变体
+	 * @param string $engine 转换引擎标识
 	 * @return string|null 缓存的转换结果，如果不存在返回null
 	 */
-	public static function get_cached_conversion( $text, $variant ) {
+	public static function get_cached_conversion( $text, $variant, $engine = 'legacy' ) {
 		if ( empty( $text ) || empty( $variant ) ) {
 			return null;
 		}
 		
-		$cache_key = self::generate_cache_key( $text, $variant );
+		$cache_key = self::generate_cache_key( $text, $variant, $engine );
 		
 		// 先检查内存缓存
 		if ( isset( self::$memory_cache[ $cache_key ] ) ) {
@@ -91,12 +92,12 @@ class WPCC_Conversion_Cache {
 	 * @param string $result 转换结果
 	 * @return bool 是否设置成功
 	 */
-	public static function set_cached_conversion( $text, $variant, $result ) {
+	public static function set_cached_conversion( $text, $variant, $result, $engine = 'legacy' ) {
 		if ( empty( $text ) || empty( $variant ) || empty( $result ) ) {
 			return false;
 		}
 		
-		$cache_key = self::generate_cache_key( $text, $variant );
+		$cache_key = self::generate_cache_key( $text, $variant, $engine );
 		
 		// 设置内存缓存
 		self::set_memory_cache( $cache_key, $result );
@@ -111,7 +112,7 @@ class WPCC_Conversion_Cache {
 	/**
 	 * 批量获取转换缓存
 	 * 
-	 * @param array $texts_variants 文本和变体的数组 [[text, variant], ...]
+	 * @param array $texts_variants 文本、变体和可选引擎的数组 [[text, variant, engine], ...]
 	 * @return array 缓存结果数组，键为cache_key，值为转换结果
 	 */
 	public static function get_cached_conversions_batch( $texts_variants ) {
@@ -122,9 +123,11 @@ class WPCC_Conversion_Cache {
 				continue;
 			}
 			
-			list( $text, $variant ) = $item;
-			$cache_key = self::generate_cache_key( $text, $variant );
-			$cached_result = self::get_cached_conversion( $text, $variant );
+			$text       = $item[0];
+			$variant    = $item[1];
+			$engine     = isset( $item[2] ) ? (string) $item[2] : 'legacy';
+			$cache_key  = self::generate_cache_key( $text, $variant, $engine );
+			$cached_result = self::get_cached_conversion( $text, $variant, $engine );
 			
 			if ( $cached_result !== null ) {
 				$results[ $cache_key ] = $cached_result;
@@ -137,7 +140,7 @@ class WPCC_Conversion_Cache {
 	/**
 	 * 批量设置转换缓存
 	 * 
-	 * @param array $conversions 转换结果数组 [[text, variant, result], ...]
+	 * @param array $conversions 转换结果数组 [[text, variant, result, engine], ...]
 	 * @return int 成功设置的缓存数量
 	 */
 	public static function set_cached_conversions_batch( $conversions ) {
@@ -148,8 +151,11 @@ class WPCC_Conversion_Cache {
 				continue;
 			}
 			
-			list( $text, $variant, $result ) = $conversion;
-			if ( self::set_cached_conversion( $text, $variant, $result ) ) {
+			$text    = $conversion[0];
+			$variant = $conversion[1];
+			$result  = $conversion[2];
+			$engine  = isset( $conversion[3] ) ? (string) $conversion[3] : 'legacy';
+			if ( self::set_cached_conversion( $text, $variant, $result, $engine ) ) {
 				$count++;
 			}
 		}
@@ -164,9 +170,9 @@ class WPCC_Conversion_Cache {
 	 * @param string $variant 目标语言变体
 	 * @return string 缓存键
 	 */
-	private static function generate_cache_key( $text, $variant ) {
+	private static function generate_cache_key( $text, $variant, $engine = 'legacy' ) {
 		// 使用文本和变体的哈希值作为缓存键，确保唯一性
-		return 'wpcc_' . md5( $text . '|' . $variant );
+		return 'wpcc_' . md5( $text . '|' . $variant . '|' . $engine );
 	}
 	
 	/**
@@ -215,8 +221,11 @@ class WPCC_Conversion_Cache {
 		// 清空内存缓存
 		self::$memory_cache = array();
 		
-		// 清空WordPress对象缓存
-		wp_cache_flush_group( 'wpcc_conversion' );
+		// Group flushing is not available on every supported WordPress/cache backend.
+		// Do not flush the entire site cache as a fallback; stale entries expire in one hour.
+		if ( function_exists( 'wp_cache_supports' ) && wp_cache_supports( 'flush_group' ) ) {
+			wp_cache_flush_group( 'wpcc_conversion' );
+		}
 		
 		// 重置统计信息
 		self::$cache_stats = array(

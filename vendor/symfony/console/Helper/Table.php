@@ -45,6 +45,7 @@ class Table
     private array $rows = [];
     private array $effectiveColumnWidths = [];
     private int $numberOfColumns;
+    private OutputInterface $output;
     private TableStyle $style;
     private array $columnStyles = [];
     private array $columnWidths = [];
@@ -54,9 +55,10 @@ class Table
 
     private static array $styles;
 
-    public function __construct(
-        private OutputInterface $output,
-    ) {
+    public function __construct(OutputInterface $output)
+    {
+        $this->output = $output;
+
         self::$styles ??= self::initStyles();
 
         $this->setStyle('default');
@@ -64,8 +66,10 @@ class Table
 
     /**
      * Sets a style definition.
+     *
+     * @return void
      */
-    public static function setStyleDefinition(string $name, TableStyle $style): void
+    public static function setStyleDefinition(string $name, TableStyle $style)
     {
         self::$styles ??= self::initStyles();
 
@@ -190,7 +194,7 @@ class Table
     /**
      * @return $this
      */
-    public function setRows(array $rows): static
+    public function setRows(array $rows)
     {
         $this->rows = [];
 
@@ -308,8 +312,10 @@ class Table
      *     | 9971-5-0210-0 | A Tale of Two Cities  | Charles Dickens  |
      *     | 960-425-059-0 | The Lord of the Rings | J. R. R. Tolkien |
      *     +---------------+-----------------------+------------------+
+     *
+     * @return void
      */
-    public function render(): void
+    public function render()
     {
         $divider = new TableSeparator();
         $isCellWithColspan = static fn ($cell) => $cell instanceof TableCell && $cell->getColspan() >= 2;
@@ -395,6 +401,8 @@ class Table
         $isHeader = !$horizontal;
         $isFirstRow = $horizontal;
         $hasTitle = (bool) $this->headerTitle;
+        $previousRow = null;
+        $pendingSeparators = 0;
 
         foreach ($rowGroups as $rowGroup) {
             $isHeaderSeparatorRendered = false;
@@ -408,7 +416,8 @@ class Table
                 }
 
                 if ($row instanceof TableSeparator) {
-                    $this->renderRowSeparator();
+                    // defer rendering until the row below is known, to align crossings with it
+                    ++$pendingSeparators;
 
                     continue;
                 }
@@ -417,11 +426,17 @@ class Table
                     continue;
                 }
 
-                if ($isHeader && !$isHeaderSeparatorRendered && $this->style->displayOutsideBorder()) {
+                for (; $pendingSeparators > 0; --$pendingSeparators) {
+                    $this->renderRowSeparator(self::SEPARATOR_MID, null, null, $previousRow, $row);
+                }
+
+                if ($isHeader && !$isHeaderSeparatorRendered) {
                     $this->renderRowSeparator(
                         self::SEPARATOR_TOP,
                         $hasTitle ? $this->headerTitle : null,
-                        $hasTitle ? $this->style->getHeaderTitleFormat() : null
+                        $hasTitle ? $this->style->getHeaderTitleFormat() : null,
+                        null,
+                        $row
                     );
                     $hasTitle = false;
                     $isHeaderSeparatorRendered = true;
@@ -429,9 +444,11 @@ class Table
 
                 if ($isFirstRow) {
                     $this->renderRowSeparator(
-                        $horizontal ? self::SEPARATOR_TOP : self::SEPARATOR_TOP_BOTTOM,
+                        $horizontal || !array_filter($this->headers) ? self::SEPARATOR_TOP : self::SEPARATOR_TOP_BOTTOM,
                         $hasTitle ? $this->headerTitle : null,
-                        $hasTitle ? $this->style->getHeaderTitleFormat() : null
+                        $hasTitle ? $this->style->getHeaderTitleFormat() : null,
+                        $previousRow,
+                        $row
                     );
                     $isFirstRow = false;
                     $hasTitle = false;
@@ -447,12 +464,16 @@ class Table
                 } else {
                     $this->renderRow($row, $isHeader ? $this->style->getCellHeaderFormat() : $this->style->getCellRowFormat());
                 }
+
+                $previousRow = $row;
             }
         }
 
-        if ($this->getStyle()->displayOutsideBorder()) {
-            $this->renderRowSeparator(self::SEPARATOR_BOTTOM, $this->footerTitle, $this->style->getFooterTitleFormat());
+        for (; $pendingSeparators > 0; --$pendingSeparators) {
+            $this->renderRowSeparator(self::SEPARATOR_MID, null, null, $previousRow);
         }
+
+        $this->renderRowSeparator(self::SEPARATOR_BOTTOM, $this->footerTitle, $this->style->getFooterTitleFormat(), $previousRow);
 
         $this->cleanup();
         $this->rendered = true;
@@ -465,7 +486,7 @@ class Table
      *
      *     +-----+-----------+-------+
      */
-    private function renderRowSeparator(int $type = self::SEPARATOR_MID, ?string $title = null, ?string $titleFormat = null): void
+    private function renderRowSeparator(int $type = self::SEPARATOR_MID, ?string $title = null, ?string $titleFormat = null, ?array $rowAbove = null, ?array $rowBelow = null): void
     {
         if (!$count = $this->numberOfColumns) {
             return;
@@ -487,10 +508,33 @@ class Table
             [$horizontal, $leftChar, $midChar, $rightChar] = [$borders[0], $crossings[7], $crossings[6], $crossings[5]];
         }
 
+        // only draw a crossing where a vertical border meets the separator; a cell
+        // spanning several columns has no border on the columns it covers
+        $hasLineAbove = self::SEPARATOR_TOP !== $type;
+        $hasLineBelow = self::SEPARATOR_BOTTOM !== $type;
+        $columnsAbove = null !== $rowAbove ? $this->getRowColumns($rowAbove) : null;
+        $columnsBelow = null !== $rowBelow ? $this->getRowColumns($rowBelow) : null;
+
         $markup = $leftChar;
         for ($column = 0; $column < $count; ++$column) {
             $markup .= str_repeat($horizontal, $this->effectiveColumnWidths[$column]);
-            $markup .= $column === $count - 1 ? $rightChar : $midChar;
+            if ($column === $count - 1) {
+                $markup .= $rightChar;
+
+                continue;
+            }
+
+            $borderAbove = $hasLineAbove && (null === $columnsAbove || \in_array($column + 1, $columnsAbove, true));
+            $borderBelow = $hasLineBelow && (null === $columnsBelow || \in_array($column + 1, $columnsBelow, true));
+            // the one-sided junctions reuse the top/bottom crossing chars; for the "box-double"
+            // style these are double-horizontal (╤/╧) while an inner separator is single (─), as
+            // that style has no single-line ┬/┴ to fall back to
+            $markup .= match (true) {
+                $borderAbove && $borderBelow => $midChar,
+                $borderBelow => $crossings[2],
+                $borderAbove => $crossings[6],
+                default => $horizontal,
+            };
         }
 
         if (null !== $title) {
@@ -534,7 +578,7 @@ class Table
     {
         $rowContent = $this->renderColumnSeparator(self::BORDER_OUTSIDE);
         $columns = $this->getRowColumns($row);
-        $last = \count($columns) - 1;
+        $last = array_key_last($columns);
         foreach ($columns as $i => $column) {
             if ($firstCellFormat && 0 === $i) {
                 $rowContent .= $this->renderCell($row, $column, $firstCellFormat);
@@ -759,7 +803,7 @@ class Table
 
         foreach ($unmergedRows as $unmergedRowKey => $unmergedRow) {
             // we need to know if $unmergedRow will be merged or inserted into $rows
-            if (isset($rows[$unmergedRowKey]) && \is_array($rows[$unmergedRowKey]) && ($this->getNumberOfColumns($rows[$unmergedRowKey]) + $this->getNumberOfColumns($unmergedRow) <= $this->numberOfColumns)) {
+            if (isset($rows[$unmergedRowKey]) && \is_array($rows[$unmergedRowKey]) && ($this->getNumberOfColumns($rows[$unmergedRowKey]) + $this->getNumberOfColumns($unmergedRows[$unmergedRowKey]) <= $this->numberOfColumns)) {
                 foreach ($unmergedRow as $cellKey => $cell) {
                     // insert cell into row at cellKey position
                     array_splice($rows[$unmergedRowKey], $cellKey, 0, [$cell]);
@@ -767,8 +811,8 @@ class Table
             } else {
                 $row = $this->copyRow($rows, $unmergedRowKey - 1);
                 foreach ($unmergedRow as $column => $cell) {
-                    if ($cell) {
-                        $row[$column] = $cell;
+                    if (!empty($cell)) {
+                        $row[$column] = $unmergedRow[$column];
                     }
                 }
                 array_splice($rows, $unmergedRowKey, 0, [$row]);
@@ -908,12 +952,6 @@ class Table
      */
     private static function initStyles(): array
     {
-        $markdown = new TableStyle();
-        $markdown
-            ->setDefaultCrossingChar('|')
-            ->setDisplayOutsideBorder(false)
-        ;
-
         $borderless = new TableStyle();
         $borderless
             ->setHorizontalBorderChars('=')
@@ -951,7 +989,6 @@ class Table
 
         return [
             'default' => new TableStyle(),
-            'markdown' => $markdown,
             'borderless' => $borderless,
             'compact' => $compact,
             'symfony-style-guide' => $styleGuide,

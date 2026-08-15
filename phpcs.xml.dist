@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<ruleset name="WP Chinese Converter">
+    <description>WordPress coding standards report; legacy debt is tracked in the audit.</description>
+    <file>wp-chinese-converter.php</file>
+    <file>includes</file>
+    <exclude-pattern>includes/core/ZhConversion.php</exclude-pattern>
+    <exclude-pattern>includes/core/simple_html_dom.php</exclude-pattern>
+    <rule ref="WordPress-Core" />
+    <arg name="extensions" value="php" />
+    <arg name="report" value="summary" />
+</ruleset>

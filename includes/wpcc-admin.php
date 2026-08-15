@@ -18,7 +18,7 @@ function wpcc_ajax_flush_rewrite_rules() {
     }
     
     // 验证nonce
-    if ( ! wp_verify_nonce( $_POST['nonce'], 'wpcc_admin_nonce' ) ) {
+    if ( empty( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'wpcc_admin_nonce' ) ) {
         wp_die( '安全验证失败' );
     }
     
@@ -77,7 +77,7 @@ jQuery(document).ready(function($) {
         
         $.post(ajaxurl, {
             action: "wpcc_flush_rewrite_rules",
-            nonce: "' . wp_create_nonce( 'wpcc_admin_nonce' ) . '"
+            nonce: "' . esc_js( wp_create_nonce( 'wpcc_admin_nonce' ) ) . '"
         }, function(response) {
             if (response.success) {
                 button.closest(".notice").fadeOut();
@@ -114,53 +114,6 @@ function wpcc_admin_init() {
 /**
  * 插件激活时执行
  */
-function wpcc_activate() {
-	$current_options = (array) get_wpcc_option( 'wpcc_options' );
-	$wpcc_options = array(
-		'wpcc_search_conversion'       => 1,
-		'wpcc_used_langs'              => array( 'zh-hans', 'zh-hant', 'zh-cn', 'zh-hk', 'zh-sg', 'zh-tw' ),
-		'wpcc_browser_redirect'        => 0,
-		'wpcc_auto_language_recong'    => 0,
-		'wpcc_flag_option'             => 1,
-		'wpcc_use_cookie_variant'      => 0,
-		'wpcc_use_fullpage_conversion' => 1,
-		'wpcco_use_sitemap'            => 1,
-		'wpcc_trackback_plugin_author' => 0,
-		'wpcc_add_author_link'         => 0,
-		'wpcc_use_permalink'           => 0,
-		'wpcc_no_conversion_tag'       => '',
-		'wpcc_no_conversion_ja'        => 0,
-		'wpcc_no_conversion_qtag'      => 0,
-		'wpcc_engine'                  => 'mediawiki',
-		'nctip'                        => '',
-	);
-
-	foreach ( $current_options as $key => $value ) {
-		if ( isset( $wpcc_options[ $key ] ) ) {
-			$wpcc_options[ $key ] = $value;
-		}
-	}
-
-	foreach (
-		array(
-			'zh-hans' => "hanstip",
-			'zh-hant' => "hanttip",
-			'zh-cn'   => "cntip",
-			'zh-hk'   => "hktip",
-			'zh-sg'   => "sgtip",
-			'zh-tw'   => "twtip",
-			'zh-my'   => "mytip",
-			'zh-mo'   => "motip",
-			'zh-jp'   => "jptip"
-		) as $lang => $tip
-	) {
-		if ( ! empty( $current_options[ $tip ] ) ) {
-			$wpcc_options[ $tip ] = $current_options[ $tip ];
-		}
-	}
-
-	update_wpcc_option( 'wpcc_options', $wpcc_options );
-}
 
 /**
  * 添加编辑器快速标签
@@ -191,97 +144,6 @@ function wpcc_appthemes_add_quicktags() {
 /**
  * 初始化文章转换功能
  */
-function wpcc_init_post_conversion() {
-	global $wpcc_options;
-
-	if ( empty( $wpcc_options ) ) {
-		$wpcc_options = get_wpcc_option( 'wpcc_options' );
-	}
-
-	if ( ! empty( $wpcc_options['wpcc_enable_post_conversion'] ) ) {
-		$target_lang = $wpcc_options['wpcc_post_conversion_target'] ?? 'zh-cn';
-
-		/**
-		 * 在保存时安全地转换块内容：
-		 * - 跳过 WPCC 自有区块（wpcc/*），避免破坏区块占位和结构
-		 * - 仅转换非 WPCC 区块的纯文本片段（innerContent 字符串等）
-		 */
-		add_filter( 'content_save_pre', function ( $content ) use ( $target_lang ) {
-			if ( empty( $content ) ) {
-				return $content;
-			}
-			try {
-				return wpcc_convert_post_content_safely( $content, $target_lang );
-			} catch ( Exception $e ) {
-				error_log( 'WPCC Content Conversion Error: ' . $e->getMessage() );
-				return $content;
-			}
-		} );
-
-		add_filter( 'title_save_pre', function ( $title ) use ( $target_lang ) {
-			if ( empty( $title ) ) {
-				return $title;
-			}
-			try {
-				return zhconversion( $title, $target_lang );
-			} catch ( Exception $e ) {
-				error_log( 'WPCC Title Conversion Error: ' . $e->getMessage() );
-				return $title;
-			}
-		} );
-
-		add_action( 'add_meta_boxes', 'wpcc_add_conversion_meta_box' );
-	}
-}
-
-/**
- * 使用区块解析安全转换文章内容，仅转换非 WPCC 区块的纯文本
- */
-function wpcc_convert_post_content_safely( $content, $target_lang ) {
-	if ( ! function_exists( 'parse_blocks' ) || ! function_exists( 'serialize_blocks' ) ) {
-		// 回退：无法解析区块时，使用整体转换（可能导致占位被转换）
-		return zhconversion( $content, $target_lang );
-	}
-
-	$blocks = parse_blocks( $content );
-	$converted = wpcc_convert_blocks_array_safely( $blocks, $target_lang );
-	return serialize_blocks( $converted );
-}
-
-function wpcc_convert_blocks_array_safely( $blocks, $target_lang ) {
-	foreach ( $blocks as &$block ) {
-		$name = isset( $block['blockName'] ) ? (string) $block['blockName'] : '';
-
-		// 跳过 WPCC 自有区块，避免转换其内部占位与结构
-		if ( substr( $name, 0, 5 ) === 'wpcc/' ) {
-			// 递归处理其子块（如不希望转换子块，也可以直接 continue）
-			if ( ! empty( $block['innerBlocks'] ) && is_array( $block['innerBlocks'] ) ) {
-				$block['innerBlocks'] = wpcc_convert_blocks_array_safely( $block['innerBlocks'], $target_lang );
-			}
-			continue;
-		}
-
-		// 转换非 WPCC 区块的纯文本内容
-		if ( isset( $block['innerContent'] ) && is_array( $block['innerContent'] ) ) {
-			foreach ( $block['innerContent'] as $i => $piece ) {
-				if ( is_string( $piece ) && $piece !== '' ) {
-					$block['innerContent'][ $i ] = zhconversion( $piece, $target_lang );
-				}
-			}
-		}
-
-		if ( isset( $block['innerHTML'] ) && is_string( $block['innerHTML'] ) && $block['innerHTML'] !== '' ) {
-			$block['innerHTML'] = zhconversion( $block['innerHTML'], $target_lang );
-		}
-
-		// 递归处理子块
-		if ( ! empty( $block['innerBlocks'] ) && is_array( $block['innerBlocks'] ) ) {
-			$block['innerBlocks'] = wpcc_convert_blocks_array_safely( $block['innerBlocks'], $target_lang );
-		}
-	}
-	return $blocks;
-}
-
 /**
  * 添加转换设置元框
  */
@@ -312,51 +174,155 @@ function wpcc_get_language_config() {
  */
 function wpcc_conversion_meta_box_callback( $post ) {
 	global $wpcc_options;
-	$target_lang = $wpcc_options['wpcc_post_conversion_target'] ?? 'zh-cn';
-	$enabled_langs = $wpcc_options['wpcc_used_langs'] ?? array();
 
-	$default_names = array(
-		'zh-cn' => '中国大陆',
-		'zh-tw' => '台湾正体',
-		'zh-hk' => '港澳繁体',
+	$target_lang = $wpcc_options['wpcc_post_conversion_target'] ?? 'zh-cn';
+	$engine      = $wpcc_options['wpcc_engine'] ?? 'mediawiki';
+	$is_enabled = ! empty( $wpcc_options['wpcc_enable_post_conversion'] );
+	$names       = array(
+		'zh-cn'   => '中国大陆',
+		'zh-tw'   => '台湾正体',
+		'zh-hk'   => '港澳繁体',
 		'zh-hans' => '简体中文',
 		'zh-hant' => '繁体中文',
-		'zh-sg' => '马新简体',
-		'zh-jp' => '日式汉字'
+		'zh-sg'   => '马新简体',
+		'zh-jp'   => '日式汉字',
 	);
-
-	$is_enabled = !empty($wpcc_options['wpcc_enable_post_conversion']);
-	
-	if (!$is_enabled) {
-		echo '<p>发表时自动转换功能已禁用。</p>';
-		echo '<p><a href="' . admin_url('admin.php?page=wp-chinese-converter') . '">前往设置启用</a></p>';
-		return;
-	}
-
-	if (empty($enabled_langs)) {
-		echo '<p>未启用任何语言模块。</p>';
-		echo '<p><a href="' . admin_url('admin.php?page=wp-chinese-converter') . '">前往设置启用语言模块</a></p>';
-		return;
-	}
-
-	if (!in_array($target_lang, $enabled_langs)) {
-		echo '<p style="color: #d63638;">当前转换目标语言未启用。</p>';
-		echo '<p><a href="' . admin_url('admin.php?page=wp-chinese-converter') . '">前往设置修改</a></p>';
-		return;
-	}
-
-	$target_display_name = isset($default_names[$target_lang]) ? $default_names[$target_lang] . ' (' . $target_lang . ')' : $target_lang;
-	echo '<p><strong>目标：</strong>' . $target_display_name . '</p>';
-	
-	$engine = $wpcc_options['wpcc_engine'] ?? 'mediawiki';
 	$engine_names = array(
 		'mediawiki' => 'MediaWiki',
-		'opencc' => 'OpenCC'
+		'opencc'    => 'OpenCC',
 	);
-	echo '<p><strong>引擎：</strong>' . ($engine_names[$engine] ?? $engine) . '</p>';
-	
-	echo '<p><small>发表时将自动转换标题和内容。<a target="_blank" href="' . admin_url('admin.php?page=wp-chinese-converter') . '">修改设置 ↗</a></small></p>';
+
+	if ( $is_enabled ) {
+		$target_name = isset( $names[ $target_lang ] ) ? $names[ $target_lang ] . ' (' . $target_lang . ')' : $target_lang;
+		echo '<p><strong>' . esc_html__( 'Automatic conversion:', 'wp-chinese-converter' ) . '</strong> ' . esc_html__( 'Enabled', 'wp-chinese-converter' ) . '</p>';
+		echo '<p><strong>' . esc_html__( 'Target:', 'wp-chinese-converter' ) . '</strong> ' . esc_html( $target_name ) . '<br>';
+		echo '<strong>' . esc_html__( 'Engine:', 'wp-chinese-converter' ) . '</strong> ' . esc_html( $engine_names[ $engine ] ?? $engine ) . '</p>';
+	} else {
+		echo '<p><strong>' . esc_html__( 'Automatic conversion:', 'wp-chinese-converter' ) . '</strong> ' . esc_html__( 'Disabled', 'wp-chinese-converter' ) . '</p>';
+	}
+
+	$history = WPCC_Post_Conversion_Backup::get_history( $post->ID );
+	if ( is_wp_error( $history ) || empty( $history ) ) {
+		echo '<p id="wpcc-conversion-history-empty">' . esc_html__( 'No saved conversion history is available for this post.', 'wp-chinese-converter' ) . '</p>';
+		echo '<p><a href="' . esc_url( admin_url( 'admin.php?page=wp-chinese-converter' ) ) . '">' . esc_html__( 'Conversion settings', 'wp-chinese-converter' ) . '</a></p>';
+		return;
+	}
+
+	?>
+	<hr>
+	<p><strong><?php esc_html_e( 'Conversion recovery history', 'wp-chinese-converter' ); ?></strong></p>
+		<label class="screen-reader-text" for="wpcc-conversion-backup-id"><?php esc_html_e( 'History version', 'wp-chinese-converter' ); ?></label>
+		<select id="wpcc-conversion-backup-id" name="backup_id" class="widefat" form="wpcc-conversion-restore-form">
+			<?php foreach ( array_reverse( $history ) as $entry ) : ?>
+				<?php
+				$created = ! empty( $entry['created_at'] ) ? date_i18n( 'Y-m-d H:i:s', (int) $entry['created_at'] ) : __( 'Unknown time', 'wp-chinese-converter' );
+				$label   = sprintf(
+					/* translators: 1: conversion time, 2: target language, 3: conversion engine. */
+					__( '%1$s — %2$s / %3$s', 'wp-chinese-converter' ),
+					$created,
+					(string) ( $entry['target'] ?? '' ),
+					(string) ( $entry['engine'] ?? '' )
+				);
+				?>
+				<option value="<?php echo esc_attr( (string) $entry['id'] ); ?>"><?php echo esc_html( $label ); ?></option>
+			<?php endforeach; ?>
+		</select>
+		<p class="description"><?php esc_html_e( 'Dry-run shows the title and content changes without writing. Restore is rejected if the post changed after this screen loaded.', 'wp-chinese-converter' ); ?></p>
+		<p>
+			<button id="wpcc-conversion-dry-run" type="submit" class="button" name="wpcc_restore_mode" value="dry-run" form="wpcc-conversion-restore-form"><?php esc_html_e( 'Preview field diff', 'wp-chinese-converter' ); ?></button>
+			<button id="wpcc-conversion-restore" type="submit" class="button button-secondary" name="wpcc_restore_mode" value="restore" form="wpcc-conversion-restore-form" onclick="return confirm('<?php echo esc_js( __( 'Restore the selected title and content version?', 'wp-chinese-converter' ) ); ?>');"><?php esc_html_e( 'Restore selected version', 'wp-chinese-converter' ); ?></button>
+		</p>
+	<table class="widefat striped wpcc-conversion-history">
+		<thead><tr><th><?php esc_html_e( 'Version', 'wp-chinese-converter' ); ?></th><th><?php esc_html_e( 'Changed fields', 'wp-chinese-converter' ); ?></th></tr></thead>
+		<tbody>
+		<?php foreach ( array_reverse( $history ) as $entry ) : ?>
+			<?php
+			$changed = array();
+			foreach ( array( 'post_title', 'post_content' ) as $field ) {
+				if ( (string) ( $entry['original'][ $field ] ?? '' ) !== (string) ( $entry['converted'][ $field ] ?? '' ) ) {
+					$changed[] = $field;
+				}
+			}
+			?>
+			<tr data-wpcc-backup-id="<?php echo esc_attr( (string) $entry['id'] ); ?>">
+				<td><code><?php echo esc_html( substr( (string) $entry['id'], 0, 12 ) ); ?></code></td>
+				<td><?php echo esc_html( implode( ', ', $changed ) ); ?></td>
+			</tr>
+		<?php endforeach; ?>
+		</tbody>
+	</table>
+	<?php
 }
+
+/**
+ * Render the recovery form outside WordPress' main post-edit form.
+ */
+function wpcc_render_conversion_restore_form() {
+	global $post;
+
+	if ( ! $post instanceof WP_Post || ! current_user_can( 'edit_post', $post->ID ) ) {
+		return;
+	}
+	$history = WPCC_Post_Conversion_Backup::get_history( $post->ID );
+	if ( is_wp_error( $history ) || empty( $history ) ) {
+		return;
+	}
+	?>
+	<form id="wpcc-conversion-restore-form" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post" style="display:none">
+		<input type="hidden" name="action" value="wpcc_restore_post_conversion">
+		<input type="hidden" name="post_id" value="<?php echo esc_attr( (string) $post->ID ); ?>">
+		<input type="hidden" name="expected_hash" value="<?php echo esc_attr( WPCC_Post_Conversion_Backup::hash_post( $post ) ); ?>">
+		<?php wp_nonce_field( 'wpcc_restore_post_conversion_' . $post->ID, 'wpcc_restore_nonce' ); ?>
+	</form>
+	<?php
+}
+add_action( 'admin_footer-post.php', 'wpcc_render_conversion_restore_form' );
+add_action( 'admin_footer-post-new.php', 'wpcc_render_conversion_restore_form' );
+
+/**
+ * Process an authenticated conversion recovery request from the post editor.
+ */
+function wpcc_handle_post_conversion_restore() {
+	$post_id = isset( $_POST['post_id'] ) && is_string( $_POST['post_id'] ) ? absint( wp_unslash( $_POST['post_id'] ) ) : 0;
+	if ( ! $post_id || ! current_user_can( 'edit_post', $post_id ) ) {
+		wp_die( esc_html__( 'You are not allowed to restore this post.', 'wp-chinese-converter' ), '', array( 'response' => 403 ) );
+	}
+
+	if ( ! isset( $_POST['wpcc_restore_nonce'] ) || ! is_string( $_POST['wpcc_restore_nonce'] ) ) {
+		wp_die( esc_html__( 'Invalid recovery nonce.', 'wp-chinese-converter' ), '', array( 'response' => 403 ) );
+	}
+	check_admin_referer( 'wpcc_restore_post_conversion_' . $post_id, 'wpcc_restore_nonce' );
+	$backup_id     = isset( $_POST['backup_id'] ) && is_string( $_POST['backup_id'] ) ? sanitize_key( wp_unslash( $_POST['backup_id'] ) ) : '';
+	$expected_hash = isset( $_POST['expected_hash'] ) && is_string( $_POST['expected_hash'] ) ? sanitize_text_field( wp_unslash( $_POST['expected_hash'] ) ) : '';
+	$mode          = isset( $_POST['wpcc_restore_mode'] ) && is_string( $_POST['wpcc_restore_mode'] ) ? sanitize_key( wp_unslash( $_POST['wpcc_restore_mode'] ) ) : '';
+	$dry_run      = 'dry-run' === $mode;
+	if ( ! $dry_run && 'restore' !== $mode ) {
+		wp_die( esc_html__( 'Invalid recovery action.', 'wp-chinese-converter' ), '', array( 'response' => 400 ) );
+	}
+
+	$result = wpcc_restore_post_conversion( $post_id, $backup_id, $expected_hash, $dry_run );
+	if ( is_wp_error( $result ) ) {
+		$redirect = add_query_arg( 'wpcc_restore_status', sanitize_key( $result->get_error_code() ), get_edit_post_link( $post_id, 'url' ) );
+		wp_safe_redirect( $redirect );
+		exit;
+	}
+
+	if ( $dry_run ) {
+		$html = '<div id="wpcc-restore-dry-run"><h1>' . esc_html__( 'Conversion recovery dry-run', 'wp-chinese-converter' ) . '</h1>';
+		$html .= '<table class="widefat striped"><thead><tr><th>' . esc_html__( 'Field', 'wp-chinese-converter' ) . '</th><th>' . esc_html__( 'Current value', 'wp-chinese-converter' ) . '</th><th>' . esc_html__( 'Restored value', 'wp-chinese-converter' ) . '</th></tr></thead><tbody>';
+		foreach ( $result['diff'] as $field => $change ) {
+			$html .= '<tr data-wpcc-field="' . esc_attr( (string) $field ) . '"><th>' . esc_html( (string) $field ) . '</th><td><pre>' . esc_html( (string) $change['before'] ) . '</pre></td><td><pre>' . esc_html( (string) $change['after'] ) . '</pre></td></tr>';
+		}
+		$html .= '</tbody></table><p><a class="button" href="' . esc_url( get_edit_post_link( $post_id, 'url' ) ) . '">' . esc_html__( 'Return to editor', 'wp-chinese-converter' ) . '</a></p></div>';
+		wp_die( wp_kses_post( $html ), esc_html__( 'Conversion recovery dry-run', 'wp-chinese-converter' ), array( 'response' => 200 ) );
+	}
+
+	$status   = ! empty( $result['already_restored'] ) ? 'already-restored' : 'restored';
+	$redirect = add_query_arg( 'wpcc_restore_status', $status, get_edit_post_link( $post_id, 'url' ) );
+	wp_safe_redirect( $redirect );
+	exit;
+}
+add_action( 'admin_post_wpcc_restore_post_conversion', 'wpcc_handle_post_conversion_restore' );
 
 /**
  * 获取首页slug
@@ -438,9 +404,6 @@ if ( is_multisite() && wpcc_mobile_exist( 'network' ) ) {
 	add_action( 'admin_menu', 'wpcc_admin_init' );
 }
 
-// 注册激活钩子
-register_activation_hook( dirname( __DIR__ ) . '/wp-chinese-converter.php', 'wpcc_activate' );
-
 // 注册编辑器增强钩子
 add_action( 'admin_print_footer_scripts', 'wpcc_appthemes_add_quicktags' );
 
@@ -469,9 +432,6 @@ function wpcc_add_tinymce_button( $buttons ) {
 add_filter( 'mce_external_plugins', 'wpcc_register_tinymce_plugin' );
 add_filter( 'mce_buttons', 'wpcc_add_tinymce_button' );
 
-// 注册文章转换钩子
-add_action( 'init', 'wpcc_init_post_conversion' );
-
 // 注册防重定向钩子
 add_action( 'template_redirect', 'prevent_home_redirect', 0 );
 
@@ -488,19 +448,19 @@ if ( defined( 'WP_DEBUG' ) && WP_DEBUG || defined( 'wpcc_DEBUG' ) && wpcc_DEBUG 
 		echo '<!--';
 		echo '<p style="font-size:20px;color:red;">';
 		echo 'WP WP Chinese Converter Plugin Debug Output:<br />';
-		echo '默认URL: <a href="' . $wpcc_noconversion_url . '">' . $wpcc_noconversion_url . '</a><br />';
-		echo '当前语言(空则是不转换): ' . $wpcc_target_lang . "<br />";
-		echo 'Query String: ' . ( isset( $_SERVER['QUERY_STRING'] ) ? $_SERVER['QUERY_STRING'] : '' ) . '<br />';
-		echo 'Request URI: ' . ( isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : '' ) . '<br />';
+		echo '默认URL: <a href="' . esc_url( $wpcc_noconversion_url ) . '">' . esc_html( $wpcc_noconversion_url ) . '</a><br />';
+		echo '当前语言(空则是不转换): ' . esc_html( $wpcc_target_lang ) . "<br />";
+		echo 'Query String: ' . ( isset( $_SERVER['QUERY_STRING'] ) ? esc_html( sanitize_text_field( wp_unslash( $_SERVER['QUERY_STRING'] ) ) ) : '' ) . '<br />';
+		echo 'Request URI: ' . ( isset( $_SERVER['REQUEST_URI'] ) ? esc_url( esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) ) : '' ) . '<br />';
 		foreach ( $wpcc_langs_urls as $key => $value ) {
-			echo $key . ' URL: <a href="' . $value . '">' . $value . '</a><br />';
+			echo esc_html( $key ) . ' URL: <a href="' . esc_url( $value ) . '">' . esc_html( $value ) . '</a><br />';
 		}
-		echo 'Category feed link: ' . get_category_feed_link( 1 ) . '<br />';
-		echo 'Search feed link: ' . get_search_feed_link( 'test' );
+		echo 'Category feed link: ' . esc_url( get_category_feed_link( 1 ) ) . '<br />';
+		echo 'Search feed link: ' . esc_url( get_search_feed_link( 'test' ) );
 		echo 'Rewrite Rules: <br />';
-		echo nl2br( htmlspecialchars( var_export( $wp_rewrite->rewrite_rules(), true ) ) ) . '<br />';
+		echo nl2br( esc_html( (string) wp_json_encode( $wp_rewrite->rewrite_rules(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE ) ) ) . '<br />';
 		echo 'Debug Data: <br />';
-		echo nl2br( htmlspecialchars( var_export( $wpcc_debug_data, true ) ) );
+		echo nl2br( esc_html( (string) wp_json_encode( $wpcc_debug_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE ) ) );
 		echo '</p>';
 		echo '-->';
 	}

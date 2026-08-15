@@ -14,7 +14,6 @@ return array(
     'Symfony\\Component\\String\\' => array($vendorDir . '/symfony/string'),
     'Symfony\\Component\\Process\\' => array($vendorDir . '/symfony/process'),
     'Symfony\\Component\\Console\\' => array($vendorDir . '/symfony/console'),
-    'Root\\WpChineseConverter\\' => array($baseDir . '/src'),
     'Psr\\Container\\' => array($vendorDir . '/psr/container/src'),
     'Overtrue\\PHPOpenCC\\' => array($vendorDir . '/overtrue/php-opencc/src'),
 );

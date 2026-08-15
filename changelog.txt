@@ -1,5 +1,12 @@
 WP Chinese Converter (WPCC) — 更新日志 / Changelog
 
+Version 1.5.1 (unreleased)
+- 安全：设置保存、缓存兼容和卸载操作增加能力与 nonce 校验；REST 转换默认要求 manage_options 并限制请求体积
+- 数据安全：发表时转换仅作用于显式保存的文章/页面，跳过自动保存与修订；功能仍为不可逆 opt-in
+- 正确性：修复缓存返回结构与键登记、缺少 group flush 时的致命错误、查询参数 canonical、站点地图 SQL 和 XML 转义
+- 兼容：自定义多语言地图不再关闭 WordPress 核心 sitemap
+- 工程：依赖升级、锁文件同步、增加 PHPUnit 覆盖
+
 Version 1.5.0 (2025-10-11)
 - 修复 单站模式下“展示形式”反向的问题：统一语义为 1=平铺、0=下拉，短代码 [wp-chinese-converter] 与区块表现一致
 - 修复 单站设置保存问题：确保语言模块、全页面转换、展示形式等选项在单站模式可正确保存

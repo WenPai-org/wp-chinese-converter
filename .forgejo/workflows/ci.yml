@@ -1,0 +1,137 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - 'codex/**'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: PHP ${{ matrix.php }} / WordPress ${{ matrix.wordpress }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - php: '8.1'
+            wordpress: '6.3'
+            core: 'WordPress/WordPress#6.3'
+          - php: '8.3'
+            wordpress: latest
+            core: null
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          tools: composer:v2
+
+      - name: Validate Composer metadata
+        run: composer validate --strict --no-check-publish
+
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-interaction
+
+      - name: Run unit tests
+        run: composer test
+
+      - name: Run PHPStan
+        run: composer analyze
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify committed Gutenberg build
+        run: |
+          npm ci
+          npm run check:build
+
+      - name: Build the exact release ZIP reproducibly
+        run: |
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          bash scripts/build-release.sh /tmp/wpcc-candidate-a.zip
+          bash scripts/build-release.sh /tmp/wpcc-candidate-b.zip
+          cmp /tmp/wpcc-candidate-a.zip /tmp/wpcc-candidate-b.zip
+          sha256sum /tmp/wpcc-candidate-a.zip | tee /tmp/wpcc-candidate.sha256
+          unzip -t /tmp/wpcc-candidate-a.zip
+          mkdir -p .ci/exact
+          unzip -q /tmp/wpcc-candidate-a.zip -d .ci/exact
+          test -f .ci/exact/wp-chinese-converter/wp-chinese-converter.php
+
+      - name: Configure WordPress runtime
+        env:
+          WP_CORE: ${{ matrix.core }}
+          PHP_VERSION: ${{ matrix.php }}
+        run: |
+          if [ -n "$WP_CORE" ]; then
+            core_json="\"$WP_CORE\""
+          else
+            core_json="null"
+          fi
+          cat > .wp-env.json <<EOF
+          {
+            "core": $core_json,
+            "phpVersion": "$PHP_VERSION",
+            "plugins": [".ci/exact/wp-chinese-converter"]
+          }
+          EOF
+
+      - name: Install pinned wp-env
+        run: npm install --global @wordpress/env@11.12.0
+
+      - name: Start disposable WordPress
+        run: wp-env start
+
+      - name: Verify runtime versions and activate plugin
+        env:
+          EXPECTED_WP: ${{ matrix.wordpress }}
+        run: |
+          actual_wp="$(wp-env run cli wp eval 'echo "WPCC_WP_VERSION=" . get_bloginfo( "version" );' 2>&1 | sed -n 's/^WPCC_WP_VERSION=//p' | tail -n 1 | tr -d '\r')"
+          actual_php="$(wp-env run cli wp eval 'echo "WPCC_PHP_VERSION=" . PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;' 2>&1 | sed -n 's/^WPCC_PHP_VERSION=//p' | tail -n 1 | tr -d '\r')"
+          test -n "$actual_wp"
+          test "$actual_php" = "${{ matrix.php }}"
+          if [ "$EXPECTED_WP" != "latest" ]; then
+            case "$actual_wp" in
+              "$EXPECTED_WP"|"$EXPECTED_WP".*) ;;
+              *) echo "Expected WordPress $EXPECTED_WP, got $actual_wp" >&2; exit 1 ;;
+            esac
+          fi
+          wp-env run cli wp plugin activate wp-chinese-converter
+          wp-env run cli wp eval 'if ( ! defined( "wpcc_VERSION" ) ) { exit( 1 ); }'
+
+      - name: Plugin Check the exact release ZIP
+        run: |
+          wp-env run cli wp plugin install plugin-check --activate
+          set +e
+          plugin_check_output="$(wp-env run cli wp plugin check wp-chinese-converter --format=csv 2>&1)"
+          plugin_check_rc=$?
+          set -e
+          printf '%s\n' "$plugin_check_output"
+          test "$plugin_check_rc" -eq 0
+          if printf '%s\n' "$plugin_check_output" | grep -Eiq '(^|[,"])error([,"]|$)'; then
+            echo 'Plugin Check reported one or more errors in the exact release ZIP.' >&2
+            exit 1
+          fi
+
+      # The deeper standalone/multisite/Yoast/REST/XML-RPC/WP-CLI/E2E matrix
+      # remains a Board-approved CI acceptance action via scripts/tests/runtime-matrix.sh.
+      # This workflow does not claim that gated matrix passed before it is executed.
+      - name: Validate gated runtime entrypoint
+        run: bash -n scripts/tests/runtime-matrix.sh
+
+      - name: Stop disposable WordPress
+        if: always()
+        run: wp-env stop || true

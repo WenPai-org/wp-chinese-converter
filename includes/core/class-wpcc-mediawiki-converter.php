@@ -15,7 +15,7 @@ class WPCC_MediaWiki_Converter implements WPCC_Converter_Interface {
 		}
 
 		// 检查缓存
-		$cached_result = WPCC_Conversion_Cache::get_cached_conversion( $text, $target_variant );
+		$cached_result = WPCC_Conversion_Cache::get_cached_conversion( $text, $target_variant, 'mediawiki' );
 		if ( $cached_result !== null ) {
 			return $cached_result;
 		}
@@ -47,7 +47,7 @@ class WPCC_MediaWiki_Converter implements WPCC_Converter_Interface {
 
 		// 缓存转换结果
 		if ( $result !== $text ) {
-			WPCC_Conversion_Cache::set_cached_conversion( $text, $target_variant, $result );
+			WPCC_Conversion_Cache::set_cached_conversion( $text, $target_variant, $result, 'mediawiki' );
 		}
 
 		return $result;
@@ -86,8 +86,8 @@ class WPCC_MediaWiki_Converter implements WPCC_Converter_Interface {
 			return;
 		}
 
-		global $zh2Hans;
-		if ( ! isset( $zh2Hans ) ) {
+		global $zh2Hans, $zh2Hant, $zh2CN, $zh2TW, $zh2HK, $zh2SG;
+		if ( ! isset( $zh2Hans, $zh2Hant, $zh2CN, $zh2TW, $zh2HK, $zh2SG ) ) {
 			require_once dirname( dirname( __FILE__ ) ) . '/core/ZhConversion.php';
 			$extra_conversion_file = WP_CONTENT_DIR . '/extra_zhconversion.php';
 			if ( file_exists( $extra_conversion_file ) ) {

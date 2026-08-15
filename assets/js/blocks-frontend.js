@@ -283,6 +283,11 @@ function getLanguageInfo(langCode) {
 }
 
 function getLanguageUrl(langCode) {
+  // “不转换”必须使用 zh 哨兵；只移除 variant 会再次命中浏览器/Cookie 偏好。
+  if (!langCode) {
+    return getNoConversionUrl();
+  }
+
   // 优先使用服务端注入的 URL 映射（如可用）
   try {
     if (typeof wpcc_langs_urls === "object" && wpcc_langs_urls) {
