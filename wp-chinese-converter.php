@@ -11,6 +11,8 @@
  * Requires PHP: 8.1
  * License: GPLv3 or later
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
+ * Plugin URI: https://wpcy.com/wp-chinese-converter
+ * Update URI: https://updates.wenpai.net
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
